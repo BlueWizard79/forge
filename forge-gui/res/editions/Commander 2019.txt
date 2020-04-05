@@ -313,6 +313,7 @@ Type=Other
 [tokens]
 b_1_1_assassin_lose_con
 b_2_2_zombie
+b_2_2_zombie
 c_3_4_a_gargoyle_flying
 c_10_10_eldrazi
 c_a_treasure_sac
