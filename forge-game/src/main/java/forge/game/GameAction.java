@@ -548,9 +548,10 @@ public class GameAction {
             c.setCastSA(null);
         } else if (zoneTo.is(ZoneType.Stack)) {
             c.setCastFrom(zoneFrom.getZoneType());
-            if (cause != null && cause.isSpell()  && c.equals(cause.getHostCard()) && !c.isCopiedSpell()) {
+            if (cause != null && cause.isSpell() && c.equals(cause.getHostCard()) && !c.isCopiedSpell()) {
                 cause.setLastStateBattlefield(game.getLastStateBattlefield());
                 cause.setLastStateGraveyard(game.getLastStateGraveyard());
+
                 c.setCastSA(cause);
             } else {
                 c.setCastSA(null);
