@@ -243,6 +243,7 @@ public class CardView extends GameEntityView {
     }
     void updateCounters(Card c) {
         set(TrackableProperty.Counters, c.getCounters());
+        updateLethalDamage(c);
         CardStateView state = getCurrentState();
         state.updatePower(c);
         state.updateToughness(c);
@@ -254,6 +255,7 @@ public class CardView extends GameEntityView {
     }
     void updateDamage(Card c) {
         set(TrackableProperty.Damage, c.getDamage());
+        updateLethalDamage(c);
     }
 
     public int getAssignedDamage() {
@@ -261,10 +263,14 @@ public class CardView extends GameEntityView {
     }
     void updateAssignedDamage(Card c) {
         set(TrackableProperty.AssignedDamage, c.getTotalAssignedDamage());
+        updateLethalDamage(c);
     }
 
     public int getLethalDamage() {
-        return getCurrentState().getToughness() - getDamage() - getAssignedDamage();
+        return get(TrackableProperty.LethalDamage);
+    }
+    void updateLethalDamage(Card c) {
+        set(TrackableProperty.LethalDamage, c.getLethalDamage());
     }
 
     public int getShieldCount() {
@@ -701,6 +707,7 @@ public class CardView extends GameEntityView {
     }
     void updateState(Card c) {
         updateName(c);
+        updateDamage(c);
 
         boolean isSplitCard = c.isSplitCard();
         set(TrackableProperty.Cloned, c.isCloned());
