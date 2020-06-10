@@ -96,7 +96,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     private final Localizer localizer = Localizer.getInstance();
 
     protected Map<SpellAbilityView, SpellAbility> spellViewCache = null;
-    protected GameEntityViewMap<Card, CardView> gameCache = new GameEntityViewMap<>();
 
     public PlayerControllerHuman(final Game game0, final Player p, final LobbyPlayer lp) {
         super(game0, p, lp);
@@ -297,6 +296,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 for (final Entry<CardView, Integer> e : result.entrySet()) {
                     if (gameCacheBlockers.containsKey(e.getKey())) {
                         map.put(gameCacheBlockers.get(e.getKey()), e.getValue());
+                    } else if (e.getKey() == null || e.getKey().getId() == -1) {
+                        // null key or key with -1 means defender
+                        map.put(null, e.getValue());
                     }
                 }
             } else {
@@ -392,13 +394,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public CardCollectionView chooseCardsForEffect(final CardCollectionView sourceList, final SpellAbility sa,
-            final String title, final int min, final int max, final boolean isOptional) {
+            final String title, final int min, final int max, final boolean isOptional, Map<String, Object> params) {
         // If only one card to choose, use a dialog box.
         // Otherwise, use the order dialog to be able to grab multiple cards in
         // one shot
 
         if (max == 1) {
-            final Card singleChosen = chooseSingleEntityForEffect(sourceList, sa, title, isOptional);
+            final Card singleChosen = chooseSingleEntityForEffect(sourceList, sa, title, isOptional, params);
             return singleChosen == null ? CardCollection.EMPTY : new CardCollection(singleChosen);
         }
 
@@ -427,7 +429,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     @Override
     public <T extends GameEntity> T chooseSingleEntityForEffect(final FCollectionView<T> optionList,
             final DelayedReveal delayedReveal, final SpellAbility sa, final String title, final boolean isOptional,
-            final Player targetedPlayer) {
+            final Player targetedPlayer, Map<String, Object> params) {
         // Human is supposed to read the message and understand from it what to
         // choose
         if (optionList.isEmpty()) {
@@ -465,16 +467,17 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         final GameEntityView result = getGui().chooseSingleEntityForEffect(title,
                 gameCacheChoose.getTrackableKeys(), delayedReveal, isOptional);
         endTempShowCards();
-        if (result != null || !gameCacheChoose.containsKey(result)) {
+
+        if (result == null || !gameCacheChoose.containsKey(result)) {
             return null;
         }
         return gameCacheChoose.get(result);
     }
 
     @Override
-    public <T extends GameEntity> List<T> chooseEntitiesForEffect(final FCollectionView<T> optionList, final int min,
-            final int max, final DelayedReveal delayedReveal, final SpellAbility sa, final String title,
-            final Player targetedPlayer) {
+    public <T extends GameEntity> List<T> chooseEntitiesForEffect(final FCollectionView<T> optionList, final int  min, final int max,
+            final DelayedReveal delayedReveal, final SpellAbility sa, final String title, final Player targetedPlayer, Map<String, Object> params) {
+
 
         // useful details for debugging problems with the mass select logic
         Sentry.getContext().addExtra("Card", sa.getCardView().toString());
@@ -554,6 +557,22 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         return spellViewCache.get(choice);
     }
 
+    @Override
+    public List<SpellAbility> chooseSpellAbilitiesForEffect(List<SpellAbility> spells, SpellAbility sa, String title, int num, Map<String, Object> params) {
+        List<SpellAbility> result = Lists.newArrayList();
+        // create a mapping between a spell's view and the spell itself
+        Map<SpellAbilityView, SpellAbility> spellViewCache = SpellAbilityView.getMap(spells);
+
+        List<SpellAbilityView> chosen = getGui().many(title, "", num, Lists.newArrayList(spellViewCache.keySet()), sa.getHostCard().getView());
+
+        for(SpellAbilityView view : chosen) {
+            if (spellViewCache.containsKey(view)) {
+                result.add(spellViewCache.get(view));
+            }
+        }
+        return result;
+    }
+
     /*
      * (non-Javadoc)
      *
@@ -606,8 +625,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     }
 
     @Override
-    public boolean confirmTrigger(final WrappedAbility wrapper, final Map<String, String> triggerParams,
-            final boolean isMandatory) {
+    public boolean confirmTrigger(final WrappedAbility wrapper) {
         final SpellAbility sa = wrapper.getWrappedAbility();
         final Trigger regtrig = wrapper.getTrigger();
         if (getGui().shouldAlwaysAcceptTrigger(regtrig.getId())) {
@@ -629,8 +647,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             // append trigger description unless prompt is compact or detailed
             // descriptions are on
             buildQuestion.append("\n(");
-            buildQuestion.append(TextUtil.fastReplace(triggerParams.get("TriggerDescription"),
-                    "CARDNAME", regtrig.getHostCard().getName()));
+            buildQuestion.append(regtrig.toString());
             buildQuestion.append(")");
         }
         final Map<AbilityKey, Object> tos = sa.getTriggeringObjects();
@@ -730,12 +747,16 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     }
 
     @Override
-    public void reveal(final CardCollectionView cards, final ZoneType zone, final Player owner, final String message) {
-        reveal(CardView.getCollection(cards), zone, PlayerView.get(owner), message);
+    public void reveal(final CardCollectionView cards, final ZoneType zone, final Player owner, String message) {
+        reveal(cards, zone, PlayerView.get(owner), message);
     }
 
     @Override
     public void reveal(final List<CardView> cards, final ZoneType zone, final PlayerView owner, String message) {
+        reveal(getCardList(cards), zone, owner, message);
+    }
+
+    protected void reveal(final CardCollectionView cards, final ZoneType zone, final PlayerView owner, String message) {
         if (StringUtils.isBlank(message)) {
             message = localizer.getMessage("lblLookCardInPlayerZone", "{player's}", zone.getTranslatedName().toLowerCase());
         } else {
@@ -743,8 +764,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         }
         final String fm = MessageUtil.formatMessage(message, getLocalPlayerView(), owner);
         if (!cards.isEmpty()) {
-            tempShowCards(getCardList(cards));
-            getGui().reveal(fm, cards);
+            tempShowCards(cards);
+            getGui().reveal(fm, CardView.getCollection(cards));
             endTempShowCards();
         } else {
             getGui().message(MessageUtil.formatMessage(localizer.getMessage("lblThereNoCardInPlayerZone", "{player's}", zone.getTranslatedName().toLowerCase()),
@@ -1848,13 +1869,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     public Card chooseSingleCardForZoneChange(final ZoneType destination, final List<ZoneType> origin,
             final SpellAbility sa, final CardCollection fetchList, final DelayedReveal delayedReveal,
             final String selectPrompt, final boolean isOptional, final Player decider) {
-        return chooseSingleEntityForEffect(fetchList, delayedReveal, sa, selectPrompt, isOptional, decider);
+        return chooseSingleEntityForEffect(fetchList, delayedReveal, sa, selectPrompt, isOptional, decider, null);
     }
 
     public List<Card> chooseCardsForZoneChange(final ZoneType destination, final List<ZoneType> origin,
             final SpellAbility sa, final CardCollection fetchList, final int min, final int max, final DelayedReveal delayedReveal,
             final String selectPrompt, final Player decider) {
-        return chooseEntitiesForEffect(fetchList, min, max, delayedReveal, sa, selectPrompt, decider);
+        return chooseEntitiesForEffect(fetchList, min, max, delayedReveal, sa, selectPrompt, decider, null);
     }
 
     @Override
@@ -2200,7 +2221,12 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             final Card card = gameCacheCounters.get(cv);
 
             final ImmutableList<CounterType> counters = subtract ? ImmutableList.copyOf(card.getCounters().keySet())
-                : CounterType.values;
+                : ImmutableList.copyOf(Collections2.transform(CounterEnumType.values, new Function<CounterEnumType, CounterType>() {
+                    @Override
+                    public CounterType apply(CounterEnumType input) {
+                        return CounterType.get(input);
+                    }
+                }));
 
             final CounterType counter = getGui().oneOrNone(localizer.getMessage("lblWhichTypeofCounter"), counters);
             if (counter == null) {
@@ -2987,19 +3013,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     public CardCollection chooseCardsForEffectMultiple(Map<String, CardCollection> validMap, SpellAbility sa, String title, boolean isOptional) {
         CardCollection result = new CardCollection();
         for (Map.Entry<String, CardCollection> e : validMap.entrySet()) {
-            result.addAll(chooseCardsForEffect(e.getValue(), sa, title + " " + e.getKey(), 0, 1, isOptional));
+            result.addAll(chooseCardsForEffect(e.getValue(), sa, title + " " + e.getKey(), 0, 1, isOptional, null));
         }
         return result;
     }
 
     public Card getCard(final CardView cardView) {
-        if (gameCache.containsKey(cardView)) {
-            return gameCache.get(cardView);
-        }
-
-        final Card c = getGame().findById(cardView.getId());
-        gameCache.put(cardView, c);
-        return c;
+        return getGame().findByView(cardView);
     }
 
     public CardCollection getCardList(Iterable<CardView> cardViews) {

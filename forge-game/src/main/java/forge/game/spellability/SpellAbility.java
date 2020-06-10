@@ -876,7 +876,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         try {
             clone = (SpellAbility) clone();
             clone.id = lki ? id : nextId();
-            clone.view = new SpellAbilityView(clone);
+            clone.view = new SpellAbilityView(clone, lki || host.getGame() == null ? null : host.getGame().getTracker());
 
             // don't use setHostCard to not trigger the not copied parts yet
 
@@ -998,7 +998,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public boolean isMandatory() {
-        return false;
+        return isTrigger() && !isOptionalTrigger();
     }
 
     public final boolean canTarget(final GameObject entity) {
@@ -1096,6 +1096,17 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
                 if (soFar > tr.getMaxTotalCMC(getHostCard(), this)) {
                     return false;
+                }
+            }
+
+            if (tr.isSameController()) {
+                Player newController;
+                if (entity instanceof Card) {
+                    newController = ((Card) entity).getController();
+                    for (final Card c : targetChosen.getTargetCards()) {
+                        if (entity != c && !c.getController().equals(newController))
+                            return false;
+                    }
                 }
             }
 

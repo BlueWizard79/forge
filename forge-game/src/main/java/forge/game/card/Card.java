@@ -56,6 +56,7 @@ import forge.game.zone.ZoneType;
 import forge.item.IPaperCard;
 import forge.item.PaperCard;
 import forge.trackable.TrackableProperty;
+import forge.trackable.Tracker;
 import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
@@ -93,7 +94,6 @@ public class Card extends GameEntity implements Comparable<Card> {
     private SpellAbility castSA = null;
 
     private final CardDamageHistory damageHistory = new CardDamageHistory();
-    private Map<Card, Map<CounterType, Integer>> countersAddedBy = Maps.newTreeMap();
     // Hidden keywords won't be displayed on the card
     private final KeywordCollection hiddenExtrinsicKeyword = new KeywordCollection();
 
@@ -126,7 +126,7 @@ public class Card extends GameEntity implements Comparable<Card> {
 
     private final Multimap<Long, Keyword> cantHaveKeywords = MultimapBuilder.hashKeys().enumSetValues(Keyword.class).build();
 
-    private final Map<CounterType, Long> counterTypeTimestamps = Maps.newEnumMap(CounterType.class);
+    private final Map<CounterType, Long> counterTypeTimestamps = Maps.newHashMap();
 
     private final Map<Long, Integer> canBlockAdditional = Maps.newTreeMap();
     private final Set<Long> canBlockAny = Sets.newHashSet();
@@ -264,8 +264,6 @@ public class Card extends GameEntity implements Comparable<Card> {
     // breaking when the LKI object is changed to a different card state.
     private int lkiCMC = -1;
 
-    private int countersAdded = 0;
-
     private CardRules cardRules;
     private final CardView view;
 
@@ -307,11 +305,14 @@ public class Card extends GameEntity implements Comparable<Card> {
      * @see IPaperCard
      */
     public Card(final int id0, final IPaperCard paperCard0, final Game game0) {
+        this(id0, paperCard0, game0, game0 == null ? null : game0.getTracker());
+    }
+    public Card(final int id0, final IPaperCard paperCard0, final Game game0, final Tracker tracker0) {
         super(id0);
 
         game = game0;
         paperCard = paperCard0;
-        view = new CardView(id0, game == null ? null : game.getTracker());
+        view = new CardView(id0, tracker0);
         currentState = new CardState(view.getCurrentState(), this);
         states.put(CardStateName.Original, currentState);
         view.updateChangedColorWords(this);
@@ -1171,7 +1172,6 @@ public class Card extends GameEntity implements Comparable<Card> {
 
     @Override
     public final boolean canReceiveCounters(final CounterType type) {
-
         // CantPutCounter static abilities
         for (final Card ca : getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
             for (final StaticAbility stAb : ca.getStaticAbilities()) {
@@ -1180,20 +1180,7 @@ public class Card extends GameEntity implements Comparable<Card> {
                 }
             }
         }
-
-        if (type == CounterType.DREAM) {
-            // need to be done extra because it is also a state based action
-            return !hasKeyword("CARDNAME can't have more than seven dream counters on it.") || getCounters(CounterType.DREAM) <= 6;
-        }
         return true;
-    }
-
-    public final int getTotalCountersToAdd() {
-        return countersAdded;
-    }
-
-    public final void setTotalCountersToAdd(int value) {
-        countersAdded = value;
     }
 
     public final int addCounter(final CounterType counterType, final int n, final Player source, final boolean applyMultiplier, GameEntityCounterTable table) {
@@ -1202,12 +1189,18 @@ public class Card extends GameEntity implements Comparable<Card> {
     public final int addCounterFireNoEvents(final CounterType counterType, final int n, final Player source, final boolean applyMultiplier, GameEntityCounterTable table) {
         return addCounter(counterType, n, source, applyMultiplier, false, table);
     }
+    public final int addCounter(final CounterEnumType counterType, final int n, final Player source, final boolean applyMultiplier, GameEntityCounterTable table) {
+        return addCounter(counterType, n, source, applyMultiplier, true, table);
+    }
+    public final int addCounterFireNoEvents(final CounterEnumType counterType, final int n, final Player source, final boolean applyMultiplier, GameEntityCounterTable table) {
+        return addCounter(counterType, n, source, applyMultiplier, false, table);
+    }
 
     @Override
     public int addCounter(final CounterType counterType, final int n, final Player source, final boolean applyMultiplier, final boolean fireEvents, GameEntityCounterTable table) {
         int addAmount = n;
-        if(addAmount <= 0) {
-            addAmount = 0; // As per rule 107.1b
+        if(addAmount <= 0 || !canReceiveCounters(counterType)) {
+            // As per rule 107.1b
             return 0;
         }
         final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(this);
@@ -1227,19 +1220,9 @@ public class Card extends GameEntity implements Comparable<Card> {
             return 0;
         }
 
-        if (canReceiveCounters(counterType)) {
-            if (counterType == CounterType.DREAM && hasKeyword("CARDNAME can't have more than seven dream counters on it.")) {
-                addAmount = Math.min(7 - getCounters(CounterType.DREAM), addAmount);
-            }
-        }
-        else {
-            addAmount = 0;
-        }
-
         if (addAmount <= 0) {
             return 0;
         }
-        setTotalCountersToAdd(addAmount);
 
         final Integer oldValue = getCounters(counterType);
         final Integer newValue = addAmount + (oldValue == null ? 0 : oldValue);
@@ -1304,7 +1287,7 @@ public class Card extends GameEntity implements Comparable<Card> {
 
         long timestamp = game.getNextTimestamp();
         counterTypeTimestamps.put(counterType, timestamp);
-        addChangedCardKeywords(ImmutableList.of(counterType.getKeyword().toString()), null, false, false, timestamp, updateView);
+        addChangedCardKeywords(ImmutableList.of(counterType.toString()), null, false, false, timestamp, updateView);
         return true;
     }
 
@@ -1318,38 +1301,6 @@ public class Card extends GameEntity implements Comparable<Card> {
             removeChangedCardKeywords(old, updateView);
         }
         return old != null;
-    }
-
-    /**
-     * <p>
-     * addCountersAddedBy.
-     * </p>
-     * @param source - the card adding the counters to this card
-     * @param counterType - the counter type added
-     * @param counterAmount - the amount of counters added
-     */
-    public final void addCountersAddedBy(final Card source, final CounterType counterType, final int counterAmount) {
-        final Map<CounterType, Integer> counterMap = Maps.newTreeMap();
-        counterMap.put(counterType, counterAmount);
-        countersAddedBy.put(source, counterMap);
-    }
-
-    /**
-     * <p>
-     * getCountersAddedBy.
-     * </p>
-     * @param source - the card the counters were added by
-     * @param counterType - the counter type added
-     * @return the amount of counters added.
-     */
-    public final int getCountersAddedBy(final Card source, final CounterType counterType) {
-        int counterAmount = 0;
-        if (countersAddedBy.containsKey(source)) {
-            final Map<CounterType, Integer> counterMap = countersAddedBy.get(source);
-            counterAmount = counterMap.containsKey(counterType) ? counterMap.get(counterType) : 0;
-            countersAddedBy.remove(source);
-        }
-        return counterAmount;
     }
 
     @Override
@@ -1419,7 +1370,7 @@ public class Card extends GameEntity implements Comparable<Card> {
         view.updateCounters(this);
 
         boolean changed = false;
-        for (CounterType ct : counterTypeTimestamps.keySet()) {
+        for (CounterType ct : Lists.newArrayList(counterTypeTimestamps.keySet())) {
             if (removeCounterTimestamp(ct, false)) {
                 changed = true;
             }
@@ -1691,7 +1642,7 @@ public class Card extends GameEntity implements Comparable<Card> {
                     } else {
                         s.append(getName());
                         s.append(" enters the battlefield with ");
-                        s.append(Lang.nounWithNumeral(p[2], CounterType.valueOf(p[1]).getName() + " counter"));
+                        s.append(Lang.nounWithNumeral(p[2], CounterType.getType(p[1]).getName() + " counter"));
                         s.append(" on it.");
                     }
                     sbLong.append(s).append("\r\n");
@@ -1988,7 +1939,7 @@ public class Card extends GameEntity implements Comparable<Card> {
         StringBuilder replacementEffects = new StringBuilder();
         for (final ReplacementEffect replacementEffect : state.getReplacementEffects()) {
             if (!replacementEffect.isSecondary()) {
-                String text = replacementEffect.toString();
+                String text = replacementEffect.getDescription();
                 if (text.contains("enters the battlefield")) {
                     sb.append(text).append("\r\n");
                 } else {
@@ -2349,7 +2300,7 @@ public class Card extends GameEntity implements Comparable<Card> {
         // Replacement effects
         for (final ReplacementEffect replacementEffect : state.getReplacementEffects()) {
             if (!replacementEffect.isSecondary()) {
-                sb.append(replacementEffect.toString()).append("\r\n");
+                sb.append(replacementEffect.getDescription()).append("\r\n");
             }
         }
 
@@ -2742,11 +2693,17 @@ public class Card extends GameEntity implements Comparable<Card> {
     public final void addFacedownCommand(final GameCommand c) {
         facedownCommandList.add(c);
     }
-
+    public final void runUntapCommands() {
+        for (final GameCommand c : untapCommandList) {
+            c.run();
+        }
+        untapCommandList.clear();
+    }
     public final void runUnattachCommands() {
         for (final GameCommand c : unattachCommandList) {
             c.run();
         }
+        unattachCommandList.clear();
     }
 
     public final void runFaceupCommands() {
@@ -2931,7 +2888,7 @@ public class Card extends GameEntity implements Comparable<Card> {
             return false;
         }
 
-        return CardLists.count(attachedCards, CardPredicates.Presets.EQUIPMENT) > 0;
+        return Iterables.any(attachedCards, CardPredicates.Presets.EQUIPMENT);
     }
     public final boolean isEquippedBy(Card c) {
         return this.hasCardAttachment(c);
@@ -2953,7 +2910,7 @@ public class Card extends GameEntity implements Comparable<Card> {
             return false;
         }
 
-        return CardLists.count(attachedCards, CardPredicates.Presets.FORTIFICATION) > 0;
+        return Iterables.any(attachedCards, CardPredicates.Presets.FORTIFICATION);
     }
     public final boolean isFortifiedBy(Card c) {
         // 301.5e + 301.6
@@ -3258,7 +3215,7 @@ public class Card extends GameEntity implements Comparable<Card> {
     }
 
     public final int getCurrentLoyalty() {
-        return getCounters(CounterType.LOYALTY);
+        return getCounters(CounterEnumType.LOYALTY);
     }
 
     // values that are printed on card
@@ -3509,9 +3466,9 @@ public class Card extends GameEntity implements Comparable<Card> {
     }
 
     public final int getPowerBonusFromCounters() {
-        return getCounters(CounterType.P1P1) + getCounters(CounterType.P1P2) + getCounters(CounterType.P1P0)
-                - getCounters(CounterType.M1M1) + 2 * getCounters(CounterType.P2P2) - 2 * getCounters(CounterType.M2M1)
-                - 2 * getCounters(CounterType.M2M2) - getCounters(CounterType.M1M0) + 2 * getCounters(CounterType.P2P0);
+        return getCounters(CounterEnumType.P1P1) + getCounters(CounterEnumType.P1P2) + getCounters(CounterEnumType.P1P0)
+                - getCounters(CounterEnumType.M1M1) + 2 * getCounters(CounterEnumType.P2P2) - 2 * getCounters(CounterEnumType.M2M1)
+                - 2 * getCounters(CounterEnumType.M2M2) - getCounters(CounterEnumType.M1M0) + 2 * getCounters(CounterEnumType.P2P0);
     }
 
     public final StatBreakdown getNetPowerBreakdown() {
@@ -3567,10 +3524,10 @@ public class Card extends GameEntity implements Comparable<Card> {
     }
 
     public final int getToughnessBonusFromCounters() {
-        return getCounters(CounterType.P1P1) + 2 * getCounters(CounterType.P1P2) - getCounters(CounterType.M1M1)
-                + getCounters(CounterType.P0P1) - 2 * getCounters(CounterType.M0M2) + 2 * getCounters(CounterType.P2P2)
-                - getCounters(CounterType.M0M1) - getCounters(CounterType.M2M1) - 2 * getCounters(CounterType.M2M2)
-                + 2 * getCounters(CounterType.P0P2);
+        return getCounters(CounterEnumType.P1P1) + 2 * getCounters(CounterEnumType.P1P2) - getCounters(CounterEnumType.M1M1)
+                + getCounters(CounterEnumType.P0P1) - 2 * getCounters(CounterEnumType.M0M2) + 2 * getCounters(CounterEnumType.P2P2)
+                - getCounters(CounterEnumType.M0M1) - getCounters(CounterEnumType.M2M1) - 2 * getCounters(CounterEnumType.M2M2)
+                + 2 * getCounters(CounterEnumType.P0P2);
     }
 
     public final StatBreakdown getNetToughnessBreakdown() {
@@ -3696,9 +3653,7 @@ public class Card extends GameEntity implements Comparable<Card> {
         // Run triggers
         getGame().getTriggerHandler().runTrigger(TriggerType.Untaps, AbilityKey.mapFromCard(this), false);
 
-        for (final GameCommand var : untapCommandList) {
-            var.run();
-        }
+        runUntapCommands();
         setTapped(false);
         getGame().fireEvent(new GameEventCardTapped(this, false));
     }
@@ -3706,9 +3661,16 @@ public class Card extends GameEntity implements Comparable<Card> {
     public final void addChangedCardTraits(Collection<SpellAbility> spells, Collection<SpellAbility> removedAbilities,
             Collection<Trigger> trigger, Collection<ReplacementEffect> replacements, Collection<StaticAbility> statics,
             boolean removeAll, boolean removeNonMana, boolean removeIntrinsic, long timestamp) {
-        changedCardTraits.put(timestamp, new CardTraitChanges(
-            spells, removedAbilities, trigger, replacements, statics, removeAll, removeNonMana, removeIntrinsic
-        ));
+        // in case two static abilities has the same timestamp
+        if (changedCardTraits.containsKey(timestamp)) {
+            changedCardTraits.get(timestamp).merge(
+                spells, removedAbilities, trigger, replacements, statics, removeAll, removeNonMana, removeIntrinsic
+            );
+        } else {
+            changedCardTraits.put(timestamp, new CardTraitChanges(
+                spells, removedAbilities, trigger, replacements, statics, removeAll, removeNonMana, removeIntrinsic
+            ));
+        }
         // update view
         updateAbilityTextForView();
     }
@@ -4266,7 +4228,7 @@ public class Card extends GameEntity implements Comparable<Card> {
 
     public final boolean hasSuspend() {
         return hasKeyword(Keyword.SUSPEND) && getLastKnownZone().is(ZoneType.Exile)
-                && getCounters(CounterType.TIME) >= 1;
+                && getCounters(CounterEnumType.TIME) >= 1;
     }
 
     public final boolean isPhasedOut() {
@@ -5143,7 +5105,7 @@ public class Card extends GameEntity implements Comparable<Card> {
 
         GameEventCardDamaged.DamageType damageType = DamageType.Normal;
         if (isPlaneswalker()) {
-            subtractCounter(CounterType.LOYALTY, damageIn);
+            subtractCounter(CounterType.get(CounterEnumType.LOYALTY), damageIn);
         }
         if (isCreature()) {
             final Game game = source.getGame();
@@ -5153,7 +5115,7 @@ public class Card extends GameEntity implements Comparable<Card> {
 
             if (isInPlay()) {
                 if (wither) {
-                    addCounter(CounterType.M1M1, damageIn, source.getController(), true, counterTable);
+                    addCounter(CounterType.get(CounterEnumType.M1M1), damageIn, source.getController(), true, counterTable);
                     damageType = DamageType.M1M1Counters;
                 }
                 else {
