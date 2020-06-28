@@ -638,6 +638,10 @@ public class CardFactoryUtil {
             return doXMath(oppDmg, m, source);
         }
 
+        if (value.contains("NonCombatDamageDealtThisTurn")) {
+            return doXMath(player.getAssignedDamage() - player.getAssignedCombatDamage(), m, source);
+        }
+
         if (value.equals("OpponentsAttackedThisTurn")) {
             return doXMath(player.getAttackedOpponentsThisTurn().size(), m, source);
         }
@@ -719,10 +723,13 @@ public class CardFactoryUtil {
             return c.getImprintedCards().get(0).getCMC();
         }
 
-        if (l[0].startsWith("GreatestPower_")) {
-            final String restriction = l[0].substring(14);
-            final String[] rest = restriction.split(",");
-            CardCollection list = CardLists.getValidCards(cc.getGame().getCardsIn(ZoneType.Battlefield), rest, cc, c, null);
+        if (l[0].startsWith("GreatestPower")) {
+            final String[] lparts = l[0].split("_", 2);
+            final String[] rest = lparts[1].split(",");
+            final CardCollectionView cardsInZones = lparts[0].length() > 13
+                    ? game.getCardsIn(ZoneType.listValueOf(lparts[0].substring(13)))
+                    : game.getCardsIn(ZoneType.Battlefield);
+            CardCollection list = CardLists.getValidCards(cardsInZones, rest, cc, c, null);
             int highest = 0;
             for (final Card crd : list) {
                 if (crd.getNetPower() > highest) {
@@ -2670,7 +2677,7 @@ public class CardFactoryUtil {
                     + "| Secondary$ True | TriggerZones$ Battlefield | TriggerDescription$ Ingest ("
                     + inst.getReminderText() + ")";
 
-            final String abStr = "DB$ Mill | NumCards$ 1 | Destination$ Exile | Defined$ TriggeredTarget";
+            final String abStr = "DB$ Dig | DigNum$ 1 | ChangeNum$ All | DestinationZone$ Exile | Defined$ TriggeredTarget";
 
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
 

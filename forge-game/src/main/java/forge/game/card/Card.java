@@ -1629,7 +1629,7 @@ public class Card extends GameEntity implements Comparable<Card> {
                     }
                 }
                 if (keyword.startsWith("CantBeCounteredBy") || keyword.startsWith("Panharmonicon")
-                        || keyword.startsWith("Dieharmonicon")) {
+                        || keyword.startsWith("Dieharmonicon") || keyword.startsWith("Shrineharmonicon")) {
                     final String[] p = keyword.split(":");
                     sbLong.append(p[2]).append("\r\n");
                 } else if (keyword.startsWith("etbCounter")) {
@@ -3019,6 +3019,11 @@ public class Card extends GameEntity implements Comparable<Card> {
         // Play the Equip sound
         getGame().fireEvent(new GameEventCardAttachment(this, oldTarget, entity));
 
+        // Run replacement effects
+        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(this);
+        repParams.put(AbilityKey.AttachTarget, entity);
+        getGame().getReplacementHandler().run(ReplacementType.Attached, repParams);
+
         // run trigger
         final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
         runParams.put(AbilityKey.AttachSource, this);
@@ -4187,6 +4192,7 @@ public class Card extends GameEntity implements Comparable<Card> {
     public final boolean isFortification()  { return getType().hasSubtype("Fortification"); }
     public final boolean isCurse()          { return getType().hasSubtype("Curse"); }
     public final boolean isAura()           { return getType().hasSubtype("Aura"); }
+    public final boolean isShrine()           { return getType().hasSubtype("Shrine"); }
 
     public final boolean isAttachment() { return isAura() || isEquipment() || isFortification(); }
     public final boolean isHistoric()   {return getType().isLegendary() || isArtifact() || getType().hasSubtype("Saga");}
@@ -4267,6 +4273,11 @@ public class Card extends GameEntity implements Comparable<Card> {
     }
 
     private boolean switchPhaseState() {
+
+        if (phasedOut && hasKeyword("CARDNAME can't phase in.")) {
+            return false;
+        }
+
         if (!phasedOut && hasKeyword("CARDNAME can't phase out.")) {
             return false;
         }
