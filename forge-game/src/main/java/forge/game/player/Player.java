@@ -1772,9 +1772,10 @@ public class Player extends GameEntity implements Comparable<Player> {
     public final void playLandNoCheck(final Card land) {
         land.setController(this, 0);
         if (land.isFaceDown()) {
-            land.turnFaceUp();
+            land.turnFaceUp(null);
         }
         final Card c = game.getAction().moveTo(getZone(ZoneType.Battlefield), land, null);
+        game.copyLastState();
         game.updateLastStateForCard(c);
 
         // play a sound
