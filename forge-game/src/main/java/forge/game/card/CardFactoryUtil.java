@@ -43,6 +43,7 @@ import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.phase.PhaseHandler;
 import forge.game.player.Player;
+import forge.game.player.PlayerCollection;
 import forge.game.replacement.ReplacementEffect;
 import forge.game.replacement.ReplacementHandler;
 import forge.game.replacement.ReplacementLayer;
@@ -1294,6 +1295,9 @@ public class CardFactoryUtil {
         if (sq[0].contains("CardNumColors")) {
             return doXMath(CardUtil.getColors(c).countColors(), m, c);
         }
+        if (sq[0].contains("CardNumAttacksThisTurn")) {
+            return doXMath(c.getDamageHistory().getCreatureAttacksThisTurn(), m, c);
+        }
         if (sq[0].contains("ChosenNumber")) {
             Integer i = c.getChosenNumber();
             return doXMath(i == null ? 0 : i, m, c);
@@ -1334,6 +1338,13 @@ public class CardFactoryUtil {
 
         if (sq[0].contains("CardTypes")) {
             return doXMath(getCardTypesFromList(game.getCardsIn(ZoneType.smartValueOf(sq[1]))), m, c);
+        }
+
+        if (sq[0].contains("OppTypesInGrave")) {
+            final PlayerCollection opponents = cc.getOpponents();
+            CardCollection oppCards = new CardCollection();
+            oppCards.addAll(opponents.getCardsIn(ZoneType.Graveyard));
+            return doXMath(getCardTypesFromList(oppCards), m, c);
         }
 
         if (sq[0].contains("BushidoPoint")) {
