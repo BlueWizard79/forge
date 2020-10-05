@@ -327,7 +327,7 @@ public final class CardUtil {
     }
 
     public static CardState getFaceDownCharacteristic(Card c) {
-        final CardType type = new CardType();
+        final CardType type = new CardType(false);
         type.add("Creature");
 
         final CardState ret = new CardState(c, CardStateName.FaceDown);
@@ -339,7 +339,6 @@ public final class CardUtil {
 
         //show hidden if exiled facedown
         ret.setImageKey(ImageKeys.getTokenKey(c.isInZone(ZoneType.Exile) ? ImageKeys.HIDDEN_CARD : ImageKeys.MORPH_IMAGE));
-        //TODO: the imagey key here don't support cards with backside... hmmm cards with backside and hidden should display its faceup verion not their alternate...
         return ret;
     }
 
