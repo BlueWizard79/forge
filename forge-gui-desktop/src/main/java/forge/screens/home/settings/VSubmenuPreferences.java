@@ -75,6 +75,7 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
     private final JCheckBox cbLoadHistoricFormats = new OptionsCheckBox(localizer.getMessage("cbLoadHistoricFormats"));
     private final JCheckBox cbWorkshopSyntax = new OptionsCheckBox(localizer.getMessage("cbWorkshopSyntax"));
     private final JCheckBox cbEnforceDeckLegality = new OptionsCheckBox(localizer.getMessage("cbEnforceDeckLegality"));
+    private final JCheckBox cbSideboardForFirstDuel = new OptionsCheckBox(localizer.getMessage("cbSideboardForFirstDuel"));
     private final JCheckBox cbSideboardForAI = new OptionsCheckBox(localizer.getMessage("cbSideboardForAI"));
     private final JCheckBox cbPerformanceMode = new OptionsCheckBox(localizer.getMessage("cbPerformanceMode"));
     private final JCheckBox cbSROptimize = new OptionsCheckBox(localizer.getMessage("cbSROptimize"));
@@ -216,9 +217,12 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
         pnlPrefs.add(cbPerformanceMode, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlPerformanceMode")), descriptionConstraints);
 
+        pnlPrefs.add(cbSideboardForFirstDuel, titleConstraints);
+        pnlPrefs.add(new NoteLabel(localizer.getMessage("nlSideboardForFirstDuel")), descriptionConstraints);
+
         pnlPrefs.add(cbSideboardForAI, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlSideboardForAI")), descriptionConstraints);
-
+        
         pnlPrefs.add(cbFilteredHands, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlFilteredHands")), descriptionConstraints);
 
@@ -740,6 +744,10 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
         return cbSideboardForAI;
     }
 
+    public JCheckBox getCbSideboardForFirstDuel() {
+        return cbSideboardForFirstDuel;
+    }
+        
     /** @return {@link javax.swing.JCheckBox} */
     public JCheckBox getCbFilteredHands() {
         return cbFilteredHands;

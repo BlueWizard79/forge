@@ -215,7 +215,8 @@ public class Match {
         final List<RegisteredPlayer> playersConditions = game.getMatch().getPlayers();
 
         boolean isFirstGame = game.getMatch().getPlayedGames().isEmpty();
-        boolean canSideBoard = !isFirstGame && rules.getGameType().isSideboardingAllowed();
+        boolean sideboardForFirstDuelPref = true;
+        boolean canSideBoard = rules.getGameType().isSideboardingAllowed() && (!isFirstGame || sideboardForFirstDuelPref);
         // Only allow this if feature flag is on AND for certain match types
         boolean sideboardForAIs = rules.getSideboardForAI() &&
             rules.getGameType().getDeckFormat().equals(DeckFormat.Constructed);
