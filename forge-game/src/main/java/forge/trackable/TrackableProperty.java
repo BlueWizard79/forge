@@ -187,6 +187,7 @@ public enum TrackableProperty {
     SubInstance(TrackableTypes.StackItemViewType),
     Ability(TrackableTypes.BooleanType),
     OptionalTrigger(TrackableTypes.BooleanType),
+    OptionalCosts(TrackableTypes.StringType),
 
     //Combat
     AttackersWithDefenders(TrackableTypes.GenericMapType, FreezeMode.IgnoresFreeze),
@@ -205,6 +206,7 @@ public enum TrackableProperty {
     WinningPlayerName(TrackableTypes.StringType),
     WinningTeam(TrackableTypes.IntegerType),
     MatchOver(TrackableTypes.BooleanType),
+    Mulligan(TrackableTypes.BooleanType),
     NumGamesInMatch(TrackableTypes.IntegerType),
     NumPlayedGamesInMatch(TrackableTypes.IntegerType),
     Stack(TrackableTypes.StackItemViewListType),
