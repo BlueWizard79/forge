@@ -2909,7 +2909,7 @@ public class CardFactoryUtil {
             final String repeatStr = "DB$ RepeatEach | RepeatPlayers$ OpponentsOtherThanDefendingPlayer | ChangeZoneTable$ True";
 
             final String copyStr = "DB$ CopyPermanent | Defined$ Self | TokenTapped$ True | Optional$ True | TokenAttacking$ Remembered"
-                    + " | ChoosePlayerOrPlaneswalker$  True | ImprintTokens$ True";
+                    + " | ChoosePlayerOrPlaneswalker$ True | ImprintTokens$ True";
 
             final String delTrigStr = "DB$ DelayedTrigger | Mode$ Phase | Phase$ EndCombat | RememberObjects$ Imprinted"
             + " | TriggerDescription$ Exile the tokens at end of combat.";
@@ -4347,6 +4347,52 @@ public class CardFactoryUtil {
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
 
+        } else if (keyword.startsWith("Encore")) {
+            final String[] k = keyword.split(":");
+            final String manacost = k[1];
+
+            String effect = "AB$ RepeatEach | Cost$ " + manacost + " ExileFromGrave<1/CARDNAME> " +
+                    "| ActivationZone$ Graveyard | RepeatPlayers$ Opponent" +
+                    "| PrecostDesc$ Encore | CostDesc$ " + ManaCostParser.parse(manacost) +
+                    "| SpellDescription$ (" + inst.getReminderText() + ")";
+
+            final String copyStr = "DB$ CopyPermanent | Defined$ Self | ImprintTokens$ True " +
+                    "| AddKeywords$ Haste | RememberTokens$ True | TokenRemembered$ Player.IsRemembered";
+
+            final String pumpStr = "DB$ PumpAll | ValidCards$ Creature.IsRemembered " +
+                    "| KW$ HIDDEN CARDNAME attacks specific player each combat if able:Remembered";
+
+            final String pumpcleanStr = "DB$ Cleanup | ForgetDefined$ RememberedCard";
+
+            final String delTrigStr = "DB$ DelayedTrigger | Mode$ Phase | Phase$ End of Turn | RememberObjects$ Imprinted " +
+                    "| StackDescription$ None | TriggerDescription$ Sacrifice them at the beginning of the next end step.";
+
+            final String sacStr = "DB$ SacrificeAll | Defined$ DelayTriggerRemembered";
+
+            final String cleanupStr = "DB$ Cleanup | ClearImprinted$ True";
+
+            final SpellAbility sa = AbilityFactory.getAbility(effect, card);
+            sa.setIntrinsic(intrinsic);
+            inst.addSpellAbility(sa);
+
+            AbilitySub copySA = (AbilitySub) AbilityFactory.getAbility(copyStr, card);
+            sa.setAdditionalAbility("RepeatSubAbility", copySA);
+
+            AbilitySub pumpSA = (AbilitySub) AbilityFactory.getAbility(pumpStr, card);
+            copySA.setSubAbility(pumpSA);
+
+            AbilitySub pumpcleanSA = (AbilitySub) AbilityFactory.getAbility(pumpcleanStr, card);
+            pumpSA.setSubAbility(pumpcleanSA);
+
+            AbilitySub delTrigSA = (AbilitySub) AbilityFactory.getAbility(delTrigStr, card);
+            sa.setSubAbility(delTrigSA);
+
+            AbilitySub sacSA = (AbilitySub) AbilityFactory.getAbility(sacStr, card);
+            delTrigSA.setAdditionalAbility("Execute", sacSA);
+
+            AbilitySub cleanupSA = (AbilitySub) AbilityFactory.getAbility(cleanupStr, card);
+            delTrigSA.setSubAbility(cleanupSA);
+
         } else if (keyword.startsWith("Spectacle")) {
             final String[] k = keyword.split(":");
             final Cost cost = new Cost(k[1], false);
@@ -4763,6 +4809,16 @@ public class CardFactoryUtil {
                     String opName = Expressions.operatorName(part.substring(kwLength, kwLength + 2));
                     String operand = part.substring(kwLength + 2);
                     postponedAdjectives.add(Pair.of(true, "power" + opName + operand));
+                } else if (part.startsWith("toughness")) {
+                    int kwLength = 9;
+                    String operand = part.substring(kwLength + 2);
+                    String opName = "";
+                    if (part.startsWith("toughnessGE")) {
+                        opName = " or greater";
+                    } else {
+                        opName = "update CardFactoryUtil line 4773";
+                    }
+                    postponedAdjectives.add(Pair.of(true, "toughness " + operand + opName));
                 } else if (CardType.isACreatureType(part)) {
                     if (creatures != null && CardType.isACreatureType(creatures)) { // e.g. Kor Castigator
                         creatures = StringUtils.capitalize(Lang.getPlural(part)) + creatures;
