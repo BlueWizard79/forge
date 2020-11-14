@@ -97,6 +97,7 @@ public class CardFactory {
             CardFactory.copyState(in, state, out, state);
         }
         out.setState(in.getCurrentStateName(), true);
+        out.setBackSide(in.isBackSide());
 
         // this's necessary for forge.game.GameAction.unattachCardLeavingBattlefield(Card)
         out.setAttachedCards(in.getAttachedCards());
@@ -125,12 +126,13 @@ public class CardFactory {
      * which wouldn't ordinarily get set during a simple Card.copy() call.
      * </p>
      * */
-    private final static Card copySpellHost(final Card source, final Card original, final SpellAbility sa, final boolean bCopyDetails){
-        Player controller = sa.getActivatingPlayer();
+    private final static Card copySpellHost(final SpellAbility sourceSA, final SpellAbility targetSA){
+        final Card source = sourceSA.getHostCard();
+        final Card original = targetSA.getHostCard();
+        Player controller = sourceSA.getActivatingPlayer();
         final Card c = copyCard(original, true);
 
         // change the color of the copy (eg: Fork)
-        final SpellAbility sourceSA = source.getFirstSpellAbility();
         if (null != sourceSA && sourceSA.hasParam("CopyIsColor")) {
             String tmp = "";
             final String newColor = sourceSA.getParam("CopyIsColor");
@@ -148,13 +150,14 @@ public class CardFactory {
         c.setOwner(controller);
         c.setCopiedSpell(true);
 
-        if (bCopyDetails) {
-            c.setXManaCostPaidByColor(original.getXManaCostPaidByColor());
-            c.setKickerMagnitude(original.getKickerMagnitude());
+        c.setXManaCostPaidByColor(original.getXManaCostPaidByColor());
+        c.setKickerMagnitude(original.getKickerMagnitude());
 
-            for (OptionalCost cost : original.getOptionalCostsPaid()) {
-                c.addOptionalCostPaid(cost);
-            }
+        for (OptionalCost cost : original.getOptionalCostsPaid()) {
+            c.addOptionalCostPaid(cost);
+        }
+        if (targetSA.isBestow()) {
+            c.animateBestow();
         }
         return c;
     }
@@ -174,44 +177,33 @@ public class CardFactory {
      * @param bCopyDetails
      *            a boolean.
      */
-    public final static SpellAbility copySpellAbilityAndPossiblyHost(final Card source, final Card original, final SpellAbility sa, final boolean bCopyDetails) {
-        Player controller = sa.getActivatingPlayer();
+    public final static SpellAbility copySpellAbilityAndPossiblyHost(final SpellAbility sourceSA, final SpellAbility targetSA) {
+        Player controller = sourceSA.getActivatingPlayer();
 
         //it is only necessary to copy the host card if the SpellAbility is a spell, not an ability
-        final Card c;
-        if (sa.isSpell()){
-            c = copySpellHost(source, original, sa, bCopyDetails);
-        }
-        else {
-            c = original;
-        }
+        final Card c = targetSA.isSpell() ? copySpellHost(sourceSA, targetSA) : targetSA.getHostCard();
 
         final SpellAbility copySA;
-        if (sa.isTrigger() && sa.isWrapper()) {
-            copySA = getCopiedTriggeredAbility((WrappedAbility)sa, c);
+        if (targetSA.isTrigger() && targetSA.isWrapper()) {
+            copySA = getCopiedTriggeredAbility((WrappedAbility)targetSA, c);
         } else {
-            copySA = sa.copy(c, false);
-        }
-
-        if (sa.isSpell()){
-            //only update c's abilities if c is a copy.
-            //(it would be nice to move this into `copySpellHost`,
-            // so all the c-mutating code is together in one place.
-            // but copySA doesn't exist until after `copySpellHost` finishes executing,
-            // so it's hard to resolve that dependency.)
-            c.getCurrentState().setNonManaAbilities(copySA);
+            copySA = targetSA.copy(c, false);
         }
 
         copySA.setCopied(true);
+
+        if (targetSA.usesTargeting()) {
+            // do for SubAbilities too?
+            copySA.setTargets(targetSA.getTargets().clone());
+        }
+
         //remove all costs
         if (!copySA.isTrigger()) {
-            copySA.setPayCosts(new Cost("", sa.isAbility()));
+            copySA.setPayCosts(new Cost("", targetSA.isAbility()));
         }
         copySA.setActivatingPlayer(controller);
 
-        if (bCopyDetails) {
-            copySA.setPaidHash(sa.getPaidHash());
-        }
+        copySA.setPaidHash(targetSA.getPaidHash());
         return copySA;
     }
 
@@ -308,18 +300,19 @@ public class CardFactory {
 
     private static void buildPlaneAbilities(Card card) {
         StringBuilder triggerSB = new StringBuilder();
-        triggerSB.append("Mode$ PlanarDice | Result$ Planeswalk | TriggerZones$ Command | Execute$ RolledWalk | ");
-        triggerSB.append("Secondary$ True | TriggerDescription$ Whenever you roll Planeswalk, put this card on the ");
-        triggerSB.append("bottom of its owner's planar deck face down, then move the top card of your planar deck off ");
-        triggerSB.append("that planar deck and turn it face up");
+        triggerSB.append("Mode$ PlanarDice | Result$ Planeswalk | TriggerZones$ Command | Secondary$ True | ");
+        triggerSB.append("TriggerDescription$ Whenever you roll Planeswalk, put this card on the bottom of its owner's planar deck face down, ");
+        triggerSB.append("then move the top card of your planar deck off that planar deck and turn it face up");
+
+        String rolledWalk = "DB$ Planeswalk";
+
+        Trigger planesWalkTrigger = TriggerHandler.parseTrigger(triggerSB.toString(), card, true);
+        planesWalkTrigger.setOverridingAbility(AbilityFactory.getAbility(rolledWalk, card));
+        card.addTrigger(planesWalkTrigger);
 
         StringBuilder saSB = new StringBuilder();
         saSB.append("AB$ RollPlanarDice | Cost$ X | SorcerySpeed$ True | Activator$ Player | ActivationZone$ Command | ");
         saSB.append("SpellDescription$ Roll the planar dice. X is equal to the amount of times the planar die has been rolled this turn.");
-
-        card.setSVar("RolledWalk", "DB$ Planeswalk | Cost$ 0");
-        Trigger planesWalkTrigger = TriggerHandler.parseTrigger(triggerSB.toString(), card, true);
-        card.addTrigger(planesWalkTrigger);
 
         SpellAbility planarRoll = AbilityFactory.getAbility(saSB.toString(), card);
         planarRoll.setSVar("X", "Count$RolledThisTurn");
@@ -702,7 +695,21 @@ public class CardFactory {
                     if (origSVars.containsKey(s)) {
                         final String actualAbility = origSVars.get(s);
                         final SpellAbility grantedAbility = AbilityFactory.getAbility(actualAbility, out);
+                        grantedAbility.setIntrinsic(true);
                         state.addSpellAbility(grantedAbility);
+                    }
+                }
+            }
+
+            // static abilities to add to clone
+            if (sa.hasParam("AddStaticAbilities")) {
+                final String str = sa.getParam("AddStaticAbilities");
+                for (final String s : str.split(",")) {
+                    if (origSVars.containsKey(s)) {
+                        final String actualStatic = origSVars.get(s);
+                        final StaticAbility grantedStatic = new StaticAbility(actualStatic, out);
+                        grantedStatic.setIntrinsic(true);
+                        state.addStaticAbility(grantedStatic);
                     }
                 }
             }

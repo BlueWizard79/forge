@@ -40,7 +40,6 @@ import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityPredicates;
 import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityLayer;
-import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.PlayerZone;
 import forge.game.zone.PlayerZoneBattlefield;
@@ -103,7 +102,7 @@ public class GameAction {
         boolean wasFacedown = c.isFaceDown();
 
         //Rule 110.5g: A token that has left the battlefield can't move to another zone
-        if (c.isToken() && zoneFrom != null && !fromBattlefield) {
+        if (c.isToken() && zoneFrom != null && !fromBattlefield && !zoneFrom.is(ZoneType.Stack)) {
             return c;
         }
 
@@ -127,6 +126,13 @@ public class GameAction {
         // get the LKI from above like ChangeZoneEffect
         if (params != null && params.containsKey(AbilityKey.CardLKI)) {
             lastKnownInfo = (Card) params.get(AbilityKey.CardLKI);
+        } else if (toBattlefield && cause != null && cause.isReplacementAbility()) {
+            // if to Battlefield and it is caused by an replacement effect,
+            // try to get previous LKI if able
+            ReplacementEffect re = cause.getReplacementEffect();
+            if (ReplacementType.Moved.equals(re.getMode())) {
+                lastKnownInfo = (Card) cause.getReplacingObject(AbilityKey.CardLKI);
+            }
         }
 
         if (c.isSplitCard()) {
@@ -164,17 +170,6 @@ public class GameAction {
         // and returning to hand (to recreate their spell ability information)
         if (suppress || (!fromBattlefield && !toHand)) {
             copied = c;
-
-            // if to Battlefield and it is caused by an replacement effect,
-            // try to get previous LKI if able
-            if (toBattlefield) {
-                if (cause != null && cause.isReplacementAbility()) {
-                    ReplacementEffect re = cause.getReplacementEffect();
-                    if (ReplacementType.Moved.equals(re.getMode())) {
-                        lastKnownInfo = (Card) cause.getReplacingObject(AbilityKey.CardLKI);
-                    }
-                }
-            }
 
             if (lastKnownInfo == null) {
                 lastKnownInfo = CardUtil.getLKICopy(c);
@@ -217,20 +212,11 @@ public class GameAction {
                     // (we need to do this on the object before copying it, or it won't work correctly e.g.
                     // on Transformed objects)
                     copied.setState(CardStateName.Original, false);
+                    copied.setBackSide(false);
                 }
 
                 copied.setUnearthed(c.isUnearthed());
                 copied.setTapped(false);
-
-                for (final Trigger trigger : copied.getTriggers()) {
-                    trigger.setHostCard(copied);
-                }
-                for (final ReplacementEffect repl : copied.getReplacementEffects()) {
-                    repl.setHostCard(copied);
-                }
-                for (final StaticAbility sa : copied.getStaticAbilities()) {
-                    sa.setHostCard(copied);
-                }
             } else { //Token
                 copied = c;
             }
@@ -382,8 +368,9 @@ public class GameAction {
 
         // Need to apply any static effects to produce correct triggers
         checkStaticAbilities();
-        game.getTriggerHandler().clearInstrinsicActiveTriggers(c, zoneFrom);
-        game.getTriggerHandler().registerActiveTrigger(lastKnownInfo, false);
+        game.getTriggerHandler().clearActiveTriggers(copied, null);
+        game.getTriggerHandler().registerActiveLTBTrigger(lastKnownInfo);
+        game.getTriggerHandler().registerActiveTrigger(copied, false);
 
         table.triggerCountersPutAll(game);
 
@@ -497,7 +484,7 @@ public class GameAction {
 
         // Cards not on the battlefield / stack should not have controller
         if (!zoneTo.is(ZoneType.Battlefield) && !zoneTo.is(ZoneType.Stack)) {
-            c.clearControllers();
+            copied.clearControllers();
         }
 
         return copied;
@@ -1104,6 +1091,7 @@ public class GameAction {
         // trigger reset above will activate the copy's Always trigger, which needs to be triggered at
         // this point.
         checkStaticAbilities(false, affectedCards, CardCollection.EMPTY);
+        game.copyLastState();
 
         if (!refreeze) {
             game.getStack().unfreezeStack();
@@ -1798,25 +1786,50 @@ public class GameAction {
     // 701.17c If multiple players scry at once, each of those players looks at the top cards of their library
     // at the same time. Those players decide in APNAP order (see rule 101.4) where to put those
     // cards, then those cards move at the same time.
-    public void scry(List<Player> players, int numScry, SpellAbility cause) {
-        if (numScry == 0) {
+    public void scry(final List<Player> players, int numScry, SpellAbility cause) {
+        if (numScry <= 0) {
             return;
         }
-        // reveal the top N library cards to the player (only)
-        // no real need to separate out the look if
-        // there is only one player scrying
-        if (players.size() > 1) {
-            for (final Player p : players) {
-                final CardCollection topN = new CardCollection(p.getCardsIn(ZoneType.Library, numScry));
-                revealTo(topN, p);
+
+        // in case something alters the scry amount
+        Map<Player, Integer> actualPlayers = Maps.newLinkedHashMap();
+
+        for (final Player p : players) {
+            int playerScry = numScry;
+            final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(p);
+            repParams.put(AbilityKey.Source, cause);
+            repParams.put(AbilityKey.Num, playerScry);
+
+            switch (game.getReplacementHandler().run(ReplacementType.Scry, repParams)) {
+                case NotReplaced:
+                    break;
+                case Updated: {
+                    playerScry = (int) repParams.get(AbilityKey.Num);
+                    break;
+                }
+                default:
+                    continue;
+            }
+            if (playerScry > 0) {
+                actualPlayers.put(p, playerScry);
+
+                // reveal the top N library cards to the player (only)
+                // no real need to separate out the look if
+                // there is only one player scrying
+                if (players.size() > 1) {
+                    final CardCollection topN = new CardCollection(p.getCardsIn(ZoneType.Library, playerScry));
+                    revealTo(topN, p);
+                }
             }
         }
+
         // make the decisions
-        List<ImmutablePair<CardCollection, CardCollection>> decisions = Lists.newArrayList();
-        for (final Player p : players) {
-            final CardCollection topN = new CardCollection(p.getCardsIn(ZoneType.Library, numScry));
+        Map<Player, ImmutablePair<CardCollection, CardCollection>> decisions = Maps.newLinkedHashMap();
+        for (final Map.Entry<Player, Integer> e : actualPlayers.entrySet()) {
+            final Player p = e.getKey();
+            final CardCollection topN = new CardCollection(p.getCardsIn(ZoneType.Library, e.getValue()));
             ImmutablePair<CardCollection, CardCollection> decision = p.getController().arrangeForScry(topN);
-            decisions.add(decision);
+            decisions.put(p, decision);
             int numToTop = decision.getLeft() == null ? 0 : decision.getLeft().size();
             int numToBottom = decision.getRight() == null ? 0 : decision.getRight().size();
 
@@ -1825,11 +1838,11 @@ public class GameAction {
         }
         // do the moves after all the decisions (maybe not necesssary, but let's
         // do it the official way)
-        for (int i = 0; i < players.size(); i++) {
+        for (Map.Entry<Player, ImmutablePair<CardCollection, CardCollection>> e : decisions.entrySet()) {
             // no good iterate simultaneously in Java
-            final Player p = players.get(i);
-            final CardCollection toTop = decisions.get(i).getLeft();
-            final CardCollection toBottom = decisions.get(i).getRight();
+            final Player p = e.getKey();
+            final CardCollection toTop = e.getValue().getLeft();
+            final CardCollection toBottom = e.getValue().getRight();
             if (toTop != null) {
                 Collections.reverse(toTop); // reverse to get the correct order
                 for (Card c : toTop) {

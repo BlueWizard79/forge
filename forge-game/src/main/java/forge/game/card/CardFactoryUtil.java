@@ -623,6 +623,10 @@ public class CardFactoryUtil {
             return doXMath(player.getNumDiscardedThisTurn(), m, source);
         }
 
+        if (value.contains("TokensCreatedThisTurn")) {
+            return doXMath(player.getNumTokensCreatedThisTurn(), m, source);
+        }
+
         if (value.contains("AttackersDeclared")) {
             return doXMath(player.getAttackersDeclaredThisTurn(), m, source);
         }
@@ -871,10 +875,12 @@ public class CardFactoryUtil {
         if (l[0].startsWith("SacrificedThisTurn")) {
             CardCollectionView list = cc.getSacrificedThisTurn();
             if (l[0].contains(" ")) {
-                final String[] components = l[0].split(" ", 2);
-                list = CardLists.getValidCards(list, components[1], cc, c);
+                String[] lparts = l[0].split(" ", 2);
+                String restrictions = TextUtil.fastReplace(l[0], TextUtil.addSuffix(lparts[0]," "), "");
+                final String[] rest = restrictions.split(",");
+                list = CardLists.getValidCards(list, rest, cc, c, null);
             }
-            return list.size();
+            return doXMath(list.size(), m, c);
         }
 
         final String[] sq;
@@ -1100,6 +1106,15 @@ public class CardFactoryUtil {
                 n |= card.determineColor().getColor();
             }
             return doXMath(ColorSet.fromMask(n).countColors(), m, c);
+        }
+
+        if (sq[0].equals("ColorsColorIdentity")) {
+            byte ci = 0;
+            List<Card> commanders = c.getController().getCommanders();
+            for (final Card comm : commanders) {
+                ci |= comm.getRules().getColorIdentity().getColor();
+            }
+            return doXMath(ColorSet.fromMask(ci).countColors(), m, c);
         }
 
         if (sq[0].contains("CreatureType")) {
@@ -2434,7 +2449,7 @@ public class CardFactoryUtil {
             inst.addTrigger(parsedTrigReturn);
         } else if (keyword.equals("Conspire")) {
             final String trigScript = "Mode$ SpellCast | ValidCard$ Card.Self | CheckSVar$ Conspire | Secondary$ True | TriggerDescription$ Copy CARDNAME if its conspire cost was paid";
-            final String abString = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ 1";
+            final String abString = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ 1 | MayChooseTarget$ True";
 
             final Trigger conspireTrigger = TriggerHandler.parseTrigger(trigScript, card, intrinsic);
             conspireTrigger.setOverridingAbility(AbilityFactory.getAbility(abString, card));
@@ -2629,6 +2644,18 @@ public class CardFactoryUtil {
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
 
             trigger.setOverridingAbility(AbilityFactory.getAbility(sb.toString(), card));
+
+            inst.addTrigger(trigger);
+        } else if (keyword.startsWith("Gravestorm")) {
+            String trigStr = "Mode$ SpellCast | ValidCard$ Card.Self | TriggerDescription$ Gravestorm (" + inst.getReminderText() + ")";
+            String copyStr = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ GravestormCount | MayChooseTarget$ True";
+
+            SpellAbility copySa = AbilityFactory.getAbility(copyStr, card);
+            copySa.setSVar("GravestormCount", "Count$ThisTurnEntered_Graveyard_from_Battlefield_Permanent");
+
+            final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
+
+            trigger.setOverridingAbility(copySa);
 
             inst.addTrigger(trigger);
         } else if (keyword.startsWith("Haunt")) {
@@ -2957,10 +2984,10 @@ public class CardFactoryUtil {
 
             inst.addTrigger(trigger);
         } else if (keyword.equals("Persist")) {
-            final String trigStr = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard | OncePerEffect$ True " +
-                    " | ValidCard$ Card.Self+counters_EQ0_M1M1 | Secondary$ True" +
+            final String trigStr = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard " +
+                    " | ValidCard$ Card.Self+counters_EQ0_M1M1 | TriggerZones$ Battlefield | Secondary$ True" +
                     " | TriggerDescription$ Persist (" + inst.getReminderText() + ")";
-            final String effect = "DB$ ChangeZone | Defined$ TriggeredCard | Origin$ Graveyard | Destination$ Battlefield | WithCounters$ M1M1_1";
+            final String effect = "DB$ ChangeZone | Defined$ TriggeredNewCardLKICopy | Origin$ Graveyard | Destination$ Battlefield | WithCounters$ M1M1_1";
 
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
 
@@ -3069,7 +3096,7 @@ public class CardFactoryUtil {
             inst.addTrigger(myTrigger);
         } else if (keyword.startsWith("Replicate")) {
             final String trigScript = "Mode$ SpellCast | ValidCard$ Card.Self | CheckSVar$ ReplicateAmount | Secondary$ True | TriggerDescription$ Copy CARDNAME for each time you paid its replicate cost";
-            final String abString = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ ReplicateAmount";
+            final String abString = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ ReplicateAmount | MayChooseTarget$ True";
 
             final Trigger replicateTrigger = TriggerHandler.parseTrigger(trigScript, card, intrinsic);
             final SpellAbility replicateAbility = AbilityFactory.getAbility(abString, card);
@@ -3197,7 +3224,7 @@ public class CardFactoryUtil {
             final String actualTrigger = "Mode$ SpellCast | ValidCard$ Card.Self | Secondary$ True"
                     + "| TriggerDescription$ Storm (" + inst.getReminderText() + ")";
 
-            String effect = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ StormCount";
+            String effect = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | Amount$ StormCount | MayChooseTarget$ True";
 
             final Trigger parsedTrigger = TriggerHandler.parseTrigger(actualTrigger, card, intrinsic);
 
@@ -3266,10 +3293,10 @@ public class CardFactoryUtil {
 
             inst.addTrigger(parsedTrigger);
         } else if (keyword.equals("Undying")) {
-            final String trigStr = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard | OncePerEffect$ True " +
-                    " | Execute$ UndyingReturn | ValidCard$ Card.Self+counters_EQ0_P1P1 | TriggerZones$ Battlefield | Secondary$ True" +
+            final String trigStr = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard " +
+                    " | ValidCard$ Card.Self+counters_EQ0_P1P1 | TriggerZones$ Battlefield | Secondary$ True" +
                     " | TriggerDescription$ Undying (" + inst.getReminderText() + ")";
-            final String effect = "DB$ ChangeZone | Defined$ TriggeredCard | Origin$ Graveyard | Destination$ Battlefield | WithCounters$ P1P1_1";
+            final String effect = "DB$ ChangeZone | Defined$ TriggeredNewCardLKICopy | Origin$ Graveyard | Destination$ Battlefield | WithCounters$ P1P1_1";
 
             final Trigger parsedTrigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
             parsedTrigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
@@ -3708,11 +3735,11 @@ public class CardFactoryUtil {
                     + " | Description$ Totem armor (" + inst.getReminderText() + ")";
 
             String abprevDamage = "DB$ DealDamage | Defined$ ReplacedCard | Remove$ All ";
-            String abdestory = "DB$ Destroy | Defined$ Self";
+            String abdestroy = "DB$ Destroy | Defined$ Self";
 
             SpellAbility sa = AbilityFactory.getAbility(abprevDamage, card);
 
-            final AbilitySub dessub = (AbilitySub) AbilityFactory.getAbility(abdestory, card);
+            final AbilitySub dessub = (AbilitySub) AbilityFactory.getAbility(abdestroy, card);
 
             sa.setSubAbility(dessub);
 

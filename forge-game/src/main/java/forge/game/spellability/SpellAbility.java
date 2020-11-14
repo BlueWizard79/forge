@@ -43,6 +43,7 @@ import forge.game.cost.CostRemoveCounter;
 import forge.game.keyword.Keyword;
 import forge.game.mana.Mana;
 import forge.game.player.Player;
+import forge.game.player.PlayerCollection;
 import forge.game.replacement.ReplacementEffect;
 import forge.game.staticability.StaticAbility;
 import forge.game.trigger.Trigger;
@@ -52,6 +53,7 @@ import forge.game.zone.ZoneType;
 import forge.util.Aggregates;
 import forge.util.Expressions;
 import forge.util.TextUtil;
+
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -86,7 +88,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private String originalStackDescription = "", stackDescription = "";
     private ManaCost multiKickerManaCost = null;
     private Player activatingPlayer = null;
-    private Player deltrigActivatingPlayer = null; // used by delayed triggers to ensure the original activator can be restored
     private Player targetingPlayer = null;
 
     private Card grantorCard = null; // card which grants the ability (equipment or owner of static ability that gave this one)
@@ -98,7 +99,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private CardCollection splicedCards = null;
 
     private boolean basicSpell = true;
-    private boolean trigger = false;
     private Trigger triggerObj = null;
     private boolean optionalTrigger = false;
     private ReplacementEffect replacementEffect = null;
@@ -148,6 +148,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private boolean undoable;
 
     private boolean isCopied = false;
+    private boolean mayChooseNewTargets = false;
 
     private EnumSet<OptionalCost> optionalCosts = EnumSet.noneOf(OptionalCost.class);
     private TargetRestrictions targetRestrictions = null;
@@ -339,13 +340,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             view.updateCanPlay(this, false);
         }
         return updated;
-    }
-
-    public Player getDeltrigActivatingPlayer() {
-        return deltrigActivatingPlayer;
-    }
-    public void setDeltrigActivatingPlayer(final Player player) {
-        deltrigActivatingPlayer = player;
     }
 
     public Player getTargetingPlayer() {
@@ -863,6 +857,9 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
             copyHelper(clone, host);
 
+            // always set this to false, it is only set in CopyEffect
+            clone.mayChooseNewTargets = false;
+
             clone.triggeringObjects = AbilityKey.newMap(this.triggeringObjects);
 
             clone.setPayCosts(getPayCosts().copy());
@@ -883,6 +880,11 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             }
 
             clone.setPaidHash(Maps.newHashMap(getPaidHash()));
+
+            if (usesTargeting()) {
+                // the targets need to be cloned, otherwise they might be cleared
+                clone.targetChosen = getTargets().clone();
+            }
 
             // clear maps for copy, the values will be added later
             clone.additionalAbilities = Maps.newHashMap();
@@ -935,10 +937,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public boolean isTrigger() {
-        return trigger;
-    }
-    public void setTrigger(final boolean trigger0) {
-        trigger = trigger0;
+        return triggerObj != null;
     }
 
     public Trigger getTrigger() {
@@ -1287,6 +1286,13 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         }
     }
 
+    public boolean isMayChooseNewTargets() {
+        return mayChooseNewTargets;
+    }
+    public void setMayChooseNewTargets(boolean value) {
+        mayChooseNewTargets = value;
+    }
+
     /**
      * Returns whether variable was present in the announce list.
      */
@@ -1358,6 +1364,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public void setTargets(TargetChoices targets) {
+        // TODO should copy the target choices?
         targetChosen = targets;
     }
 
@@ -1394,11 +1401,11 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             return false;
         }
 
-        return getTargets().getNumTargeted() < getTargetRestrictions().getMaxTargets(hostCard, this);
+        return getTargets().size() < getTargetRestrictions().getMaxTargets(hostCard, this);
     }
 
     public boolean isZeroTargets() {
-        return getTargetRestrictions().getMinTargets(hostCard, this) == 0 && getTargets().getNumTargeted() == 0;
+        return getTargetRestrictions().getMinTargets(hostCard, this) == 0 && getTargets().size() == 0;
     }
 
     public boolean isTargetNumberValid() {
@@ -1408,7 +1415,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
         int minTargets = getTargetRestrictions().getMinTargets(hostCard, this);
         int maxTargets = getTargetRestrictions().getMaxTargets(hostCard, this);
-        int numTargets = getTargets().getNumTargeted();
+        int numTargets = getTargets().size();
 
         if (maxTargets == 0 && getPayCosts().hasSpecificCostType(CostRemoveCounter.class)
                 && hasSVar(getParam("TargetMax"))
@@ -1561,7 +1568,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         SpellAbility child = getParent();
         while (child != null) {
             if (child.getTargetRestrictions() != null) {
-                Iterables.addAll(targets, child.getTargets().getTargets());
+                Iterables.addAll(targets, child.getTargets());
             }
             child = child.getParent();
         }
@@ -1598,7 +1605,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
             boolean result = false;
 
-            for (final GameObject o : matchTgt.getTargets()) {
+            for (final GameObject o : matchTgt) {
                 if (o.isValid(splitTargetRestrictions.split(","), getActivatingPlayer(), getHostCard(), this)) {
                     result = true;
                     break;
@@ -1614,7 +1621,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                         if (matchTgt == null) {
                             continue;
                         }
-                        for (final GameObject o : matchTgt.getTargets()) {
+                        for (final GameObject o : matchTgt) {
                             if (o.isValid(splitTargetRestrictions.split(","), getActivatingPlayer(), getHostCard(), this)) {
                                 result = true;
                                 break;
@@ -1633,7 +1640,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (tgt.isSingleTarget()) {
             Set<GameObject> targets = new HashSet<>();
             for (TargetChoices tc : topSA.getAllTargetChoices()) {
-                targets.addAll(tc.getTargets());
+                targets.addAll(tc);
                 if (targets.size() > 1) {
                     // As soon as we get more than one, bail out
                     return false;
@@ -1649,11 +1656,53 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public boolean isTargeting(GameObject o) {
-        if (getTargets().isTargeting(o)) {
+        if (getTargets().contains(o)) {
             return true;
         }
         SpellAbility p = getParent();
         return p != null && p.isTargeting(o);
+    }
+
+    public boolean setupTargets() {
+        // Skip to paying if parent ability doesn't target and has no subAbilities.
+        // (or trigger case where its already targeted)
+        SpellAbility currentAbility = this;
+        final Card source = getHostCard();
+        do {
+            final TargetRestrictions tgt = currentAbility.getTargetRestrictions();
+            if (tgt != null && tgt.doesTarget()) {
+                currentAbility.clearTargets();
+                Player targetingPlayer;
+                if (currentAbility.hasParam("TargetingPlayer")) {
+                    final PlayerCollection candidates = AbilityUtils.getDefinedPlayers(source, currentAbility.getParam("TargetingPlayer"), currentAbility);
+                    // activator chooses targeting player
+                    targetingPlayer = getActivatingPlayer().getController().chooseSingleEntityForEffect(
+                            candidates, currentAbility, "Choose the targeting player", null);
+                } else {
+                    targetingPlayer = getActivatingPlayer();
+                }
+                currentAbility.setTargetingPlayer(targetingPlayer);
+                if (!targetingPlayer.getController().chooseTargetsFor(currentAbility)) {
+                    return false;
+                }
+            }
+            final AbilitySub subAbility = currentAbility.getSubAbility();
+            if (subAbility != null) {
+                // This is necessary for "TargetsWithDefinedController$ ParentTarget"
+                subAbility.setParent(currentAbility);
+            }
+            currentAbility = subAbility;
+        } while (currentAbility != null);
+        return true;
+    }
+    public final void clearTargets() {
+        final TargetRestrictions tg = getTargetRestrictions();
+        if (tg != null) {
+            resetTargets();
+            if (hasParam("DividedAsYouChoose")) {
+                tg.calculateStillToDivide(getParam("DividedAsYouChoose"), getHostCard(), this);
+            }
+        }
     }
 
     // Takes one argument like Permanent.Blue+withFlying

@@ -105,7 +105,22 @@ public class AbilityUtils {
         else if (defined.equals("Equipped")) {
             c = hostCard.getEquipping();
         }
-
+        else if (defined.startsWith("AttachedTo ")) {
+            String v = defined.split(" ")[1];
+            for (GameEntity ge : getDefinedEntities(hostCard, v, sa)) {
+                // TODO handle phased out inside attachedCards
+                Iterables.addAll(cards, ge.getAttachedCards());
+            }
+        }
+        else if (defined.startsWith("AttachedBy ")) {
+            String v = defined.split(" ")[1];
+            for (Card attachment : getDefinedCards(hostCard, v, sa)) {
+                Card attached = attachment.getAttachedTo();
+                if (attached != null) {
+                    cards.add(attached);
+                }
+            }
+        }
         else if (defined.equals("Enchanted")) {
             c = hostCard.getEnchantingCard();
             if ((c == null) && (sa != null) && (sa.getRootAbility() != null)
@@ -149,6 +164,8 @@ public class AbilityUtils {
                 final Object crd = root.getTriggeringObject(type);
                 if (crd instanceof Card) {
                     c = (Card) crd;
+                } else if (crd instanceof Iterable) {
+                    cards.addAll(Iterables.filter((Iterable<?>) crd, Card.class));
                 }
             }
             else {
@@ -611,7 +628,7 @@ public class AbilityUtils {
             SpellAbility loopSA = sa.getRootAbility();
             while (loopSA != null) {
                 if (loopSA.getTargetRestrictions() != null) {
-                    Iterables.addAll(objects, loopSA.getTargets().getTargets());
+                    Iterables.addAll(objects, loopSA.getTargets());
                 }
                 loopSA = loopSA.getSubAbility();
             }
@@ -1288,7 +1305,7 @@ public class AbilityUtils {
                 // information so it's not lost if the calling code is interested in targets of the triggered SA.
                 if (triggeringType.equals("SpellAbility")) {
                     final CardCollectionView tgtList = (CardCollectionView)root.getTriggeringObject(AbilityKey.SpellAbilityTargetingCards);
-                    if (s.getTargets() != null && s.getTargets().getNumTargeted() == 0) {
+                    if (s.getTargets() != null && s.getTargets().size() == 0) {
                         if (tgtList != null && tgtList.size() > 0) {
                             TargetChoices tc = new TargetChoices();
                             for (Card c : tgtList) {
@@ -1510,7 +1527,7 @@ public class AbilityUtils {
             if (sa.hasParam("ForgetOtherTargets")) {
                 host.clearRemembered();
             }
-            for (final GameObject o : sa.getTargets().getTargets()) {
+            for (final GameObject o : sa.getTargets()) {
                 host.addRemembered(o);
             }
         }
@@ -1660,12 +1677,8 @@ public class AbilityUtils {
 
                 // Count$Kicked.<numHB>.<numNotHB>
                 if (sq[0].startsWith("Kicked")) {
-                    if (((SpellAbility)ctb).isKicked()) {
-                        return CardFactoryUtil.doXMath(Integer.parseInt(sq[1]), expr, c); // Kicked
-                    }
-                    else {
-                        return CardFactoryUtil.doXMath(Integer.parseInt(sq[2]), expr, c); // not Kicked
-                    }
+                    boolean kicked = ((SpellAbility)ctb).isKicked() || c.getKickerMagnitude() > 0;
+                    return CardFactoryUtil.doXMath(Integer.parseInt(kicked ? sq[1] : sq[2]), expr, c);
                 }
 
                 //Count$SearchedLibrary.<DefinedPlayer>
@@ -1956,7 +1969,20 @@ public class AbilityUtils {
             }
         }
     }
+
+    public static SpellAbility getCause(SpellAbility sa) {
+        final SpellAbility root = sa.getRootAbility();
+        SpellAbility cause = sa;
+        if (root.isReplacementAbility()) {
+            SpellAbility replacingObject = (SpellAbility) root.getReplacingObject(AbilityKey.Cause);
+            if (replacingObject != null) {
+                cause = replacingObject;
+            }
+        }
+        return cause;
+    }
     
+
     public static SpellAbility addSpliceEffects(final SpellAbility sa) {
         final Card source = sa.getHostCard();
         final Player player = sa.getActivatingPlayer();

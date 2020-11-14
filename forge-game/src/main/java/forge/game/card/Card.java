@@ -443,11 +443,6 @@ public class Card extends GameEntity implements Comparable<Card> {
         currentStateName = state;
         currentState = getState(state);
 
-        // update the host for static abilities
-        for (StaticAbility sa : currentState.getStaticAbilities()) {
-            sa.setHostCard(this);
-        }
-
         if (updateView) {
             view.updateState(this);
 
@@ -560,7 +555,7 @@ public class Card extends GameEntity implements Comparable<Card> {
             // do the Transform trigger there, it can also happen if the resulting state doesn't change
 
             // Clear old dfc trigger from the trigger handler
-            getGame().getTriggerHandler().clearInstrinsicActiveTriggers(this, null);
+            getGame().getTriggerHandler().clearActiveTriggers(this, null);
             getGame().getTriggerHandler().registerActiveTrigger(this, false);
             final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
             runParams.put(AbilityKey.Transformer, this);
@@ -1704,13 +1699,13 @@ public class Card extends GameEntity implements Comparable<Card> {
                 } else if (keyword.startsWith("Echo")) {
                     sbLong.append("Echo ");
                     final String[] upkeepCostParams = keyword.split(":");
-                    sbLong.append(upkeepCostParams.length > 2 ? "- " + upkeepCostParams[2] : ManaCostParser.parse(upkeepCostParams[1]));
+                    sbLong.append(upkeepCostParams.length > 2 ? "— " + upkeepCostParams[2] : ManaCostParser.parse(upkeepCostParams[1]));
                     sbLong.append(" (At the beginning of your upkeep, if CARDNAME came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)");
                     sbLong.append("\r\n");
                 } else if (keyword.startsWith("Cumulative upkeep")) {
                     sbLong.append("Cumulative upkeep ");
                     final String[] upkeepCostParams = keyword.split(":");
-                    sbLong.append(upkeepCostParams.length > 2 ? "- " + upkeepCostParams[2] : ManaCostParser.parse(upkeepCostParams[1]));
+                    sbLong.append(upkeepCostParams.length > 2 ? "— " + upkeepCostParams[2] : ManaCostParser.parse(upkeepCostParams[1]));
                     sbLong.append("\r\n");
                 } else if (keyword.startsWith("Alternative Cost")) {
                     sbLong.append("Has alternative cost.");
@@ -1750,6 +1745,9 @@ public class Card extends GameEntity implements Comparable<Card> {
                     final String[] k = keyword.split(":");
                     sbLong.append("Hexproof from ").append(k[2])
                         .append(" (").append(inst.getReminderText()).append(")").append("\r\n");
+                } else if (inst.getKeyword().equals(Keyword.COMPANION)) {
+                    sbLong.append("Companion — ");
+                    sbLong.append(((Companion)inst).getDescription());
                 } else if (keyword.endsWith(".") && !keyword.startsWith("Haunt")) {
                     sbLong.append(keyword).append("\r\n");
                 } else if (keyword.startsWith("Presence") || keyword.startsWith("MayFlash")) {
@@ -1856,9 +1854,6 @@ public class Card extends GameEntity implements Comparable<Card> {
                     String desc = "(As this Saga enters and after your draw step, "
                         + " add a lore counter. Sacrifice after " + Strings.repeat("I", Integer.valueOf(k[1])) + ".)";
                     sbLong.append(desc);
-                } else if (inst.getKeyword().equals(Keyword.COMPANION)) {
-                    sbLong.append("Companion - ");
-                    sbLong.append(((Companion)inst).getDescription());
                 }
                 else {
                     if ((i != 0) && (sb.length() != 0)) {
@@ -3612,8 +3607,8 @@ public class Card extends GameEntity implements Comparable<Card> {
         if (multiKickerMagnitude > 0) {
             return multiKickerMagnitude;
         }
-        boolean hasK1 = costsPaid.contains(OptionalCost.Kicker1);
-        return hasK1 == costsPaid.contains(OptionalCost.Kicker2) ? (hasK1 ? 2 : 0) : 1;
+        boolean hasK1 = isOptionalCostPaid(OptionalCost.Kicker1);
+        return hasK1 == isOptionalCostPaid(OptionalCost.Kicker2) ? (hasK1 ? 2 : 0) : 1;
     }
 
     private int pseudoKickerMagnitude = 0;
@@ -5443,32 +5438,8 @@ public class Card extends GameEntity implements Comparable<Card> {
                 if (source.isGreen() && !colorlessDamage) {
                     return true;
                 }
-            } else if (kw.equals("Protection from monocolored")) {
-                if (CardUtil.getColors(source).isMonoColor() && !colorlessDamage) {
-                    return true;
-                }
-            } else if (kw.equals("Protection from multicolored")) {
-                if (CardUtil.getColors(source).isMulticolor() && !colorlessDamage) {
-                    return true;
-                }
             } else if (kw.equals("Protection from all colors")) {
                 if (!source.isColorless() && !colorlessDamage) {
-                    return true;
-                }
-            } else if (kw.equals("Protection from colorless")) {
-                if (source.isColorless() || colorlessDamage) {
-                    return true;
-                }
-            } else if (kw.equals("Protection from creatures")) {
-                if (source.isCreature()) {
-                    return true;
-                }
-            } else if (kw.equals("Protection from artifacts")) {
-                if (source.isArtifact()) {
-                    return true;
-                }
-            } else if (kw.equals("Protection from enchantments")) {
-                if (source.isEnchantment()) {
                     return true;
                 }
             } else if (kw.equals("Protection from everything")) {
@@ -5483,26 +5454,22 @@ public class Card extends GameEntity implements Comparable<Card> {
                         return true;
                     }
                 } else {
-                    // if colorlessDamage then it does only check damage color..
-                    if (colorlessDamage) {
+                    // if damageSource then it does only check damage color..
+                    if (damageSource) {
                         if (characteristic.endsWith("White") || characteristic.endsWith("Blue")
                             || characteristic.endsWith("Black") || characteristic.endsWith("Red")
                             || characteristic.endsWith("Green") || characteristic.endsWith("Colorless")
-                            || characteristic.endsWith("ChosenColor")) {
+                            || characteristic.endsWith("MonoColor") || characteristic.endsWith("MultiColor")) {
                             characteristic += "Source";
                         }
                     }
 
                     final String[] characteristics = characteristic.split(",");
-                    final String exception = kws.length > 3 ? kws[3] : null; // check "This effect cannot remove sth"
+                    final String[] exceptions = kws.length > 3 ? kws[3].split(",") : null; // check "This effect cannot remove sth"
                     if (source.isValid(characteristics, getController(), this, null)
-                            && (!checkSBA || exception == null || !source.isValid(exception, getController(), this, null))) {
+                            && (!checkSBA || exceptions == null || !source.isValid(exceptions, getController(), this, null))) {
                         return true;
                     }
-                }
-            } else if (kw.equals("Protection from colored spells")) {
-                if (source.isSpell() && !source.isColorless()) {
-                    return true;
                 }
             } else if (kw.startsWith("Protection from opponent of ")) {
                 final String playerName = kw.substring("Protection from opponent of ".length());
@@ -5526,27 +5493,27 @@ public class Card extends GameEntity implements Comparable<Card> {
             if (!kw.startsWith("Protection")) {
                 continue;
             }
-            if (kw.equals("Protection from red")) {
+            if (kw.contains("Protection from red")) {
                 if (!pR) {
                     pR = true;
                     protectKey += "R";
                 }
-            } else if (kw.equals("Protection from green")) {
+            } else if (kw.contains("Protection from green")) {
                 if (!pG) {
                     pG = true;
                     protectKey += "G";
                 }
-            } else if (kw.equals("Protection from black")) {
+            } else if (kw.contains("Protection from black")) {
                 if (!pB) {
                     pB = true;
                     protectKey += "B";
                 }
-            } else if (kw.equals("Protection from blue")) {
+            } else if (kw.contains("Protection from blue")) {
                 if (!pU) {
                     pU = true;
                     protectKey += "U";
                 }
-            } else if (kw.equals("Protection from white")) {
+            } else if (kw.contains("Protection from white")) {
                 if (!pW) {
                     pW = true;
                     protectKey += "W";
@@ -5569,7 +5536,7 @@ public class Card extends GameEntity implements Comparable<Card> {
                 protectKey += "everything:";
             } else if (kw.equals("Protection from colored spells")) {
                 protectKey += "coloredspells:";
-            } else if (kw.startsWith("Protection")) {
+            } else {
                 protectKey += "generic";
             }
         }
