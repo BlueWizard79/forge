@@ -538,6 +538,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     if (sa.hasParam("Tapped") || sa.hasParam("Ninjutsu")) {
                         gameCard.setTapped(true);
                     }
+                    if (sa.hasParam("Untapped")) {
+                        gameCard.setTapped(false);
+                    }
                     if (sa.hasParam("Transformed")) {
                         if (gameCard.isDoubleFaced()) {
                             gameCard.changeCardState("Transform", null, sa);
@@ -651,6 +654,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     if (sa.hasParam("Tapped") || sa.hasParam("Ninjutsu")) {
                         movedCard.setTapped(true);
                     }
+                    if (sa.hasParam("Untapped")) {
+                        movedCard.setTapped(false);
+                    }
                     movedCard.setTimestamp(ts);
                 } else {
                     // might set before card is moved only for nontoken
@@ -661,6 +667,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                             host = sa.getHostCard();
                         }
                         gameCard.setExiledWith(host);
+                        gameCard.setExiledBy(host.getController());
                     }
                     movedCard = game.getAction().moveTo(destination, gameCard, cause);
                     if (ZoneType.Hand.equals(destination) && ZoneType.Command.equals(originZone.getZoneType())) {
@@ -681,6 +688,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     // might set after card is moved again if something has changed
                     if (destination.equals(ZoneType.Exile) && !movedCard.isToken()) {
                         movedCard.setExiledWith(host);
+                        if (host != null) {
+                            movedCard.setExiledBy(host.getController());
+                        }
                     }
 
                     if (sa.hasParam("ExileFaceDown")) {
@@ -1077,8 +1087,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             else if (destination.equals(ZoneType.Battlefield)) {
                 if (sa.hasParam("Tapped")) {
                     c.setTapped(true);
+                } else if (sa.hasParam("Untapped")) {
+                    c.setTapped(false);
                 }
-
                 Map<AbilityKey, Object> moveParams = Maps.newEnumMap(AbilityKey.class);
 
                 if (sa.hasAdditionalAbility("AnimateSubAbility")) {
@@ -1189,6 +1200,8 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 movedCard = game.getAction().moveTo(c.getController().getZone(destination), c, cause, moveParams);
                 if (sa.hasParam("Tapped")) {
                     movedCard.setTapped(true);
+                } else if (sa.hasParam("Untapped")) {
+                    c.setTapped(false);
                 }
 
                 // need to do that again?
@@ -1205,6 +1218,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         host = sa.getHostCard();
                     }
                     movedCard.setExiledWith(host);
+                    movedCard.setExiledBy(host.getController());
                 }
                 if (sa.hasParam("ExileFaceDown")) {
                     movedCard.turnFaceDown(true);
@@ -1310,6 +1324,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 }
                 movedCard = game.getAction().exile(tgtHost, srcSA, params);
                 movedCard.setExiledWith(host);
+                movedCard.setExiledBy(host.getController());
             } else if (srcSA.getParam("Destination").equals("TopOfLibrary")) {
                 movedCard = game.getAction().moveToLibrary(tgtHost, srcSA, params);
             } else if (srcSA.getParam("Destination").equals("Hand")) {

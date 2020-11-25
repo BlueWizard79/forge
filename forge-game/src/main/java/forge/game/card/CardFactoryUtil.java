@@ -1167,13 +1167,18 @@ public class CardFactoryUtil {
             return doXMath(Integer.parseInt(sq[cc.hasLandfall() ? 1 : 2]), m, c);
         }
         if (sq[0].contains("Monarch")) {
-            return doXMath(Integer.parseInt(sq[cc.equals(game.getMonarch()) ? 1 : 2]), m, c);
+            return doXMath(Integer.parseInt(sq[cc.isMonarch() ? 1 : 2]), m, c);
         }
         if (sq[0].contains("Blessing")) {
             return doXMath(Integer.parseInt(sq[cc.hasBlessing() ? 1 : 2]), m, c);
         }
         if (sq[0].contains("Threshold")) {
             return doXMath(Integer.parseInt(sq[cc.hasThreshold() ? 1 : 2]), m, c);
+        }
+        if (sq[0].contains("Averna")) {
+            if (cc.hasKeyword("As you cascade, you may put a land card from among the exiled cards onto the" +
+                    " battlefield tapped.")) { return 1; }
+            else return 0;
         }
         if (sq[0].startsWith("Kicked")) {
             return doXMath(Integer.parseInt(sq[c.getKickerMagnitude() > 0 ? 1 : 2]), m, c);
@@ -2354,25 +2359,29 @@ public class CardFactoryUtil {
             inst.addTrigger(bushidoTrigger1);
             inst.addTrigger(bushidoTrigger2);
         } else if (keyword.equals("Cascade")) {
-            final StringBuilder trigScript = new StringBuilder(
-                    "Mode$ SpellCast | ValidCard$ Card.Self | Secondary$ True | " +
-                    "TriggerDescription$ Cascade - CARDNAME");
+            final StringBuilder trigScript = new StringBuilder("Mode$ SpellCast | ValidCard$ Card.Self" +
+                    " | Secondary$ True | TriggerDescription$ Cascade - CARDNAME");
 
-            final String abString = "DB$ DigUntil | Defined$ You | Amount$ 1 | Valid$ "
-                    + "Card.nonLand+cmcLTCascadeX | FoundDestination$ Exile | RevealedDestination$"
-                    + " Exile | ImprintRevealed$ True | RememberFound$ True";
-
+            final String abString = "DB$ DigUntil | Defined$ You | Amount$ 1 | Valid$ Card.nonLand+cmcLTCascadeX" +
+                    " | FoundDestination$ Exile | RevealedDestination$ Exile | ImprintFound$ True" +
+                    " | RememberRevealed$ True";
             SpellAbility dig = AbilityFactory.getAbility(abString, card);
             dig.setSVar("CascadeX", "Count$CardManaCost");
 
-            final String dbCascadeCast = "DB$ Play | Defined$ Remembered | WithoutManaCost$ True | Optional$ True";
-            AbilitySub cascadeCast = (AbilitySub)AbilityFactory.getAbility(dbCascadeCast, card);
+            final String dbLandPut = "DB$ ChangeZone | ConditionCheckSVar$ X | ConditionSVarCompare$ EQ1" +
+                    " | Hidden$ True | Origin$ Exile | Destination$ Battlefield | ChangeType$ Land.IsRemembered" +
+                    " | ChangeNum$ 1 | Tapped$ True | ForgetChanged$ True" +
+                    " | SelectPrompt$ You may select a land to put on the battlefield tapped";
+            AbilitySub landPut = (AbilitySub)AbilityFactory.getAbility(dbLandPut, card);
+            landPut.setSVar("X", "Count$Averna");
+            dig.setSubAbility(landPut);
 
-            dig.setSubAbility(cascadeCast);
+            final String dbCascadeCast = "DB$ Play | Defined$ Imprinted | WithoutManaCost$ True | Optional$ True";
+            AbilitySub cascadeCast = (AbilitySub)AbilityFactory.getAbility(dbCascadeCast, card);
+            landPut.setSubAbility(cascadeCast);
 
             final String dbMoveToLib = "DB$ ChangeZoneAll | ChangeType$ Card.IsRemembered,Card.IsImprinted"
                     + " | Origin$ Exile | Destination$ Library | RandomOrder$ True | LibraryPosition$ -1";
-
             AbilitySub moveToLib = (AbilitySub)AbilityFactory.getAbility(dbMoveToLib, card);
             cascadeCast.setSubAbility(moveToLib);
 
@@ -3659,16 +3668,16 @@ public class CardFactoryUtil {
             }
             inst.addReplacement(re);
         } else if (keyword.equals("Rebound")) {
-            String repeffstr = "Event$ Moved | ValidCard$ Card.Self+wasCastFromHand+YouOwn+YouCtrl "
+            String repeffstr = "Event$ Moved | ValidLKI$ Card.Self+wasCastFromHand+YouOwn+YouCtrl "
             + " | Origin$ Stack | Destination$ Graveyard | Fizzle$ False "
             + " | Description$ Rebound (" + inst.getReminderText() + ")";
 
-            String abExile = "DB$ ChangeZone | Defined$ Self | Origin$ Stack | Destination$ Exile";
+            String abExile = "DB$ ChangeZone | Defined$ ReplacedCard | Origin$ Stack | Destination$ Exile";
             String delTrig = "DB$ DelayedTrigger | Mode$ Phase | Phase$ Upkeep | ValidPlayer$ You " +
-            " | OptionalDecider$ You | RememberObjects$ Self | TriggerDescription$"
+            " | OptionalDecider$ You | RememberObjects$ ReplacedCard | TriggerDescription$"
             + " At the beginning of your next upkeep, you may cast " + card.toString() + " without paying its mana cost.";
             // TODO add check for still in exile
-            String abPlay = "DB$ Play | Defined$ Self | WithoutManaCost$ True | Optional$ True";
+            String abPlay = "DB$ Play | Defined$ DelayTriggerRemembered | WithoutManaCost$ True | Optional$ True";
 
             SpellAbility saExile = AbilityFactory.getAbility(abExile, card);
 
@@ -4051,7 +4060,7 @@ public class CardFactoryUtil {
             newSA.setSVar("EpicCantBeCast", "Mode$ CantBeCast | ValidCard$ Card | Caster$ You | EffectZone$ Command | Description$ For the rest of the game, you can't cast spells.");
             newSA.setSVar("EpicTrigger", "Mode$ Phase | Phase$ Upkeep | ValidPlayer$ You | Execute$ EpicCopy | TriggerDescription$ "
                     + "At the beginning of each of your upkeeps, copy " + card.toString() + " except for its epic ability.");
-            newSA.setSVar("EpicCopy", "DB$ CopySpellAbility | Defined$ EffectSource | Epic$ True");
+            newSA.setSVar("EpicCopy", "DB$ CopySpellAbility | Defined$ EffectSource | Epic$ True | MayChooseTarget$ True");
 
             final SpellAbility origSA = card.getFirstSpellAbility();
 
@@ -4374,7 +4383,7 @@ public class CardFactoryUtil {
             final String manacost = k[1];
 
             String effect = "AB$ RepeatEach | Cost$ " + manacost + " ExileFromGrave<1/CARDNAME> " +
-                    "| ActivationZone$ Graveyard | RepeatPlayers$ Opponent" +
+                    "| ActivationZone$ Graveyard | ClearRememberedBeforeLoop$ True | RepeatPlayers$ Opponent" +
                     "| PrecostDesc$ Encore | CostDesc$ " + ManaCostParser.parse(manacost) +
                     "| SpellDescription$ (" + inst.getReminderText() + ")";
 
@@ -4391,7 +4400,7 @@ public class CardFactoryUtil {
 
             final String sacStr = "DB$ SacrificeAll | Defined$ DelayTriggerRemembered";
 
-            final String cleanupStr = "DB$ Cleanup | ClearImprinted$ True";
+            final String cleanupStr = "DB$ Cleanup | ClearRemembered$ True | ClearImprinted$ True";
 
             final SpellAbility sa = AbilityFactory.getAbility(effect, card);
             sa.setIntrinsic(intrinsic);

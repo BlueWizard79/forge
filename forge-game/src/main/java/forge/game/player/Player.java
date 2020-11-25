@@ -3113,6 +3113,10 @@ public class Player extends GameEntity implements Comparable<Player> {
         return view;
     }
 
+    public boolean isMonarch() {
+        return equals(game.getMonarch());
+    }
+
     public void createMonarchEffect() {
         final PlayerZone com = getZone(ZoneType.Command);
         if (monarchEffect == null) {
@@ -3406,7 +3410,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     public void addCycled(SpellAbility sp) {
         cycledThisTurn++;
 
-        Map<AbilityKey, Object> cycleParams = AbilityKey.mapFromCard(sp.getHostCard());
+        Map<AbilityKey, Object> cycleParams = AbilityKey.mapFromCard(CardUtil.getLKICopy(game.getCardState(sp.getHostCard())));
         cycleParams.put(AbilityKey.Cause, sp);
         cycleParams.put(AbilityKey.Player, this);
         cycleParams.put(AbilityKey.NumThisTurn, cycledThisTurn);
