@@ -50,12 +50,14 @@ public enum TrackableProperty {
     ChosenType(TrackableTypes.StringType),
     ChosenColors(TrackableTypes.StringListType),
     ChosenCards(TrackableTypes.CardViewCollectionType),
+    ChosenNumber(TrackableTypes.StringType),
     ChosenPlayer(TrackableTypes.PlayerViewType),
     ChosenDirection(TrackableTypes.EnumType(Direction.class)),
     ChosenEvenOdd(TrackableTypes.EnumType(EvenOdd.class)),
     ChosenMode(TrackableTypes.StringType),
     Remembered(TrackableTypes.StringType),
     NamedCard(TrackableTypes.StringType),
+    NamedCard2(TrackableTypes.StringType),
     PlayerMayLook(TrackableTypes.PlayerViewCollectionType, FreezeMode.IgnoresFreeze),
     EntityAttachedTo(TrackableTypes.GameEntityViewType),
     EncodedCards(TrackableTypes.CardViewCollectionType),
@@ -69,6 +71,8 @@ public enum TrackableProperty {
     PairedWith(TrackableTypes.CardViewType),
     CurrentState(TrackableTypes.CardStateViewType, FreezeMode.IgnoresFreeze),
     AlternateState(TrackableTypes.CardStateViewType, FreezeMode.IgnoresFreeze),
+    LeftSplitState(TrackableTypes.CardStateViewType, FreezeMode.IgnoresFreeze),
+    RightSplitState(TrackableTypes.CardStateViewType, FreezeMode.IgnoresFreeze),
     HiddenId(TrackableTypes.IntegerType),
     ExertedThisTurn(TrackableTypes.BooleanType),
 
@@ -76,6 +80,8 @@ public enum TrackableProperty {
     Name(TrackableTypes.StringType),
     Colors(TrackableTypes.ColorSetType),
     OriginalColors(TrackableTypes.ColorSetType),
+    LeftSplitColors(TrackableTypes.ColorSetType),
+    RightSplitColors(TrackableTypes.ColorSetType),
     ImageKey(TrackableTypes.StringType),
     Type(TrackableTypes.CardTypeViewType),
     ManaCost(TrackableTypes.ManaCostType),
@@ -92,6 +98,7 @@ public enum TrackableProperty {
 
     KeywordKey(TrackableTypes.StringType),
     HasDeathtouch(TrackableTypes.BooleanType),
+    HasDevoid(TrackableTypes.BooleanType),
     HasDefender(TrackableTypes.BooleanType),
     HasDoubleStrike(TrackableTypes.BooleanType),
     HasFirstStrike(TrackableTypes.BooleanType),
@@ -108,6 +115,7 @@ public enum TrackableProperty {
     HasShroud(TrackableTypes.BooleanType),
     HasTrample(TrackableTypes.BooleanType),
     HasVigilance(TrackableTypes.BooleanType),
+    HasLandwalk(TrackableTypes.BooleanType),
     //protectionkey
     ProtectionKey(TrackableTypes.StringType),
     //hexproofkey
@@ -160,6 +168,7 @@ public enum TrackableProperty {
     IsExtraTurn(TrackableTypes.BooleanType),
     ExtraTurnCount(TrackableTypes.IntegerType),
     HasPriority(TrackableTypes.BooleanType),
+    HasDelirium(TrackableTypes.BooleanType),
 
     //SpellAbility
     HostCard(TrackableTypes.CardViewType),
@@ -181,6 +190,7 @@ public enum TrackableProperty {
     SubInstance(TrackableTypes.StackItemViewType),
     Ability(TrackableTypes.BooleanType),
     OptionalTrigger(TrackableTypes.BooleanType),
+    OptionalCosts(TrackableTypes.StringType),
 
     //Combat
     AttackersWithDefenders(TrackableTypes.GenericMapType, FreezeMode.IgnoresFreeze),
@@ -199,6 +209,7 @@ public enum TrackableProperty {
     WinningPlayerName(TrackableTypes.StringType),
     WinningTeam(TrackableTypes.IntegerType),
     MatchOver(TrackableTypes.BooleanType),
+    Mulligan(TrackableTypes.BooleanType),
     NumGamesInMatch(TrackableTypes.IntegerType),
     NumPlayedGamesInMatch(TrackableTypes.IntegerType),
     Stack(TrackableTypes.StackItemViewListType),

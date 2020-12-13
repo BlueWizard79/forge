@@ -64,8 +64,10 @@ public class Forge implements ApplicationListener {
     public static float heigtModifier = 0.0f;
     private static boolean isloadingaMatch = false;
     public static boolean showFPS = false;
+    public static boolean altPlayerLayout = false;
     public static boolean enableUIMask = false;
     public static boolean enablePreloadExtendedArt = false;
+    public static boolean isTabletDevice = false;
     public static String locale = "en-US";
     public static boolean hdbuttons = false;
     public static boolean hdstart = false;
@@ -73,8 +75,9 @@ public class Forge implements ApplicationListener {
     public static boolean gameInProgress = false;
     public static int cacheSize = 400;
     public static int totalDeviceRAM = 0;
+    public static int androidVersion = 0;
 
-    public static ApplicationListener getApp(Clipboard clipboard0, IDeviceAdapter deviceAdapter0, String assetDir0, boolean value, boolean androidOrientation, int totalRAM) {
+    public static ApplicationListener getApp(Clipboard clipboard0, IDeviceAdapter deviceAdapter0, String assetDir0, boolean value, boolean androidOrientation, int totalRAM, boolean isTablet, int AndroidVersion) {
         if (GuiBase.getInterface() == null) {
             clipboard = clipboard0;
             deviceAdapter = deviceAdapter0;
@@ -82,6 +85,8 @@ public class Forge implements ApplicationListener {
             GuiBase.enablePropertyConfig(value);
             isPortraitMode = androidOrientation;
             totalDeviceRAM = totalRAM;
+            isTabletDevice = isTablet;
+            androidVersion = AndroidVersion;
             //increase cacheSize for devices with RAM more than 5GB, default is 400. Some phones have more than 10GB RAM (Mi 10, OnePlus 8, S20, etc..)
             if (totalDeviceRAM>5000) //devices with more than 10GB RAM will have 1000 Cache size, 700 Cache size for morethan 5GB RAM
                 cacheSize = totalDeviceRAM>10000 ? 1000: 700;
@@ -123,6 +128,7 @@ public class Forge implements ApplicationListener {
 
         textureFiltering = prefs.getPrefBoolean(FPref.UI_LIBGDX_TEXTURE_FILTERING);
         showFPS = prefs.getPrefBoolean(FPref.UI_SHOW_FPS);
+        altPlayerLayout = prefs.getPrefBoolean(FPref.UI_ALT_PLAYERINFOLAYOUT);
         enableUIMask = prefs.getPrefBoolean(FPref.UI_ENABLE_BORDER_MASKING);
         enablePreloadExtendedArt = prefs.getPrefBoolean(FPref.UI_ENABLE_PRELOAD_EXTENDED_ART);
         locale = prefs.getPref(FPref.UI_LANGUAGE);

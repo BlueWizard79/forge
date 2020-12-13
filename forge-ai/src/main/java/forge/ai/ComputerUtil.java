@@ -745,14 +745,9 @@ public class ComputerUtil {
             if (source.hasParam("Exploit")) {
                 for (Trigger t : host.getTriggers()) {
                     if (t.getMode() == TriggerType.Exploited) {
-                        final String execute = t.getParam("Execute");
-                        if (execute == null) {
-                            continue;
-                        }
-                        final SpellAbility exSA = AbilityFactory.getAbility(host.getSVar(execute), host);
+                        final SpellAbility exSA = t.ensureAbility().copy(ai);
 
-                        exSA.setActivatingPlayer(ai);
-                        exSA.setTrigger(true);
+                        exSA.setTrigger(t);
 
                         // Run non-mandatory trigger.
                         // These checks only work if the Executing SpellAbility is an Ability_Sub.
@@ -1573,7 +1568,7 @@ public class ComputerUtil {
                 return threatened;
             }
         } else {
-            objects = topStack.getTargets().getTargets();
+            objects = topStack.getTargets();
             final List<GameObject> canBeTargeted = new ArrayList<>();
             for (Object o : objects) {
                 if (o instanceof Card) {
@@ -1842,6 +1837,28 @@ public class ComputerUtil {
                         }
                     }
                     threatened.add(c);
+                }
+            }
+        }
+        //Generic curse auras
+        else if ((threatApi == ApiType.Attach && (topStack.isCurse() || "Curse".equals(topStack.getParam("AILogic"))))) {
+            AiController aic = aiPlayer.isAI() ? ((PlayerControllerAi)aiPlayer.getController()).getAi() : null;
+            boolean enableCurseAuraRemoval = aic != null ? aic.getBooleanProperty(AiProps.ACTIVELY_DESTROY_IMMEDIATELY_UNBLOCKABLE) : false;
+            if (enableCurseAuraRemoval) {
+                for (final Object o : objects) {
+                    if (o instanceof Card) {
+                        final Card c = (Card) o;
+                        // give Shroud to targeted creatures
+                        if ((saviourApi == ApiType.Pump || saviourApi == ApiType.PumpAll && tgt == null) && !grantShroud) {
+                            continue;
+                        }
+                        if (saviourApi == ApiType.Protection) {
+                            if (tgt == null || (ProtectAi.toProtectFrom(source, saviour) == null)) {
+                                continue;
+                            }
+                        }
+                        threatened.add(c);
+                    }
                 }
             }
         }

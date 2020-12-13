@@ -33,6 +33,8 @@ public enum CounterEnumType {
 
     LOYALTY("LOYAL", 198, 198, 198),
 
+    AEGIS("AEGIS", 207, 207, 207),
+
     AGE("AGE", 255, 137, 57),
 
     AIM("AIM", 255, 180, 0),
@@ -102,6 +104,8 @@ public enum CounterEnumType {
     FATE("FATE", 255, 164, 226),
 
     FEATHER("FTHR", 195, 202, 165),
+
+    FETCH("FETCH", 180, 235, 52),
 
     FILIBUSTER("FLBTR", 255, 179, 119),
 

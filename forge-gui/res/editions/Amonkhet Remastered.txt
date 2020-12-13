@@ -3,7 +3,7 @@ Code=AKR
 Date=2020-08-13
 Name=Amonkhet Remastered
 BoosterCovers=1
-Booster=10 Common, 3 Uncommon, 1 RareMythic:!fromSheet("AKR Box Topper")
+Booster=10 Common, 3 Uncommon, 1 RareMythic:!fromSheet("AKR buy a box")
 Type=Expansion
 
 [cards]
@@ -337,7 +337,7 @@ Type=Expansion
 328 R Scavenger Grounds
 329 U Shefet Dunes
 330 R Sheltered Thicket
-331 C Sun scorched Desert
+331 C Sunscorched Desert
 332 L Swamp
 333 L Swamp
 334 L Swamp
@@ -345,4 +345,6 @@ Type=Expansion
 336 L Swamp
 337 L Swamp
 338 L Swamp
+
+[buy a box]
 339 R Regal Caracal

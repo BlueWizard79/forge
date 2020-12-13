@@ -38,6 +38,8 @@
 2XM/Urza's Power Plant2.fullborder
 2XM/Urza's Tower2.fullborder
 2XM/Wurmcoil Engine2.fullborder
+CMR/Jeska, Thrice Reborn2.fullborder
+CMR/Tevesh Szat, Doom of Fools2.fullborder
 ELD/Garruk, Cursed Huntsman2.fullborder
 ELD/Oko, Thief of Crowns2.fullborder
 ELD/The Royal Scions2.fullborder
@@ -102,6 +104,18 @@ SLD/Oona, Queen of the Fae.fullborder
 SLD/Saskia the Unyielding.fullborder
 SLD/The Mimeoplasm.fullborder
 SLD/Voidslime.fullborder
+SLU/Brightclimb Pathway.fullborder
+SLU/Clearwater Pathway.fullborder
+SLU/Cragcrown Pathway.fullborder
+SLU/Grimclimb Pathway.fullborder
+SLU/Lavaglide Pathway.fullborder
+SLU/Murkwater Pathway.fullborder
+SLU/Needleverge Pathway.fullborder
+SLU/Pillarverge Pathway.fullborder
+SLU/Riverglide Pathway.fullborder
+SLU/Timbercrown Pathway.fullborder
+SLU/Boulderloft Pathway.fullborder
+SLU/Branchloft Pathway.fullborder
 THB/Ashiok, Nightmare Muse2.fullborder
 THB/Calix, Destiny's Hand2.fullborder
 THB/Elspeth, Sun's Nemesis2.fullborder

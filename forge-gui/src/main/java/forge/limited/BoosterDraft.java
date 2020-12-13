@@ -20,7 +20,6 @@ package forge.limited;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import forge.StaticData;
 import forge.card.CardEdition;
 import forge.deck.CardPool;
@@ -41,7 +40,6 @@ import forge.util.gui.SGuiChoose;
 import forge.util.gui.SOptionPane;
 import forge.util.storage.IStorage;
 import forge.util.Localizer;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.File;
@@ -57,7 +55,7 @@ public class BoosterDraft implements IBoosterDraft {
     private final List<LimitedPlayer> players = new ArrayList<>();
     private LimitedPlayer localPlayer;
 
-    private boolean doublePickToStartRound = false;
+    private String doublePickDuringDraft = ""; // "FirstPick" or "Always"
     protected int nextBoosterGroup = 0;
     private int currentBoosterSize = 0;
     private int currentBoosterPick = 0;
@@ -145,7 +143,7 @@ public class BoosterDraft implements IBoosterDraft {
                 } else {
                     // Only one set is chosen. If that set lets you draft 2 cards to start adjust draft settings now
                     String setCode = sets.get(0);
-                    doublePickToStartRound = FModel.getMagicDb().getEditions().get(setCode).getDoublePickToStartRound();
+                    doublePickDuringDraft = FModel.getMagicDb().getEditions().get(setCode).getDoublePickDuringDraft();
 
                     final IUnOpenedProduct product1 = block.getBooster(setCode);
 
@@ -181,34 +179,40 @@ public class BoosterDraft implements IBoosterDraft {
                 break;
 
             case Chaos:
+                /**
+                 * A chaos draft consists of boosters from many different sets.
+                 * Default settings are boosters from all sets with a booster size of 15 cards.
+                 * Alternatively, the sets can be restricted to a format like Modern or to a theme.
+                 * Examples for themes: sets that take place on a certain plane, core sets, masters sets,
+                 * or sets that share a mechanic.
+                 */
+                // Get chaos draft themes
+                final List<ThemedChaosDraft> themes = new ArrayList<>();
+                final IStorage<ThemedChaosDraft> themeStorage = FModel.getThemedChaosDrafts();
+                for (final ThemedChaosDraft theme : themeStorage) {
+                    themes.add(theme);
+                }
+                Collections.sort(themes); // sort for user interface
+                // Ask user to select theme
+                final String dialogQuestion = Localizer.getInstance().getMessage("lblChooseChaosTheme");
+                final ThemedChaosDraft theme = SGuiChoose.oneOrNone(dialogQuestion, themes);
+                if (theme == null) {
+                    return false; // abort if no theme is selected
+                }
+                // Filter all sets by theme restrictions
+                final Predicate<CardEdition> themeFilter = theme.getEditionFilter();
                 final CardEdition.Collection allEditions = StaticData.instance().getEditions();
-                final Iterable<CardEdition> chaosDraftEditions = Iterables.filter(allEditions.getOrderedEditions(), new Predicate<CardEdition>() {
-                    @Override
-                    public boolean apply(final CardEdition cardEdition) {
-                        boolean isExpansion = cardEdition.getType().equals(CardEdition.Type.EXPANSION);
-                        boolean isCoreSet = cardEdition.getType().equals(CardEdition.Type.CORE);
-                        boolean isReprintSet = cardEdition.getType().equals(CardEdition.Type.REPRINT);
-                        if (isExpansion || isCoreSet || isReprintSet) {
-                            // Only allow sets with 15 cards in booster packs
-                            if (cardEdition.hasBoosterTemplate()) {
-                                final List<Pair<String, Integer>> slots = cardEdition.getBoosterTemplate().getSlots();
-                                int boosterSize = 0;
-                                for (Pair<String, Integer> slot : slots) {
-                                    boosterSize += slot.getRight();
-                                }
-                                return boosterSize == 15;
-                            }
-                        }
-                        return false;
-                    }
-                });
-
-                // Randomize order of sets
-                List<CardEdition> shuffled = Lists.newArrayList(chaosDraftEditions);
-                Collections.shuffle(shuffled);
-
-                final Supplier<List<PaperCard>> ChaosDraftSupplier = new ChaosBoosterSupplier(shuffled);
-
+                final Iterable<CardEdition> chaosDraftEditions = Iterables.filter(
+                        allEditions.getOrderedEditions(),
+                        themeFilter);
+                // Add chaos "boosters" as special suppliers
+                final Supplier<List<PaperCard>> ChaosDraftSupplier;
+                try {
+                    ChaosDraftSupplier = new ChaosBoosterSupplier(chaosDraftEditions);
+                } catch(IllegalArgumentException e) {
+                    System.out.println(e.getMessage());
+                    return false;
+                }
                 for (int i = 0; i < 3; i++) {
                     this.product.add(ChaosDraftSupplier);
                 }
@@ -366,7 +370,10 @@ public class BoosterDraft implements IBoosterDraft {
     public void passPacks() {
         // Alternate direction of pack passing
         int adjust = this.nextBoosterGroup % 2 == 1 ? 1 : -1;
-        if (this.doublePickToStartRound && currentBoosterPick == 1) {
+        if ("FirstPick".equals(this.doublePickDuringDraft) && currentBoosterPick == 1) {
+            adjust = 0;
+        } else if (currentBoosterPick % 2 == 1 && "Always".equals(this.doublePickDuringDraft)) {
+            // This may not work with Conspiracy cards that mess with the draft
             adjust = 0;
         }
 
