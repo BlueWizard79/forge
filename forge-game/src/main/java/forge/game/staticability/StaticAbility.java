@@ -346,7 +346,6 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
         if (mode.equals("CantBeCast")) {
             return StaticAbilityCantBeCast.applyCantBeCastAbility(this, card, player);
         }
-
         if (mode.equals("CantPlayLand")) {
             return StaticAbilityCantBeCast.applyCantPlayLandAbility(this, card, player);
         }
@@ -565,6 +564,7 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
             if (condition.equals("Ferocious") && !controller.hasFerocious()) return false;
             if (condition.equals("Desert") && !controller.hasDesert()) return false;
             if (condition.equals("Blessing") && !controller.hasBlessing()) return false;
+            if (condition.equals("Monarch") & !controller.isMonarch()) return false;
 
             if (condition.equals("PlayerTurn")) {
                 if (!ph.isPlayerTurn(controller)) {

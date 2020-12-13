@@ -23,6 +23,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import forge.card.CardStateName;
+import forge.card.ColorSet;
 import forge.card.mana.ManaCost;
 import forge.game.*;
 import forge.game.ability.AbilityFactory;
@@ -46,6 +47,7 @@ import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.replacement.ReplacementEffect;
 import forge.game.staticability.StaticAbility;
+import forge.game.staticability.StaticAbilityCastWithFlash;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.trigger.WrappedAbility;
@@ -94,8 +96,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private SpellAbility grantorOriginal = null;
     private StaticAbility grantorStatic = null;
 
-    private SpellAbility mayPlayOriginal = null;
-
     private CardCollection splicedCards = null;
 
     private boolean basicSpell = true;
@@ -128,8 +128,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
     protected ApiType api = null;
 
-    private final List<Mana> payingMana = Lists.newArrayList();
-    private final List<SpellAbility> paidAbilities = Lists.newArrayList();
+    private List<Mana> payingMana = Lists.newArrayList();
+    private List<SpellAbility> paidAbilities = Lists.newArrayList();
     private Integer xManaCostPaid = null;
 
     private HashMap<String, CardCollection> paidLists = Maps.newHashMap();
@@ -351,6 +351,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
     public boolean isSpell() { return false; }
     public boolean isAbility() { return true; }
+    public boolean isActivatedAbility() { return false; }
 
     public boolean isMorphUp() {
         return this.hasParam("MorphUp");
@@ -384,15 +385,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 sa.setOriginalHost(c);
             }
         }
-    }
-
-
-    public SpellAbility getMayPlayOriginal() {
-        return mayPlayOriginal;
-    }
-
-    public void setMayPlayOriginal(SpellAbility mayPlayOriginal) {
-        this.mayPlayOriginal = mayPlayOriginal;
     }
 
     // If this is not null, then ability was made in a factory
@@ -474,6 +466,14 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
     public final void clearManaPaid() {
         payingMana.clear();
+    }
+
+    public ColorSet getPayingColors() {
+        byte colors = 0;
+        for (Mana m : payingMana) {
+            colors |= m.getColor();
+        }
+        return ColorSet.fromMask(colors);
     }
 
     public List<SpellAbility> getPayingManaAbilities() {
@@ -879,6 +879,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 clone.changeZoneTable.putAll(changeZoneTable);
             }
 
+            clone.payingMana = Lists.newArrayList(payingMana);
+            clone.paidAbilities = Lists.newArrayList();
             clone.setPaidHash(Maps.newHashMap(getPaidHash()));
 
             if (usesTargeting()) {
@@ -1723,7 +1725,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             }
         }
         else if (incR[0].equals("Activated")) {
-            if (!(root instanceof AbilityActivated)) {
+            if (!root.isActivatedAbility()) {
                 return false;
             }
         }
@@ -2024,4 +2026,42 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     public void setXManaCostPaid(final Integer n) {
         xManaCostPaid = n;
     }
+
+    public boolean canCastTiming(Player activator) {
+        return canCastTiming(getHostCard(), activator);
+    }
+
+    public boolean canCastTiming(Card host, Player activator) {
+        // no spell or no activated ability, no check there
+        if (!isSpell() && !isActivatedAbility()) {
+            return true;
+        }
+
+        if (activator.canCastSorcery() || withFlash(host, activator)) {
+            return true;
+        }
+
+        // spells per default are sorcerySpeed
+        if (isSpell()) {
+            return false;
+        } else if (isActivatedAbility()) {
+            // Activated Abillties are instant speed per default
+            return !getRestrictions().isSorcerySpeed();
+        }
+        return true;
+    }
+
+    public boolean withFlash(Card host, Player activator) {
+        if (getRestrictions().isInstantSpeed()) {
+            return true;
+        }
+        if (isSpell()) {
+            if (hasSVar("IsCastFromPlayEffect") || host.isInstant() || host.hasKeyword(Keyword.FLASH)) {
+                return true;
+            }
+        }
+
+        return StaticAbilityCastWithFlash.anyWithFlash(this, host, activator);
+    }
+
 }

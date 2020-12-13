@@ -12,7 +12,6 @@ import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
-import forge.game.spellability.AbilityActivated;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityPredicates;
 import forge.game.spellability.TargetChoices;
@@ -225,6 +224,8 @@ public class CostAdjustment {
                     } else if (!test) {
                         sa.getHostCard().addDelved(c);
                         final Card d = game.getAction().exile(c, null);
+                        d.setExiledWith(sa.getHostCard());
+                        d.setExiledBy(sa.getHostCard().getController());
                         table.put(ZoneType.Graveyard, d.getZone().getZoneType(), d);
                     }
                 }
@@ -466,11 +467,11 @@ public class CostAdjustment {
                     }
                 }
             } else if (type.equals("Ability")) {
-                if (!(sa instanceof AbilityActivated) || sa.isReplacementAbility()) {
+                if (!sa.isActivatedAbility() || sa.isReplacementAbility()) {
                     return false;
                 }
             } else if (type.equals("NonManaAbility")) {
-                if (!(sa instanceof AbilityActivated) || sa.isManaAbility() || sa.isReplacementAbility()) {
+                if (!sa.isActivatedAbility() || sa.isManaAbility() || sa.isReplacementAbility()) {
                     return false;
                 }
             } else if (type.equals("Buyback")) {
@@ -486,7 +487,7 @@ public class CostAdjustment {
                     return false;
                 }
             } else if (type.equals("Equip")) {
-                if (!(sa instanceof AbilityActivated) || !sa.hasParam("Equip")) {
+                if (!sa.isActivatedAbility() || !sa.hasParam("Equip")) {
                     return false;
                 }
             } else if (type.equals("Flashback")) {

@@ -306,6 +306,13 @@ public class CardView extends GameEntityView {
         set(TrackableProperty.ChosenType, c.getChosenType());
     }
 
+    public String getChosenNumber() {
+        return get(TrackableProperty.ChosenNumber);
+    }
+    void updateChosenNumber(Card c) {
+        set(TrackableProperty.ChosenNumber, c.getChosenNumber().toString());
+    }
+
     public List<String> getChosenColors() {
         return get(TrackableProperty.ChosenColors);
     }
@@ -369,6 +376,12 @@ public class CardView extends GameEntityView {
     void updateNamedCard(Card c) {
         set(TrackableProperty.NamedCard, c.getNamedCard());
     }
+    public String getNamedCard2() {
+        return get(TrackableProperty.NamedCard2);
+    }
+    void updateNamedCard2(Card c) {
+        set(TrackableProperty.NamedCard2, c.getNamedCard2());
+    }
 
     public boolean mayPlayerLook(PlayerView pv) {
         TrackableCollection<PlayerView> col = get(TrackableProperty.PlayerMayLook);
@@ -386,6 +399,7 @@ public class CardView extends GameEntityView {
         if (viewers == null || Iterables.isEmpty(viewers)) { return true; }
 
         return Iterables.any(viewers, new Predicate<PlayerView>() {
+            @Override
             public final boolean apply(final PlayerView input) {
                 return canBeShownTo(input);
             }
@@ -443,21 +457,24 @@ public class CardView extends GameEntityView {
 
         //if viewer is controlled by another player, also check if card can be shown to that player
         PlayerView mindSlaveMaster = controller.getMindSlaveMaster();
-        if (mindSlaveMaster != null && mindSlaveMaster == viewer) {
+        if (mindSlaveMaster != null && mindSlaveMaster != controller && mindSlaveMaster == viewer) {
             return canBeShownTo(controller);
         }
         return false;
     }
 
     public boolean canFaceDownBeShownToAny(final Iterable<PlayerView> viewers) {
+        if (viewers == null || Iterables.isEmpty(viewers)) { return true; }
+
         return Iterables.any(viewers, new Predicate<PlayerView>() {
-            @Override public final boolean apply(final PlayerView input) {
-                return canFaceDownBeShownTo(input);
+            @Override
+            public final boolean apply(final PlayerView input) {
+                return canFaceDownBeShownTo(input, false);
             }
         });
     }
 
-    private boolean canFaceDownBeShownTo(final PlayerView viewer) {
+    private boolean canFaceDownBeShownTo(final PlayerView viewer, boolean skip) {
         if (!isFaceDown()) {
             return true;
         }
@@ -466,12 +483,14 @@ public class CardView extends GameEntityView {
         if (mayPlayerLook(viewer)) {
             return true;
         }
-
-        //if viewer is controlled by another player, also check if face can be shown to that player
-        final PlayerView mindSlaveMaster = viewer.getMindSlaveMaster();
-        if (mindSlaveMaster != null && canFaceDownBeShownTo(mindSlaveMaster)) {
-            return true;
+        if (!skip) {
+            //if viewer is controlled by another player, also check if face can be shown to that player
+            final PlayerView mindSlaveMaster = viewer.getMindSlaveMaster();
+            if (mindSlaveMaster != null) {
+                return canFaceDownBeShownTo(mindSlaveMaster, true);
+            }
         }
+
         return isInZone(EnumSet.of(ZoneType.Battlefield, ZoneType.Stack, ZoneType.Sideboard)) && getController().equals(viewer);
     }
 
@@ -1139,6 +1158,9 @@ public class CardView extends GameEntityView {
         public boolean hasStorm() {
             return get(TrackableProperty.HasStorm);
         }
+        public boolean hasLandwalk() {
+            return get(TrackableProperty.HasLandwalk);
+        }
 
         public String getAbilityText() {
             return get(TrackableProperty.AbilityText);
@@ -1169,6 +1191,7 @@ public class CardView extends GameEntityView {
             set(TrackableProperty.HasHaste, c.hasKeyword(Keyword.HASTE, state));
             set(TrackableProperty.HasInfect, c.hasKeyword(Keyword.INFECT, state));
             set(TrackableProperty.HasStorm, c.hasKeyword(Keyword.STORM, state));
+            set(TrackableProperty.HasLandwalk, c.hasKeyword(Keyword.LANDWALK, state));
             updateAbilityText(c, state);
             //set protectionKey for Icons
             set(TrackableProperty.ProtectionKey, c.getProtectionKey());

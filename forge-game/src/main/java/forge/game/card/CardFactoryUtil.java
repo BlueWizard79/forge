@@ -198,9 +198,18 @@ public class CardFactoryUtil {
         Predicate<ICardFace> cpp = Predicates.alwaysTrue();
         //Predicate<Card> pc = Predicates.in(player.getAllCards());
         // TODO This would be better to send in the player's deck, not all cards
-        String name = player.getController().chooseCardName(sa, cpp, "Card", "Name a card for " + card.getName());
+        String name = player.getController().chooseCardName(sa, cpp, "Card",
+                "Name a card for " + card.getName());
         if (name == null || name.isEmpty()) {
             return false;
+        }
+        if (card.hasKeyword("Double agenda")) {
+            String name2 = player.getController().chooseCardName(sa, cpp, "Card",
+                    "Name a second card for " + card.getName());
+            if (name2 == null || name2.isEmpty()) {
+                return false;
+            }
+            card.setNamedCard2(name2);
         }
 
         card.setNamedCard(name);
@@ -377,13 +386,7 @@ public class CardFactoryUtil {
         }
 
         if (s.startsWith("Valid")) {
-            final CardCollection cards = new CardCollection();
-            for (Object o : objects) {
-                if (o instanceof Card) {
-                    cards.add((Card) o);
-                }
-            }
-            return CardFactoryUtil.handlePaid(cards, s, source);
+            return CardFactoryUtil.handlePaid(Iterables.filter(objects, Card.class), s, source);
         }
 
         int n = s.startsWith("Amount") ? objects.size() : 0;
@@ -600,9 +603,15 @@ public class CardFactoryUtil {
         if (value.contains("LifeGainedThisTurn")) {
             return doXMath(player.getLifeGainedThisTurn(), m, source);
         }
+
         if (value.contains("LifeGainedByTeamThisTurn")) {
             return doXMath(player.getLifeGainedByTeamThisTurn(), m, source);
         }
+
+        if (value.contains("LifeStartedThisTurnWith")) {
+            return doXMath(player.getLifeStartedThisTurnWith(), m, source);
+        }
+
         if (value.contains("PoisonCounters")) {
             return doXMath(player.getPoisonCounters(), m, source);
         }
@@ -915,15 +924,6 @@ public class CardFactoryUtil {
             return doXMath(cc.getSpellsCastThisGame(), m, c);
         }
 
-        if (sq[0].equals("FirstSpellTotalManaSpent")) {
-            try{
-                return doXMath(c.getFirstSpellAbility().getTotalManaSpent(), m, c);
-            } catch (NullPointerException e) {
-                // This spell was not cast
-                return 0;
-            }
-
-        }
         if (sq[0].equals("StormCount")) {
             return doXMath(game.getStack().getSpellsCastThisTurn().size() - 1, m, c);
         }
@@ -1100,7 +1100,7 @@ public class CardFactoryUtil {
         if (sq[0].contains("ColorsCtrl")) {
             final String restriction = l[0].substring(11);
             final String[] rest = restriction.split(",");
-            final CardCollection list = CardLists.getValidCards(cc.getGame().getCardsInGame(), rest, cc, c, null);
+            final CardCollection list = CardLists.getValidCards(cc.getCardsIn(ZoneType.Battlefield), rest, cc, c, null);
             byte n = 0;
             for (final Card card : list) {
                 n |= card.determineColor().getColor();
@@ -1176,9 +1176,14 @@ public class CardFactoryUtil {
             return doXMath(Integer.parseInt(sq[cc.hasThreshold() ? 1 : 2]), m, c);
         }
         if (sq[0].contains("Averna")) {
-            if (cc.hasKeyword("As you cascade, you may put a land card from among the exiled cards onto the" +
-                    " battlefield tapped.")) { return 1; }
-            else return 0;
+            int kwcount = 0;
+            for (String kw : cc.getKeywords()) {
+                if (kw.equals("As you cascade, you may put a land card from among the exiled cards onto the " +
+                        "battlefield tapped.")) {
+                    kwcount++;
+                }
+            }
+            return kwcount;
         }
         if (sq[0].startsWith("Kicked")) {
             return doXMath(Integer.parseInt(sq[c.getKickerMagnitude() > 0 ? 1 : 2]), m, c);
@@ -1532,16 +1537,8 @@ public class CardFactoryUtil {
         }
         // Count$Converge
         if (sq[0].contains("Converge")) {
-            return doXMath(c.getSunburstValue(), m, c);
-        }
-        // Count$ColoredCreatures *a DOMAIN for creatures*
-        if (sq[0].contains("ColoredCreatures")) {
-            int mask = 0;
-            CardCollection someCards = CardLists.filter(cc.getCardsIn(ZoneType.Battlefield), Presets.CREATURES);
-            for (final Card crd : someCards) {
-                mask |= CardUtil.getColors(crd).getColor();
-            }
-            return doXMath(ColorSet.fromMask(mask).countColors(), m, c);
+            SpellAbility castSA = c.getCastSA();
+            return doXMath(castSA == null ? 0 : castSA.getPayingColors().countColors(), m, c);
         }
 
         // Count$CardMulticolor.<numMC>.<numNotMC>
@@ -1824,7 +1821,7 @@ public class CardFactoryUtil {
      *            a {@link forge.game.card.Card} object.
      * @return a int.
      */
-    public static int handlePaid(final CardCollectionView paidList, final String string, final Card source) {
+    public static int handlePaid(final Iterable<Card> paidList, final String string, final Card source) {
         if (paidList == null) {
             if (string.contains(".")) {
                 final String[] splitString = string.split("\\.", 2);
@@ -1834,11 +1831,12 @@ public class CardFactoryUtil {
             }
         }
         if (string.startsWith("Amount")) {
+            int size = Iterables.size(paidList);
             if (string.contains(".")) {
                 final String[] splitString = string.split("\\.", 2);
-                return doXMath(paidList.size(), splitString[1], source);
+                return doXMath(size, splitString[1], source);
             } else {
-                return paidList.size();
+                return size;
             }
 
         }
@@ -1863,18 +1861,18 @@ public class CardFactoryUtil {
 
             final String[] splitString = string.split("/", 2);
             String valid = splitString[0].substring(6);
-            final CardCollection list = CardLists.getValidCards(paidList, valid, source.getController(), source);
+            final List<Card> list = CardLists.getValidCardsAsList(paidList, valid, source.getController(), source);
             return doXMath(list.size(), splitString.length > 1 ? splitString[1] : null, source);
         }
 
         String filteredString = string;
-        CardCollection filteredList = new CardCollection(paidList);
+        Iterable<Card> filteredList = paidList;
         final String[] filter = filteredString.split("_");
 
         if (string.startsWith("FilterControlledBy")) {
             final String pString = filter[0].substring(18);
             FCollectionView<Player> controllers = AbilityUtils.getDefinedPlayers(source, pString, null);
-            filteredList = CardLists.filterControlledBy(filteredList, controllers);
+            filteredList = CardLists.filterControlledByAsList(filteredList, controllers);
             filteredString = TextUtil.fastReplace(filteredString, pString, "");
             filteredString = TextUtil.fastReplace(filteredString, "FilterControlledBy_", "");
         }
@@ -2368,9 +2366,9 @@ public class CardFactoryUtil {
             SpellAbility dig = AbilityFactory.getAbility(abString, card);
             dig.setSVar("CascadeX", "Count$CardManaCost");
 
-            final String dbLandPut = "DB$ ChangeZone | ConditionCheckSVar$ X | ConditionSVarCompare$ EQ1" +
+            final String dbLandPut = "DB$ ChangeZone | ConditionCheckSVar$ X | ConditionSVarCompare$ GE1" +
                     " | Hidden$ True | Origin$ Exile | Destination$ Battlefield | ChangeType$ Land.IsRemembered" +
-                    " | ChangeNum$ 1 | Tapped$ True | ForgetChanged$ True" +
+                    " | ChangeNum$ X | Tapped$ True | ForgetChanged$ True" +
                     " | SelectPrompt$ You may select a land to put on the battlefield tapped";
             AbilitySub landPut = (AbilitySub)AbilityFactory.getAbility(dbLandPut, card);
             landPut.setSVar("X", "Count$Averna");

@@ -697,6 +697,8 @@ public class AiController {
 
     public AiPlayDecision canPlaySa(SpellAbility sa) {
         final Card card = sa.getHostCard();
+        final boolean isRightTiming = sa.canCastTiming(player);
+
         if (!checkAiSpecificRestrictions(sa)) {
             return AiPlayDecision.CantPlayAi;
         }
@@ -740,20 +742,22 @@ public class AiController {
         }
         else {
             Cost payCosts = sa.getPayCosts();
-            ManaCost mana = payCosts.getTotalMana();
-            if (mana != null) {
-                if(mana.countX() > 0) {
-                    // Set PayX here to maximum value.
-                    final int xPay = ComputerUtilMana.determineLeftoverMana(sa, player);
-                    if (xPay <= 0) {
-                        return AiPlayDecision.CantAffordX;
-                    }
-                    card.setSVar("PayX", Integer.toString(xPay));
-                } else if (mana.isZero()) {
-                    // if mana is zero, but card mana cost does have X, then something is wrong
-                    ManaCost cardCost = card.getManaCost(); 
-                    if (cardCost != null && cardCost.countX() > 0) {
-                        return AiPlayDecision.CantPlayAi;
+            if(payCosts != null) {
+                ManaCost mana = payCosts.getTotalMana();
+                if (mana != null) {
+                    if(mana.countX() > 0) {
+                        // Set PayX here to maximum value.
+                        final int xPay = ComputerUtilMana.determineLeftoverMana(sa, player);
+                        if (xPay <= 0) {
+                            return AiPlayDecision.CantAffordX;
+                        }
+                        card.setSVar("PayX", Integer.toString(xPay));
+                    } else if (mana.isZero()) {
+                        // if mana is zero, but card mana cost does have X, then something is wrong
+                        ManaCost cardCost = card.getManaCost();
+                        if (cardCost != null && cardCost.countX() > 0) {
+                            return AiPlayDecision.CantPlayAi;
+                        }
                     }
                 }
             }
@@ -762,6 +766,9 @@ public class AiController {
             return AiPlayDecision.CurseEffects;
         }
         if (sa instanceof SpellPermanent) {
+            if (!isRightTiming) {
+                return AiPlayDecision.AnotherTime;
+            }
             return canPlayFromEffectAI((SpellPermanent)sa, false, true);
         }
         if (sa.usesTargeting() && !sa.isTargetNumberValid()) {
@@ -774,7 +781,13 @@ public class AiController {
                     && !player.cantLoseForZeroOrLessLife() && player.canLoseLife()) {
                 return AiPlayDecision.CurseEffects;
             }
+            if (!isRightTiming) {
+                return AiPlayDecision.AnotherTime;
+            }
             return canPlaySpellBasic(card, sa);
+        }
+        if (!isRightTiming) {
+            return AiPlayDecision.AnotherTime;
         }
         return AiPlayDecision.WillPlay;
     }
@@ -1578,10 +1591,18 @@ public class AiController {
             }
 
             sa.setActivatingPlayer(player);
-            sa.setLastStateBattlefield(game.getLastStateBattlefield());
-            sa.setLastStateGraveyard(game.getLastStateGraveyard());
+            SpellAbility root = sa.getRootAbility();
+
+            if (root.isSpell() || root.isTrigger() || root.isReplacementAbility()) {
+                sa.setLastStateBattlefield(game.getLastStateBattlefield());
+                sa.setLastStateGraveyard(game.getLastStateGraveyard());
+            }
 
             AiPlayDecision opinion = canPlayAndPayFor(sa);
+
+            // reset LastStateBattlefield
+            sa.setLastStateBattlefield(CardCollection.EMPTY);
+            sa.setLastStateGraveyard(CardCollection.EMPTY);
             // PhaseHandler ph = game.getPhaseHandler();
             // System.out.printf("Ai thinks '%s' of %s -> %s @ %s %s >>> \n", opinion, sa.getHostCard(), sa, Lang.getPossesive(ph.getPlayerTurn().getName()), ph.getPhase());
             
@@ -1781,6 +1802,9 @@ public class AiController {
             throw new UnsupportedOperationException();
         }
         CardCollection result = new CardCollection();
+        if (sa.hasParam("AIMaxAmount")) {
+            max = AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("AIMaxAmount"), sa);
+        }
         switch(sa.getApi()) {
             case TwoPiles:
                 // TODO: improve AI

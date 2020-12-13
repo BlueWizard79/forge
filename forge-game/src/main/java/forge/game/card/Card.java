@@ -111,8 +111,6 @@ public class Card extends GameEntity implements Comparable<Card> {
 
     private final Map<StaticAbility, CardPlayOption> mayPlay = Maps.newHashMap();
 
-    private final Multimap<Long, Player> withFlash = HashMultimap.create();
-
     // changes by AF animate and continuous static effects - timestamp is the key of maps
     private final Map<Long, CardChangedType> changedCardTypes = Maps.newTreeMap();
     private final NavigableMap<Long, String> changedCardNames = Maps.newTreeMap();
@@ -220,9 +218,6 @@ public class Card extends GameEntity implements Comparable<Card> {
 
     private Map<String, Integer> xManaCostPaidByColor;
 
-    private int sunburstValue = 0;
-    private byte colorsPaid = 0;
-
     private Player owner = null;
     private Player controller = null;
     private long controllerTimestamp = 0;
@@ -232,6 +227,7 @@ public class Card extends GameEntity implements Comparable<Card> {
     private String chosenType = "";
     private List<String> chosenColors;
     private String chosenName = "";
+    private String chosenName2 = "";
     private Integer chosenNumber;
     private Player chosenPlayer;
     private EvenOdd chosenEvenOdd = null;
@@ -1054,20 +1050,6 @@ public class Card extends GameEntity implements Comparable<Card> {
         }
     }
 
-    public final int getSunburstValue() {
-        return sunburstValue;
-    }
-    public final void setSunburstValue(final int valueIn) {
-        sunburstValue = valueIn;
-    }
-
-    public final byte getColorsPaid() {
-        return colorsPaid;
-    }
-    public final void setColorsPaid(final byte s) {
-        colorsPaid |= s;
-    }
-
     public final int getXManaCostPaid() {
         if (getCastSA() != null) {
             Integer paid = getCastSA().getXManaCostPaid();
@@ -1455,6 +1437,7 @@ public class Card extends GameEntity implements Comparable<Card> {
     }
     public final void setChosenNumber(final int i) {
         chosenNumber = i;
+        view.updateChosenNumber(this);
     }
 
     public final Card getExiledWith() {
@@ -1542,6 +1525,7 @@ public class Card extends GameEntity implements Comparable<Card> {
     public boolean hasChosenName() {
         return chosenName != null;
     }
+    public boolean hasChosenName2() { return chosenName2 != null; }
 
     public String getChosenName() {
         return chosenName;
@@ -1549,6 +1533,13 @@ public class Card extends GameEntity implements Comparable<Card> {
     public final void setChosenName(final String s) {
         chosenName = s;
         view.updateNamedCard(this);
+    }
+    public String getChosenName2() {
+        return chosenName2;
+    }
+    public final void setChosenName2(final String s) {
+        chosenName2 = s;
+        view.updateNamedCard2(this);
     }
 
     public boolean hasChosenEvenOdd() {
@@ -1570,6 +1561,10 @@ public class Card extends GameEntity implements Comparable<Card> {
     }
     public final void setNamedCard(final String s) {
         setChosenName(s);
+    }
+    public final String getNamedCard2() { return getChosenName2(); }
+    public final void setNamedCard2(final String s) {
+        setChosenName2(s);
     }
 
     public final boolean getDrawnThisTurn() {
@@ -6421,7 +6416,6 @@ public class Card extends GameEntity implements Comparable<Card> {
 
         removeSVar("PayX"); // Temporary AI X announcement variable
         removeSVar("IsCastFromPlayEffect"); // Temporary SVar indicating that the spell is cast indirectly via AF Play
-        setSunburstValue(0); // Sunburst
         setXManaCostPaidByColor(null);
         setKickerMagnitude(0);
         setPseudoMultiKickerMagnitude(0);
@@ -6436,21 +6430,6 @@ public class Card extends GameEntity implements Comparable<Card> {
             }
         }
         return n;
-    }
-
-    public boolean withFlash(Player p) {
-        if (hasKeyword(Keyword.FLASH)) {
-            return true;
-        }
-        return withFlash.containsValue(p);
-    }
-
-    public void addWithFlash(Long timestamp, Iterable<Player> players) {
-        withFlash.putAll(timestamp, players);
-    }
-
-    public void removeWithFlash(Long timestamp) {
-        withFlash.removeAll(timestamp);
     }
 
     public boolean canBeDiscardedBy(SpellAbility sa) {

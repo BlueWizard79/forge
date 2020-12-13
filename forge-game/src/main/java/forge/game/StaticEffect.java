@@ -180,7 +180,6 @@ public class StaticEffect {
         boolean setPT = false;
         String[] addHiddenKeywords = null;
         boolean removeMayPlay = false;
-        boolean removeWithFlash = false;
 
         if (hasParam("ChangeColorWordsTo")) {
             changeColorWordsTo = getParam("ChangeColorWordsTo");
@@ -197,9 +196,6 @@ public class StaticEffect {
         if (hasParam("MayPlay")) {
             removeMayPlay = true;
         }
-        if (hasParam("WithFlash")) {
-            removeWithFlash = true;
-        }
 
         if (hasParam("IgnoreEffectCost")) {
             getSource().removeChangedCardTraits(getTimestamp());
@@ -214,6 +210,7 @@ public class StaticEffect {
             p.removeMaxLandPlays(getTimestamp());
             p.removeMaxLandPlaysInfinite(getTimestamp());
 
+            p.removeControlledWhileSearching(getTimestamp());
             p.removeControlVote(getTimestamp());
             p.removeAdditionalVote(getTimestamp());
             p.removeAdditionalOptionalVote(getTimestamp());
@@ -282,9 +279,6 @@ public class StaticEffect {
             }
             if (removeMayPlay) {
                 affectedCard.removeMayPlay(ability);
-            }
-            if (removeWithFlash) {
-                affectedCard.removeWithFlash(getTimestamp());
             }
 
             if (hasParam("GainTextOf")) {

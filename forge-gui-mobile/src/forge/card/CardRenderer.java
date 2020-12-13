@@ -465,7 +465,8 @@ public class CardRenderer {
                     if (ImageCache.isBorderlessCardArt(image))
                         g.drawImage(image, x, y, w, h);
                     else {
-                        g.drawImage(ImageCache.getBorderImage(image.toString()), x, y, w, h);
+                        //tint the border
+                        g.drawImage(ImageCache.getBorderImage(image.toString()), ImageCache.borderColor(image), x, y, w, h);
                         g.drawImage(ImageCache.croppedBorderImage(image), x + radius / 2.4f-minusxy, y + radius / 2-minusxy, w * croppedArea, h * croppedArea);
                     }
                 } else
@@ -653,6 +654,11 @@ public class CardRenderer {
                 abiY += abiSpace;
                 abiCount += 1;
             }
+            if (card.isCommander()) {
+                CardFaceSymbols.drawSymbol("commander", g, abiX, abiY, abiScale, abiScale);
+                abiY += abiSpace;
+                abiCount += 1;
+            }
             if (card.getCurrentState().hasFlying()) {
                 CardFaceSymbols.drawSymbol("flying", g, abiX, abiY, abiScale, abiScale);
                 abiY += abiSpace;
@@ -712,6 +718,11 @@ public class CardRenderer {
             if (card.getCurrentState().hasHorsemanship()) {
                 if (abiCount > 5 ) { abiY = cy + (abiSpace * (abiCount - 6)); abiX = cx + ((cw*2)/1.92f); }
                 CardFaceSymbols.drawSymbol("horsemanship", g, abiX, abiY, abiScale, abiScale);
+                abiY += abiSpace;
+                abiCount += 1;
+            }
+            if (card.getCurrentState().hasLandwalk()) {
+                CardFaceSymbols.drawSymbol("landwalk", g, abiX, abiY, abiScale, abiScale);
                 abiY += abiSpace;
                 abiCount += 1;
             }

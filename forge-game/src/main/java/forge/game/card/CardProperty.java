@@ -54,6 +54,10 @@ public class CardProperty {
             if (!card.sharesNameWith(source.getNamedCard())) {
                 return false;
             }
+        } else if (property.equals("NamedCard2")) {
+            if (!card.sharesNameWith(source.getNamedCard2())) {
+                return false;
+            }
         } else if (property.equals("NamedByRememberedPlayer")) {
             if (!source.hasRemembered()) {
                 final Card newCard = game.getCardState(source);
@@ -718,8 +722,11 @@ public class CardProperty {
                         }
                         break;
                     case "ActivationColor":
-                        byte manaSpent = source.getColorsPaid();
-                        if (!CardUtil.getColors(card).hasAnyColor(manaSpent)) {
+                        SpellAbility castSA = source.getCastSA();
+                        if (castSA == null) {
+                            return false;
+                        }
+                        if (!CardUtil.getColors(card).hasAnyColor(castSA.getPayingColors().getColor())) {
                             return false;
                         }
                         break;
@@ -1097,6 +1104,10 @@ public class CardProperty {
             }
         } else if (property.startsWith("DrawnThisTurn")) {
             if (!card.getDrawnThisTurn()) {
+                return false;
+            }
+        } else if (property.startsWith("notDrawnThisTurn")) {
+            if (card.getDrawnThisTurn()) {
                 return false;
             }
         } else if (property.startsWith("enteredBattlefieldThisTurn")) {

@@ -201,10 +201,6 @@ public class GameAction {
             }
 
             if (!c.isToken()) {
-                if (c.removeChangedState()) {
-                    c.updateStateForView();
-                }
-
                 copied = CardFactory.copyCard(c, false);
 
                 if (fromBattlefield) {
@@ -537,9 +533,6 @@ public class GameAction {
         } else if (zoneTo.is(ZoneType.Stack)) {
             c.setCastFrom(zoneFrom.getZoneType());
             if (cause != null && cause.isSpell() && c.equals(cause.getHostCard()) && !c.isCopiedSpell()) {
-                cause.setLastStateBattlefield(game.getLastStateBattlefield());
-                cause.setLastStateGraveyard(game.getLastStateGraveyard());
-
                 c.setCastSA(cause);
             } else {
                 c.setCastSA(null);
@@ -951,6 +944,7 @@ public class GameAction {
         // do this multiple times, sometimes creatures/permanents will survive when they shouldn't
         boolean orderedDesCreats = false;
         boolean orderedNoRegCreats = false;
+        CardCollection cardsToUpdateLKI = new CardCollection();
         for (int q = 0; q < 9; q++) {
             checkStaticAbilities(false, affectedCards, CardCollection.EMPTY);
             boolean checkAgain = false;
@@ -1022,6 +1016,9 @@ public class GameAction {
                 if (c.getCounters(dreamType) > 7 && c.hasKeyword("CARDNAME can't have more than seven dream counters on it.")) {
                     c.subtractCounter(dreamType,  c.getCounters(dreamType) - 7);
                     checkAgain = true;
+                }
+                if (checkAgain) {
+                    cardsToUpdateLKI.add(c);
                 }
             }
 
@@ -1098,7 +1095,10 @@ public class GameAction {
         // trigger reset above will activate the copy's Always trigger, which needs to be triggered at
         // this point.
         checkStaticAbilities(false, affectedCards, CardCollection.EMPTY);
-        game.copyLastState();
+
+        for (final Card c : cardsToUpdateLKI) {
+            game.updateLastStateForCard(c);
+        }
 
         if (!refreeze) {
             game.getStack().unfreezeStack();
@@ -1765,7 +1765,7 @@ public class GameAction {
         }
     }
 
-    public void becomeMonarch(final Player p) {
+    public void becomeMonarch(final Player p, final String set) {
         final Player previous = game.getMonarch();
         if (p == null || p.equals(previous))
             return;
@@ -1773,7 +1773,7 @@ public class GameAction {
         if (previous != null)
             previous.removeMonarchEffect();
 
-        p.createMonarchEffect();
+        p.createMonarchEffect(set);
         game.setMonarch(p);
 
         // Run triggers

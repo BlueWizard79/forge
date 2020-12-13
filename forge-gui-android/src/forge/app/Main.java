@@ -68,7 +68,7 @@ public class Main extends AndroidApplication {
 
         boolean permissiongranted =  checkPermission();
         Gadapter = new AndroidAdapter(this.getContext());
-        initForge(Gadapter, permissiongranted, totalMemory, isTabletDevice(this.getContext()));
+        initForge(Gadapter, permissiongranted, totalMemory, isTabletDevice(this.getContext()), android.os.Build.VERSION.SDK_INT);
 
         //permission
         if(!permissiongranted){
@@ -207,7 +207,7 @@ public class Main extends AndroidApplication {
             builder.show();
     }
 
-    private void initForge(AndroidAdapter adapter, boolean permissiongranted, int totalRAM, boolean isTabletDevice){
+    private void initForge(AndroidAdapter adapter, boolean permissiongranted, int totalRAM, boolean isTabletDevice, int AndroidVersion){
         boolean isPortrait;
         if (permissiongranted){
             //establish assets directory
@@ -247,12 +247,12 @@ public class Main extends AndroidApplication {
                 Main.this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             }
 
-            initialize(Forge.getApp(new AndroidClipboard(), adapter, assetsDir, propertyConfig, isPortrait, totalRAM, isTabletDevice));
+            initialize(Forge.getApp(new AndroidClipboard(), adapter, assetsDir, propertyConfig, isPortrait, totalRAM, isTabletDevice, AndroidVersion));
         } else {
             isPortrait = true;
             //set current orientation
             Main.this.setRequestedOrientation(Main.this.getResources().getConfiguration().orientation);
-            initialize(Forge.getApp(new AndroidClipboard(), adapter, "", false, isPortrait, totalRAM, isTabletDevice));
+            initialize(Forge.getApp(new AndroidClipboard(), adapter, "", false, isPortrait, totalRAM, isTabletDevice, AndroidVersion));
         }
 
     }
