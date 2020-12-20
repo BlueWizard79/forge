@@ -80,7 +80,7 @@ import io.sentry.event.BreadcrumbBuilder;
  * @author Forge
  * @version $Id$
  */
-public class Card extends GameEntity implements Comparable<Card> {
+public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private final Game game;
     private final IPaperCard paperCard;
 
@@ -124,7 +124,8 @@ public class Card extends GameEntity implements Comparable<Card> {
     private final PlayerCollection mayLookFaceDownExile = new PlayerCollection();
     private final PlayerCollection mayLookTemp = new PlayerCollection();
 
-    private final Multimap<Long, Keyword> cantHaveKeywords = MultimapBuilder.hashKeys().enumSetValues(Keyword.class).build();
+    // don't use Enum Set Values or it causes a slow down
+    private final Multimap<Long, Keyword> cantHaveKeywords = MultimapBuilder.hashKeys().hashSetValues().build();
 
     private final Map<CounterType, Long> counterTypeTimestamps = Maps.newHashMap();
 
@@ -6035,6 +6036,17 @@ public class Card extends GameEntity implements Comparable<Card> {
                 abilities.addAll(GameActionUtil.getAlternativeCosts(sa, player));
             }
         }
+        // Add Modal Spells
+        if (isModal() && hasState(CardStateName.Modal)) {
+            for (SpellAbility sa : getState(CardStateName.Modal).getSpellAbilities()) {
+                //add alternative costs as additional spell abilities
+                // only add Spells there
+                if (sa.isSpell()) {
+                    abilities.add(sa);
+                    abilities.addAll(GameActionUtil.getAlternativeCosts(sa, player));
+                }
+            }
+        }
 
         final Collection<SpellAbility> toRemove = Lists.newArrayListWithCapacity(abilities.size());
         for (final SpellAbility sa : abilities) {
@@ -6050,7 +6062,11 @@ public class Card extends GameEntity implements Comparable<Card> {
         }
         abilities.removeAll(toRemove);
 
-        if (getState(CardStateName.Original).getType().isLand() && !getLastKnownZone().is(ZoneType.Battlefield)) {
+        // Land Abilities below, move them to CardFactory after MayPlayRefactor
+        if (getLastKnownZone().is(ZoneType.Battlefield)) {
+            return abilities;
+        }
+        if (getState(CardStateName.Original).getType().isLand()) {
             LandAbility la = new LandAbility(this, player, null);
             if (la.canPlay()) {
                 abilities.add(la);
@@ -6092,7 +6108,7 @@ public class Card extends GameEntity implements Comparable<Card> {
         }
 
         if (isModal() && hasState(CardStateName.Modal)) {
-            if (getState(CardStateName.Modal).getType().isLand() && !getLastKnownZone().is(ZoneType.Battlefield)) {
+            if (getState(CardStateName.Modal).getType().isLand()) {
                 LandAbility la = new LandAbility(this, player, null);
                 la.setCardState(CardStateName.Modal);
 
