@@ -14,9 +14,9 @@ import forge.game.spellability.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
 // Wrapper ability that checks the requirements again just before
@@ -27,7 +27,7 @@ import com.google.common.collect.Maps;
 // use of any of the methods)
 public class WrappedAbility extends Ability {
 
-    static List<ApiType> noTimestampCheck = ImmutableList.of(
+    static Set<ApiType> noTimestampCheck = ImmutableSet.of(
             ApiType.PutCounter,
             ApiType.MoveCounter,
             ApiType.MultiplyCounter,
@@ -40,7 +40,8 @@ public class WrappedAbility extends Ability {
             ApiType.LoseLife,
             ApiType.ChangeZone,
             ApiType.Destroy,
-            ApiType.Token
+            ApiType.Token,
+            ApiType.SetState
             );
 
     private final SpellAbility sa;
@@ -485,18 +486,6 @@ public class WrappedAbility extends Ability {
             return;
         }
 
-        // Check timestamps of triggered objects
-        final List<Object> original = Lists.newArrayList(sa.getTriggerRemembered());
-        for (Object o : original) {
-            if (o instanceof Card) {
-                Card card = (Card) o;
-                Card current = game.getCardState(card);
-                if (current.getTimestamp() != card.getTimestamp()) {
-                    // TODO: figure out if NoTimestampCheck should be the default for ChangesZone triggers
-                    sa.getTriggerRemembered().remove(o);
-                }
-            }
-        }
         final Map<AbilityKey, Object> triggerMap = AbilityKey.newMap(sa.getTriggeringObjects());
         for (Entry<AbilityKey, Object> ev : triggerMap.entrySet()) {
             if (ev.getValue() instanceof Card) {
