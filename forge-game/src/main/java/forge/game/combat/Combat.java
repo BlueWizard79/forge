@@ -19,12 +19,12 @@ package forge.game.combat;
 
 import com.google.common.base.Function;
 import com.google.common.collect.*;
-import forge.game.Game;
 import forge.game.*;
 import forge.game.ability.AbilityKey;
 import forge.game.card.*;
 import forge.game.keyword.Keyword;
 import forge.game.player.Player;
+import forge.game.replacement.ReplacementType;
 import forge.game.spellability.SpellAbilityStackInstance;
 import forge.game.trigger.TriggerType;
 import forge.util.CardTranslation;
@@ -594,7 +594,24 @@ public class Combat {
                 unregisterDefender(c, be.getKey());
             }
         }
-        
+
+        for (Card pw : getDefendingPlaneswalkers()) {
+            if (pw.equals(c)) {
+                Multimap<GameEntity, AttackingBand> attackerBuffer = ArrayListMultimap.create();
+                Collection<AttackingBand> bands = attackedByBands.get(pw);
+                for (AttackingBand abPW : bands) {
+                    unregisterDefender(c, abPW);
+                    // Rule 506.4c workaround to keep creatures in combat
+                    Card fake = new Card(-1, c.getGame());
+                    fake.setName("<Nothing>");
+                    fake.setController(c.getController(), 0);
+                    attackerBuffer.put(fake, abPW);
+                }
+                bands.clear();
+                attackedByBands.putAll(attackerBuffer);
+            }
+        }
+
         // remove card from map
         while (blockedBands.values().remove(c));
         c.updateBlockingForView();
@@ -674,7 +691,10 @@ public class Combat {
             if (firstStrikeDamage) {
                 combatantsThatDealtFirstStrikeDamage.add(blocker);
             }
-            
+
+            // Run replacement effects
+            blocker.getGame().getReplacementHandler().run(ReplacementType.AssignDealDamage, AbilityKey.mapFromAffected(blocker));
+
             CardCollection attackers = attackersOrderedForDamageAssignment.get(blocker);
 
             final int damage = blocker.getNetCombatDamage();
@@ -710,7 +730,10 @@ public class Combat {
             if (firstStrikeDamage) {
                 combatantsThatDealtFirstStrikeDamage.add(attacker);
             }
-            
+
+            // Run replacement effects
+            attacker.getGame().getReplacementHandler().run(ReplacementType.AssignDealDamage, AbilityKey.mapFromAffected(attacker));
+
             // If potential damage is 0, continue along
             final int damageDealt = attacker.getNetCombatDamage();
             if (damageDealt <= 0) {

@@ -257,6 +257,12 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
                         }
                     }
 
+                    if (params.containsKey("ValidSA")) {
+                        if (!sa.isValid(params.get("ValidSA").split(","), activator, o.getHost(), null)) {
+                            return false;
+                        }
+                    }
+
                     // TODO: this is an exception for Aftermath. Needs to be somehow generalized.
                     if (this.getZone() != ZoneType.Graveyard && sa.isAftermath() && sa.getCardState() != null) {
                         return false;
@@ -456,6 +462,13 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
 
             int numActivates = c.getPlaneswalkerAbilityActivated();
             if (numActivates > limits) {
+                return false;
+            }
+        }
+
+        if (sa.isBoast()) {
+            int limit = activator.hasKeyword("Creatures you control can boast twice during each of your turns rather than once.") ? 2 : 1;
+            if (limit <= sa.getActivationsThisTurn()) {
                 return false;
             }
         }

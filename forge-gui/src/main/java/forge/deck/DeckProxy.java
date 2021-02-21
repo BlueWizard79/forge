@@ -400,6 +400,15 @@ public class DeckProxy implements InventoryItem {
         return result;
     }
 
+    public static Iterable<DeckProxy> getAllCommanderPreconDecks() {
+        return getAllCommanderPreconDecks(null);
+    }
+    public static Iterable<DeckProxy> getAllCommanderPreconDecks(final Predicate<Deck> filter) {
+        final List<DeckProxy> result = new ArrayList<DeckProxy>();
+        addDecksRecursivelly("Commander Precon", GameType.Commander, result, "", FModel.getDecks().getCommanderPrecons(), filter);
+        return result;
+    }
+
     public static Iterable<DeckProxy> getAllTinyLeadersDecks() {
         return getAllTinyLeadersDecks(null);
     }
@@ -608,6 +617,14 @@ public class DeckProxy implements InventoryItem {
     }
 
     public static List<DeckProxy> getNetDecks(final NetDeckCategory category) {
+        final List<DeckProxy> decks = new ArrayList<>();
+        if (category != null) {
+            addDecksRecursivelly("Constructed", GameType.Constructed, decks, "", category, null);
+        }
+        return decks;
+    }
+
+    public static List<DeckProxy> getNetArchiveDecks(final NetDeckArchiveStandard category) {
         final List<DeckProxy> decks = new ArrayList<>();
         if (category != null) {
             addDecksRecursivelly("Constructed", GameType.Constructed, decks, "", category, null);

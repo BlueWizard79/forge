@@ -43,7 +43,6 @@ import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityStackInstance;
 import forge.game.spellability.TargetChoices;
 import forge.game.trigger.WrappedAbility;
-import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
 import forge.item.PaperCard;
 import forge.util.ITriggerEvent;
@@ -113,7 +112,7 @@ public abstract class PlayerController {
     public abstract Integer announceRequirements(SpellAbility ability, String announce);
     public abstract CardCollectionView choosePermanentsToSacrifice(SpellAbility sa, int min, int max, CardCollectionView validTargets, String message);
     public abstract CardCollectionView choosePermanentsToDestroy(SpellAbility sa, int min, int max, CardCollectionView validTargets, String message);
-    public abstract TargetChoices chooseNewTargetsFor(SpellAbility ability);
+    public abstract TargetChoices chooseNewTargetsFor(SpellAbility ability, Predicate<GameObject> filter, boolean optional);
     public abstract boolean chooseTargetsFor(SpellAbility currentAbility); // this is bad a function for it assigns targets to sa inside its body 
 
     // Specify a target of a spell (Spellskite)
@@ -193,7 +192,7 @@ public abstract class PlayerController {
     public abstract void declareAttackers(Player attacker, Combat combat);
     public abstract void declareBlockers(Player defender, Combat combat);
     public abstract List<SpellAbility> chooseSpellAbilityToPlay();
-    public abstract void playChosenSpellAbility(SpellAbility sa);
+    public abstract boolean playChosenSpellAbility(SpellAbility sa);
 
     public abstract CardCollection chooseCardsToDiscardToMaximumHandSize(int numDiscard);
     public abstract boolean payManaOptional(Card card, Cost cost, SpellAbility sa, String prompt, ManaPaymentPurpose purpose);
@@ -292,7 +291,5 @@ public abstract class PlayerController {
 
     public abstract CardCollection chooseCardsForEffectMultiple(Map<String, CardCollection> validMap,
             SpellAbility sa, String title, boolean isOptional);
-    
-    public void handleLandPlayed(Card land, Zone zone) {
-    }
+
 }

@@ -58,7 +58,7 @@ public final class CardUtil {
             "Fortify", "Transfigure", "Champion", "Evoke", "Prowl", "IfReach",
             "Reinforce", "Unearth", "Level up", "Miracle", "Overload",
             "Scavenge", "Encore", "Bestow", "Outlast", "Dash", "Surge", "Emerge", "Hexproof:",
-            "etbCounter").build();
+            "etbCounter", "Reflect").build();
     /** List of keyword endings of keywords that could be modified by text changes. */
     public static final ImmutableList<String> modifiableKeywordEndings = ImmutableList.<String>builder().add(
             "walk", "cycling", "offering").build();
@@ -108,32 +108,18 @@ public final class CardUtil {
      * @param src   a Card object
      * @return a CardCollection that matches the given criteria
      */
-    public static CardCollection getThisTurnEntered(final ZoneType to, final ZoneType from, final String valid, final Card src) {
-        return getThisTurnEntered(to, from, valid, src, true);
-    }
-
-    /**
-     * getThisTurnEntered.
-     *
-     * @param to    zone going to
-     * @param from  zone coming from
-     * @param valid a isValid expression
-     * @param src   a Card object
-     * @param checkLatestState  a boolean, true if the latest state of the card as it left the original zone needs to be checked
-     * @return a CardCollection that matches the given criteria
-     */
-    public static CardCollection getThisTurnEntered(final ZoneType to, final ZoneType from, final String valid, final Card src, final boolean checkLatestState) {
-        CardCollection res = new CardCollection();
+    public static List<Card> getThisTurnEntered(final ZoneType to, final ZoneType from, final String valid, final Card src) {
+        List<Card> res = Lists.newArrayList();
         final Game game = src.getGame();
         if (to != ZoneType.Stack) {
             for (Player p : game.getPlayers()) {
-                res.addAll(p.getZone(to).getCardsAddedThisTurn(from, checkLatestState));
+                res.addAll(p.getZone(to).getCardsAddedThisTurn(from));
             }
         }
         else {
-            res.addAll(game.getStackZone().getCardsAddedThisTurn(from, checkLatestState));
+            res.addAll(game.getStackZone().getCardsAddedThisTurn(from));
         }
-        res = CardLists.getValidCards(res, valid, src.getController(), src);
+        res = CardLists.getValidCardsAsList(res, valid, src.getController(), src);
         return res;
     }
 
@@ -146,31 +132,18 @@ public final class CardUtil {
      * @param src   a Card object
      * @return a CardCollection that matches the given criteria
      */
-    public static CardCollection getLastTurnEntered(final ZoneType to, final ZoneType from, final String valid, final Card src) {
-        return getLastTurnEntered(to, from, valid, src, true);
-    }
-
-    /**
-     * getLastTurnEntered.
-     *
-     * @param to    zone going to
-     * @param from  zone coming from
-     * @param valid a isValid expression
-     * @param src   a Card object
-     * @return a CardCollection that matches the given criteria
-     */
-    public static CardCollection getLastTurnEntered(final ZoneType to, final ZoneType from, final String valid, final Card src, final boolean checkLatestState) {
-        CardCollection res = new CardCollection();
+    public static List<Card> getLastTurnEntered(final ZoneType to, final ZoneType from, final String valid, final Card src) {
+        List<Card> res = Lists.newArrayList();
         final Game game = src.getGame();
         if (to != ZoneType.Stack) {
             for (Player p : game.getPlayers()) {
-                res.addAll(p.getZone(to).getCardsAddedLastTurn(from, checkLatestState));
+                res.addAll(p.getZone(to).getCardsAddedLastTurn(from));
             }
         }
         else {
-            res.addAll(game.getStackZone().getCardsAddedLastTurn(from, checkLatestState));
+            res.addAll(game.getStackZone().getCardsAddedLastTurn(from));
         }
-        res = CardLists.getValidCards(res, valid, src.getController(), src);
+        res = CardLists.getValidCardsAsList(res, valid, src.getController(), src);
         return res;
     }
 
@@ -305,6 +278,10 @@ public final class CardUtil {
 
         newCopy.copyChangedTextFrom(in);
 
+        newCopy.setForetold(in.isForetold());
+        newCopy.setForetoldThisTurn(in.isForetoldThisTurn());
+        newCopy.setForetoldByEffect(in.isForetoldByEffect());
+
         newCopy.setMeldedWith(getLKICopy(in.getMeldedWith(), cachedMap));
 
         newCopy.setTimestamp(in.getTimestamp());
@@ -414,7 +391,6 @@ public final class CardUtil {
 
         final String colorOrType = sa.getParam("ColorOrType");
         // currently Color or Type, Type is colors + colorless
-        final String validCard = sa.getParam("Valid");
         final String reflectProperty = sa.getParam("ReflectProperty");
         // Produce (Reflecting Pool) or Is (Meteor Crater)
 
@@ -423,28 +399,30 @@ public final class CardUtil {
             maxChoices++;
         }
 
-        CardCollection cards = null;
+        CardCollection cards;
 
-        // Reuse AF_Defined in a slightly different way
-        if (validCard.startsWith("Defined.")) {
-            cards = AbilityUtils.getDefinedCards(card, TextUtil.fastReplace(validCard, "Defined.", ""), abMana);
-        } else {
-            if (sa.getActivatingPlayer() == null) {
-                sa.setActivatingPlayer(sa.getHostCard().getController());
+        if (sa.hasParam("Valid")) {
+            final String validCard = sa.getParam("Valid");
+            // Reuse AF_Defined in a slightly different way
+            if (validCard.startsWith("Defined.")) {
+                cards = AbilityUtils.getDefinedCards(card, TextUtil.fastReplace(validCard, "Defined.", ""), abMana);
+            } else {
+                if (sa.getActivatingPlayer() == null) {
+                    sa.setActivatingPlayer(sa.getHostCard().getController());
+                }
+                final Game game = sa.getActivatingPlayer().getGame();
+                cards = CardLists.getValidCards(game.getCardsIn(ZoneType.Battlefield), validCard, abMana.getActivatingPlayer(), card);
             }
-            final Game game = sa.getActivatingPlayer().getGame();
-            cards = CardLists.getValidCards(game.getCardsIn(ZoneType.Battlefield), validCard, abMana.getActivatingPlayer(), card);
-        }
 
-        // remove anything cards that is already in parents
-        for (final Card p : parents) {
-            cards.remove(p);
-        }
+            // remove anything cards that is already in parents
+            cards.removeAll(parents);
 
-        if ((cards.size() == 0) && !reflectProperty.equals("Produced")) {
-            return colors;
+            if (cards.isEmpty()) {
+                return colors;
+            }
+        } else {
+            cards = new CardCollection();
         }
-
         if (reflectProperty.equals("Is")) { // Meteor Crater
             for (final Card card1 : cards) {
                 // For each card, go through all the colors and if the card is that color, add
@@ -459,7 +437,7 @@ public final class CardUtil {
             }
         } else if (reflectProperty.equals("Produced")) {
             // Why is this name so similar to the one below?
-            final String producedColors = abMana instanceof AbilitySub ? (String) abMana.getRootAbility().getTriggeringObject(AbilityKey.Produced) : (String) abMana.getTriggeringObject(AbilityKey.Produced);
+            final String producedColors = (String) abMana.getRootAbility().getTriggeringObject(AbilityKey.Produced);
             for (final String col : MagicColor.Constant.ONLY_COLORS) {
                 final String s = MagicColor.toShortString(col);
                 if (producedColors.contains(s)) {
@@ -492,7 +470,7 @@ public final class CardUtil {
                     }
                     continue;
                 }
-                colors = canProduce(maxChoices, ab.getManaPart(), colors);
+                colors = canProduce(maxChoices, ab, colors);
                 if (!parents.contains(ab.getHostCard())) {
                     parents.add(ab.getHostCard());
                 }
@@ -509,19 +487,18 @@ public final class CardUtil {
         return colors;
     }
 
-    public static Set<String> canProduce(final int maxChoices, final AbilityManaPart ab,
+    public static Set<String> canProduce(final int maxChoices, final SpellAbility sa,
             final Set<String> colors) {
-        if (ab == null) {
+        if (sa == null) {
             return colors;
         }
         for (final String col : MagicColor.Constant.ONLY_COLORS) {
-            final String s = MagicColor.toShortString(col);
-            if (ab.canProduce(s)) {
+            if (sa.canProduce(MagicColor.toShortString(col))) {
                 colors.add(col);
             }
         }
 
-        if (maxChoices == 6 && ab.canProduce("C")) {
+        if (maxChoices == 6 && sa.canProduce("C")) {
             colors.add(MagicColor.Constant.COLORLESS);
         }
 
@@ -565,6 +542,21 @@ public final class CardUtil {
             final List<Card> choicesCopy = Lists.newArrayList(choices);
             for (final Card c : choicesCopy) {
                 if (c.getCMC() > tgt.getMaxTotalCMC(c, ability) - totalCMCTargeted) {
+                    choices.remove(c);
+                }
+            }
+        }
+
+        // Remove cards exceeding total power
+        if (ability.hasParam("MaxTotalTargetPower")) {
+            int totalPowerTargeted = 0;
+            for (final Card c : targeted) {
+                totalPowerTargeted += c.getNetPower();
+            }
+
+            final List<Card> choicesCopy = Lists.newArrayList(choices);
+            for (final Card c : choicesCopy) {
+                if (c.getNetPower() > tgt.getMaxTotalPower(c, ability) - totalPowerTargeted) {
                     choices.remove(c);
                 }
             }

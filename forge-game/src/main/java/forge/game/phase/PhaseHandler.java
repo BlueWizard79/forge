@@ -26,7 +26,6 @@ import forge.game.*;
 import forge.game.ability.AbilityKey;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
-import forge.game.card.CardCollectionView;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates.Presets;
 import forge.game.card.CardZoneTable;
@@ -144,6 +143,8 @@ public class PhaseHandler implements java.io.Serializable {
 
     private void advanceToNextPhase() {
         PhaseType oldPhase = phase;
+        boolean isTopsy = playerTurn.hasKeyword("The phases of your turn are reversed.");
+        boolean turnEnded = false;
 
         if (bRepeatCleanup) { // for when Cleanup needs to repeat itself
             bRepeatCleanup = false;
@@ -161,22 +162,22 @@ public class PhaseHandler implements java.io.Serializable {
                 setPhase(nextPhase);
             }
             else {
-                setPhase(PhaseType.getNext(phase));
+                turnEnded = PhaseType.isLast(phase, isTopsy);
+                setPhase(PhaseType.getNext(phase, isTopsy));
             }
         }
 
         game.getStack().clearUndoStack(); //can't undo action from previous phase
 
-        String phaseType = oldPhase == phase ? "Repeat" : phase == PhaseType.getNext(oldPhase) ? "" : "Additional";
+        String phaseType = oldPhase == phase ? "Repeat" : phase == PhaseType.getNext(oldPhase, isTopsy) ? "" : "Additional";
 
-        if (phase == PhaseType.UNTAP) {
+        if (turnEnded) {
             turn++;
             game.updateTurnForView();
             game.fireEvent(new GameEventTurnBegan(playerTurn, turn));
 
             // Tokens starting game in play should suffer from Sum. Sickness
-            final CardCollectionView list = playerTurn.getCardsIncludePhasingIn(ZoneType.Battlefield);
-            for (final Card c : list) {
+            for (final Card c : playerTurn.getCardsIncludePhasingIn(ZoneType.Battlefield)) {
                 if (playerTurn.getTurn() > 0 || !c.isStartsGameInPlay()) {
                     c.setSickness(false);
                 }
@@ -409,6 +410,7 @@ public class PhaseHandler implements java.io.Serializable {
                     playerTurn.removeKeyword("Skip all combat phases of this turn.");
                     nUpkeepsThisTurn = 0;
                     nMain1sThisTurn = 0;
+                    game.getStack().resetMaxDistinctSources();
 
                     // Rule 514.3
                     givePriorityToPlayer = false;
@@ -654,7 +656,8 @@ public class PhaseHandler implements java.io.Serializable {
                 List<Card> remainingBlockers = CardLists.filterControlledBy(combat.getAllBlockers(), p);
                 for (Card c : remainingBlockers) {
                     boolean removeBlocker = false;
-                    if (remainingBlockers.size() < 2 && c.hasKeyword("CARDNAME can't attack or block alone.")) {
+                    boolean cantBlockAlone = c.hasKeyword("CARDNAME can't attack or block alone.") || c.hasKeyword("CARDNAME can't block alone.");
+                    if (remainingBlockers.size() < 2 && cantBlockAlone) {
                         removeBlocker = true;
                     } else if (remainingBlockers.size() < 3 && c.hasKeyword("CARDNAME can't block unless at least two other creatures block.")) {
                         removeBlocker = true;
@@ -1003,6 +1006,9 @@ public class PhaseHandler implements java.io.Serializable {
                         return;
                     }
 
+                    chosenSa = pPlayerPriority.getController().chooseSpellAbilityToPlay();
+
+                    // this needs to come after chosenSa so it sees you conceding on own turn
                     if (playerTurn.hasLost() && pPlayerPriority.equals(playerTurn) && pFirstPriority.equals(playerTurn)) {
                         // If the active player has lost, and they have priority, set the next player to have priority
                         System.out.println("Active player is no longer in the game...");
@@ -1010,20 +1016,19 @@ public class PhaseHandler implements java.io.Serializable {
                         pFirstPriority = pPlayerPriority;
                     }
 
-                    chosenSa = pPlayerPriority.getController().chooseSpellAbilityToPlay();
                     if (chosenSa == null) {
                         break; // that means 'I pass'
                     }
                     if (DEBUG_PHASES) {
                         System.out.print("... " + pPlayerPriority + " plays " + chosenSa);
                     }
-                    pFirstPriority = pPlayerPriority; // all opponents have to pass before stack is allowed to resolve
                     for (SpellAbility sa : chosenSa) {
                         Card saHost = sa.getHostCard();
                         final Zone originZone = saHost.getZone();
 
-                        // TODO it has no return value if successful
-                        pPlayerPriority.getController().playChosenSpellAbility(sa);
+                        if (pPlayerPriority.getController().playChosenSpellAbility(sa)) {
+                            pFirstPriority = pPlayerPriority; // all opponents have to pass before stack is allowed to resolve
+                        }
 
                         saHost = game.getCardState(saHost);
                         final Zone currentZone = saHost.getZone();
@@ -1125,7 +1130,7 @@ public class PhaseHandler implements java.io.Serializable {
     }
 
     public final boolean devAdvanceToPhase(PhaseType targetPhase) {
-        while (phase.isBefore(targetPhase)) {
+        while (phase.isBefore(targetPhase, playerTurn.hasKeyword("The phases of your turn are reversed."))) {
             if (checkStateBasedEffects()) {
                 return false;
             }
