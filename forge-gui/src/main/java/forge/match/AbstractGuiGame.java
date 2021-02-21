@@ -27,6 +27,7 @@ import forge.game.card.CardView.CardStateView;
 import forge.game.event.GameEventSpellAbilityCast;
 import forge.game.event.GameEventSpellRemovedFromStack;
 import forge.game.player.PlayerView;
+import forge.game.zone.Zone;
 import forge.interfaces.IGameController;
 import forge.interfaces.IGuiGame;
 import forge.interfaces.IMayViewCards;
@@ -758,7 +759,7 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     }
     
     @Override
-    public void handleLandPlayed(Card land) {
+    public void handleLandPlayed(Card land, Zone zone) {
     }  
 
 

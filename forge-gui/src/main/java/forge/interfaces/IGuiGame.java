@@ -20,6 +20,7 @@ import forge.game.player.DelayedReveal;
 import forge.game.player.IHasIcon;
 import forge.game.player.PlayerView;
 import forge.game.spellability.SpellAbilityView;
+import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
 import forge.item.PaperCard;
 import forge.player.PlayerZoneUpdate;
@@ -53,7 +54,7 @@ public interface IGuiGame {
     void updateStack();
     void notifyStackAddition(final GameEventSpellAbilityCast event);
     void notifyStackRemoval(final GameEventSpellRemovedFromStack event);
-    void handleLandPlayed(Card land);
+    void handleLandPlayed(Card land, Zone zone);
     Iterable<PlayerZoneUpdate> tempShowZones(PlayerView controller, Iterable<PlayerZoneUpdate> zonesToUpdate);
     void hideZones(PlayerView controller, Iterable<PlayerZoneUpdate> zonesToUpdate);
     void updateZones(Iterable<PlayerZoneUpdate> zonesToUpdate);

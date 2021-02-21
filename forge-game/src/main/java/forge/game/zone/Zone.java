@@ -17,6 +17,13 @@
  */
 package forge.game.zone;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -31,13 +38,12 @@ import forge.game.card.CardUtil;
 import forge.game.event.EventValueChangeType;
 import forge.game.event.GameEventZone;
 import forge.game.player.Player;
+import forge.game.player.PlayerCollection;
+import forge.game.player.PlayerController;
 import forge.util.CollectionSuppliers;
 import forge.util.MyRandom;
 import forge.util.maps.EnumMapOfLists;
 import forge.util.maps.MapOfLists;
-
-import java.util.*;
-import java.util.Map.Entry;
 
 /**
  * <p>
@@ -128,6 +134,27 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
         }
         onChanged();
 
+        // LandPopupPanel - BlueWizard - I introduce here the call to show the land popup panel (instead of linking it to the event GameEventLandPlayed) ON PURPOSE, because of two reasons:
+        // 1 - in this way the popup is opened not only when a land is played by the hand, but in every occasion it enter the battlefield whichever way.. 
+        //      example: fetch lands.. this way the popup opens for the fetching land (when it is played) and also for the fecthed land (once it is chosen), 
+        //      while if I used the event GameEventLandPlayed, the popup would open only for the fetching land
+        // 2 - in this way the popup is opened BEFORE the sound of the land is played (the sound plays only when the popup is closed), which I personally like more;
+        //      also, this way it behaves like the sounds for the cards played that go to the stack before entering battlefield (the stack modal popup panel)
+        if(zoneType == ZoneType.Battlefield && c.isLand()) {
+            PlayerCollection playerCollection = game.getPlayers();
+            int numPlayers = playerCollection.size();
+            for (int i = 0; i < numPlayers; i++) {
+                Player player = playerCollection.get(i);
+                if(!player.isAI()) {
+                    PlayerController playerControllerHuman = player.getController();
+                    // LandPopupPanel - BlueWizard - I introduced the second parameter Zone in this call, because this way the popup can write not only that a land enter play into
+                    //      the battlefield, but it can write that a land enters play into {someone}'s battlefield.. I think there are effects that can put a land into play into 
+                    //      a opponent battlefield and this way the popup can tell you whose is the battlefield where the land enters play
+                    playerControllerHuman.handleLandPlayed(c,this);
+                }
+            }                    
+        }
+        
         game.fireEvent(new GameEventZone(zoneType, getPlayer(), EventValueChangeType.Added, c));
    }
 
