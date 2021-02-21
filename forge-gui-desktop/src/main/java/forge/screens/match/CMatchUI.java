@@ -78,6 +78,7 @@ import forge.game.spellability.SpellAbilityStackInstance;
 import forge.game.spellability.SpellAbilityView;
 import forge.game.spellability.StackItemView;
 import forge.game.spellability.TargetChoices;
+import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
 import forge.gui.FNetOverlay;
 import forge.gui.GuiChoose;
@@ -1443,18 +1444,17 @@ public final class CMatchUI
     }
 
     @Override
-    public void handleLandPlayed(Card land) {
+    public void handleLandPlayed(Card land, Zone zone) {
         Runnable createPopupThread = new Runnable() {
             @Override
             public void run() {
-                createLandPopupPanel(land);
+                createLandPopupPanel(land,zone);
             }
         };
         GuiBase.getInterface().invokeInEdtAndWait(createPopupThread);        
     }
 
-    private void createLandPopupPanel(Card land) {
-        
+    private void createLandPopupPanel(Card land, Zone zone) {     
         String landPlayedNotificationPolicy = FModel.getPreferences().getPref(FPref.UI_LAND_PLAYED_NOTIFICATION_POLICY);
         Player cardController = land.getController();       
         boolean isAi = cardController.isAI();         
@@ -1484,7 +1484,7 @@ public final class CMatchUI
                     
             mainPanel.add(imagePanel, "cell 0 0, spany 3");
             
-            String msg = cardController.toString() + " puts " + land.toString() + " into play into " + ZoneType.Battlefield.toString() + "."; 
+            String msg = cardController.toString() + " puts " + land.toString() + " into play into " + zone.toString() + "."; 
             
             final FTextArea prompt1 = new FTextArea(msg);
             prompt1.setFont(FSkin.getFont(21));

@@ -3098,5 +3098,12 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         return result;
     }
 
+    @Override
+    public void handleLandPlayed(Card land, Zone zone) {
+        IGuiGame guiGame = getGui();
+        guiGame.handleLandPlayed(land,zone);
+    }
+
+
 }
 
