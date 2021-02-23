@@ -106,6 +106,7 @@ public class NetDeckArchiveStandard extends StorageBase<Deck> {
         url = url0;
     }
 
+
     public String getUrl() {
         return url;
     }

@@ -99,6 +99,8 @@ public enum CounterEnumType {
 
     EYEBALL("EYE", 184, 202, 201),
 
+    EYESTALK("EYES", 184, 202, 201),
+
     FADE("FADE", 159, 209, 192),
 
     FATE("FATE", 255, 164, 226),
@@ -168,6 +170,8 @@ public enum CounterEnumType {
     LORE("LORE", 209, 198, 161),
 
     LUCK("LUCK", 185, 174, 255),
+
+    MANABOND("MANA", 0, 255, 0),
 
     M0M1("-0/-1", "-0/-1", 255, 110, 106),
 
