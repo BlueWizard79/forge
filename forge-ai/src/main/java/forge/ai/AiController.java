@@ -1396,6 +1396,7 @@ public class AiController {
                         final List<SpellAbility> abilities = Lists.newArrayList();
 
                         LandAbility la = new LandAbility(land, player, null);
+                        la.setCardState(land.getCurrentState());
                         if (la.canPlay()) {
                             abilities.add(la);
                         }
@@ -1403,6 +1404,7 @@ public class AiController {
                         // add mayPlay option
                         for (CardPlayOption o : land.mayPlay(player)) {
                             la = new LandAbility(land, player, o.getAbility());
+                            la.setCardState(land.getCurrentState());
                             if (la.canPlay()) {
                                 abilities.add(la);
                             }
@@ -1455,9 +1457,11 @@ public class AiController {
 
         int totalCMCInHand = Aggregates.sum(inHand, CardPredicates.Accessors.fnGetCmc);
         int minCMCInHand = Aggregates.min(inHand, CardPredicates.Accessors.fnGetCmc);
+        if (minCMCInHand == Integer.MAX_VALUE)
+            minCMCInHand = 0;
         int predictedMana = ComputerUtilMana.getAvailableManaEstimate(player, true);
 
-        boolean canCastWithLandDrop = (predictedMana + 1 >= minCMCInHand) && !isTapLand;
+        boolean canCastWithLandDrop = (predictedMana + 1 >= minCMCInHand) && minCMCInHand > 0 && !isTapLand;
         boolean cantCastAnythingNow = predictedMana < minCMCInHand;
 
         boolean hasRelevantAbsOTB = !CardLists.filter(otb, new Predicate<Card>() {
@@ -1564,6 +1568,13 @@ public class AiController {
         if (saList.isEmpty()) {
             saList = ComputerUtilAbility.getSpellAbilities(cards, player);
         }
+
+        Iterables.removeIf(saList, new Predicate<SpellAbility>() {
+            @Override
+            public boolean apply(final SpellAbility spellAbility) {
+                return spellAbility instanceof LandAbility;
+            }
+        });
 
         SpellAbility chosenSa = chooseSpellAbilityToPlayFromList(saList, true);
 

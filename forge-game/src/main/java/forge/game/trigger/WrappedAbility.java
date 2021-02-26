@@ -2,11 +2,11 @@ package forge.game.trigger;
 
 import forge.card.mana.ManaCost;
 import forge.game.Game;
-import forge.game.GameObject;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.ApiType;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
+import forge.game.card.CardState;
 import forge.game.cost.Cost;
 import forge.game.player.Player;
 import forge.game.spellability.*;
@@ -231,23 +231,19 @@ public class WrappedAbility extends Ability {
     public String getStackDescription() {
         final Trigger regtrig = getTrigger();
         final StringBuilder sb = new StringBuilder(regtrig.replaceAbilityText(regtrig.toString(true), this));
-        if (usesTargeting()) {
+        List<TargetChoices> allTargets = sa.getAllTargetChoices();
+        if (!allTargets.isEmpty()) {
             sb.append(" (Targeting ");
-            for (final GameObject o : this.getTargets()) {
-                sb.append(o.toString());
-                sb.append(", ");
-            }
-            if (sb.toString().endsWith(", ")) {
-                sb.setLength(sb.length() - 2);
-            } else {
-                sb.append("ERROR");
-            }
+            sb.append(allTargets);
             sb.append(")");
         }
 
-        sb.append(" [");
-        sb.append(regtrig.getImportantStackObjects(this));
-        sb.append("]");
+        String important = regtrig.getImportantStackObjects(this);
+        if (!important.isEmpty()) {
+            sb.append(" [");
+            sb.append(important);
+            sb.append("]");
+        }
 
         return sb.toString();
     }
@@ -520,10 +516,11 @@ public class WrappedAbility extends Ability {
         sa.setXManaCostPaid(n);
     }
 
-    public Card getOriginalHost() {
-        return sa.getOriginalHost();
+
+    public CardState getCardState() {
+        return sa.getCardState();
     }
-    public void setOriginalHost(final Card c) {
-        sa.setOriginalHost(c);
+    public void setCardState(CardState state) {
+        sa.setCardState(state);
     }
 }

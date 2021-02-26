@@ -2081,7 +2081,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             sbLong.append("\r\n");
         }
         sb.append(sbLong);
-        return sb.toString();
+        return CardTranslation.translateMultipleDescriptionText(sb.toString(), getName());
     }
 
     private static String getTextForKwCantBeBlockedByAmount(final String keyword) {
@@ -2119,7 +2119,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             while (result.endsWith("\r\n")) {
                 result = result.substring(0, result.length() - 2);
             }
-            return TextUtil.fastReplace(result, "CARDNAME", state.getName());
+            return TextUtil.fastReplace(result, "CARDNAME", CardTranslation.getTranslatedName(state.getName()));
         }
 
         if (monstrous) {
@@ -2140,7 +2140,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         for (final ReplacementEffect replacementEffect : state.getReplacementEffects()) {
             if (!replacementEffect.isSecondary()) {
                 String text = replacementEffect.getDescription();
-                if (text.contains("enters the battlefield")) {
+                // Get original description since text might be translated
+                if (replacementEffect.hasParam("Description") &&
+                        replacementEffect.getParam("Description").contains("enters the battlefield")) {
                     sb.append(text).append("\r\n");
                 } else {
                     replacementEffects.append(text).append("\r\n");
@@ -2225,9 +2227,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             String sAbility = formatSpellAbility(sa);
 
             // add Adventure to AbilityText
-            if (sa.isAdventure() && state.getView().getState().equals(CardStateName.Original)) {
+            if (sa.isAdventure() && state.getStateName().equals(CardStateName.Original)) {
+                CardState advState = getState(CardStateName.Adventure);
                 StringBuilder sbSA = new StringBuilder();
-                sbSA.append("Adventure — ").append(getState(CardStateName.Adventure).getName());
+                sbSA.append(Localizer.getInstance().getMessage("lblAdventure"));
+                sbSA.append(" — ").append(CardTranslation.getTranslatedName(advState.getName()));
                 sbSA.append(" ").append(sa.getPayCosts().toSimpleString());
                 sbSA.append(": ");
                 sbSA.append(sAbility);
@@ -2299,7 +2303,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             start = sb.lastIndexOf(s);
         }
 
-        String desc = TextUtil.fastReplace(sb.toString(), "CARDNAME", state.getName());
+        String desc = TextUtil.fastReplace(sb.toString(), "CARDNAME", CardTranslation.getTranslatedName(state.getName()));
         if (getEffectSource() != null) {
             desc = TextUtil.fastReplace(desc, "EFFECTSOURCE", getEffectSource().getName());
         }
@@ -2485,7 +2489,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             }
         }
 
-        sb.append(sbBefore);
+        sb.append(CardTranslation.translateMultipleDescriptionText(sbBefore.toString(), state.getName()));
 
         // add Spells there to main StringBuilder
         sb.append(strSpell);
@@ -2514,13 +2518,13 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             }
         }
 
-        sb.append(sbAfter);
+        sb.append(CardTranslation.translateMultipleDescriptionText(sbAfter.toString(), state.getName()));
         return sb;
     }
 
     private String formatSpellAbility(final SpellAbility sa) {
         final StringBuilder sb = new StringBuilder();
-        sb.append(sa.toString()).append("\r\n");
+        sb.append(sa.toString()).append("\r\n\r\n");
         return sb.toString();
     }
 
@@ -4384,7 +4388,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final StaticAbility addStaticAbility(final String s) {
         if (!s.trim().isEmpty()) {
-            final StaticAbility stAb = new StaticAbility(s, this);
+            final StaticAbility stAb = new StaticAbility(s, this, currentState);
             stAb.setIntrinsic(true);
             currentState.addStaticAbility(stAb);
             return stAb;
@@ -6322,11 +6326,14 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public void setSplitStateToPlayAbility(final SpellAbility sa) {
+        if (isFaceDown()) {
+            return;
+        }
         if (sa.isBestow()) {
             animateBestow();
         }
-        CardStateName stateName = sa.getCardState();
-        if (hasState(stateName)) {
+        CardStateName stateName = sa.getCardStateName();
+        if (stateName != null && hasState(stateName) && this.getCurrentStateName() != stateName) {
             setState(stateName, true);
             // need to set backSide value according to the SplitType
             if (hasBackSide()) {
@@ -6352,6 +6359,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public List<SpellAbility> getAllPossibleAbilities(final Player player, final boolean removeUnplayable) {
+        CardState oState = getState(CardStateName.Original);
         // this can only be called by the Human
         final List<SpellAbility> abilities = Lists.newArrayList();
         for (SpellAbility sa : getSpellAbilities()) {
@@ -6378,7 +6386,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
 
         if (isInPlay() && isFaceDown() && isManifested()) {
-            CardState oState = getState(CardStateName.Original);
             ManaCost cost = oState.getManaCost();
             if (oState.getType().isCreature()) {
                 abilities.add(CardFactoryUtil.abilityManifestFaceUp(this, cost));
@@ -6405,6 +6412,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
         if (getState(CardStateName.Original).getType().isLand()) {
             LandAbility la = new LandAbility(this, player, null);
+            la.setCardState(oState);
             if (la.canPlay()) {
                 abilities.add(la);
             }
@@ -6429,6 +6437,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             // extra for MayPlay
             for (CardPlayOption o : source.mayPlay(player)) {
                 la = new LandAbility(this, player, o.getAbility());
+                la.setCardState(oState);
                 if (la.canPlay()) {
                     abilities.add(la);
                 }
@@ -6445,9 +6454,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
 
         if (isModal() && hasState(CardStateName.Modal)) {
-            if (getState(CardStateName.Modal).getType().isLand()) {
+            CardState modal = getState(CardStateName.Modal);
+            if (modal.getType().isLand()) {
                 LandAbility la = new LandAbility(this, player, null);
-                la.setCardState(CardStateName.Modal);
+                la.setCardState(modal);
 
                 Card source = CardUtil.getLKICopy(this);
                 boolean lkicheck = true;
@@ -6479,7 +6489,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 // extra for MayPlay
                 for (CardPlayOption o : source.mayPlay(player)) {
                     la = new LandAbility(this, player, o.getAbility());
-                    la.setCardState(CardStateName.Modal);
+                    la.setCardState(modal);
                     if (la.canPlay(source)) {
                         abilities.add(la);
                     }
@@ -6993,5 +7003,13 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         clearEtbCounters();
 
         return updateState;
+    }
+
+    public CardEdition.BorderColor borderColor() {
+        CardEdition edition = StaticData.instance().getEditions().get(getSetCode());
+        if (edition == null || isBasicLand()) {
+            return CardEdition.BorderColor.BLACK;
+        }
+        return edition.getBorderColor();
     }
 }

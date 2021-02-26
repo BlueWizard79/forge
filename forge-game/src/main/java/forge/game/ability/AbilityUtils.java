@@ -240,9 +240,9 @@ public class AbilityUtils {
                 }
             }
         } else if (defined.equals("DelayTriggerRememberedLKI")) {
-            SpellAbility trigSa = sa.getTriggeringAbility();
-            if (trigSa != null) {
-                for (Object o : trigSa.getTriggerRemembered()) {
+            SpellAbility root = sa.getRootAbility();
+            if (root != null) {
+                for (Object o : root.getTriggerRemembered()) {
                     if (o instanceof Card) {
                         cards.add((Card)o);
                     }
@@ -251,9 +251,9 @@ public class AbilityUtils {
                 System.err.println("Warning: couldn't find trigger SA in the chain of SpellAbility " + sa);
             }
         } else if (defined.equals("DelayTriggerRemembered")) {
-            SpellAbility trigSa = sa.getTriggeringAbility();
-            if (trigSa != null) {
-                for (Object o : trigSa.getTriggerRemembered()) {
+            SpellAbility root = sa.getRootAbility();
+            if (root != null) {
+                for (Object o : root.getTriggerRemembered()) {
                     if (o instanceof Card) {
                         cards.addAll(addRememberedFromCardState(game, (Card)o));
                     }
@@ -1021,9 +1021,9 @@ public class AbilityUtils {
             addPlayer(card.getRemembered(), defined, players);
         }
         else if (defined.startsWith("DelayTriggerRemembered")) {
-            SpellAbility trigSa = sa.getTriggeringAbility();
-            if (trigSa != null) {
-                addPlayer(trigSa.getTriggerRemembered(), defined, players);
+            SpellAbility root = sa.getRootAbility();
+            if (root != null) {
+                addPlayer(root.getTriggerRemembered(), defined, players);
             } else {
                 System.err.println("Warning: couldn't find trigger SA in the chain of SpellAbility " + sa);
             }
@@ -1614,7 +1614,7 @@ public class AbilityUtils {
 
                     // If the chosen creature has X in its mana cost, that X is considered to be 0.
                     // The value of X in Altered Ego’s last ability will be whatever value was chosen for X while casting Altered Ego.
-                    if (sa.getOriginalHost() != null || !sa.getHostCard().equals(c)) {
+                    if (sa.isCopiedTrait() || !sa.getHostCard().equals(c)) {
                         return CardFactoryUtil.doXMath(0, expr, c);
                     }
 
@@ -1696,9 +1696,9 @@ public class AbilityUtils {
                     return sum;
                 }
                 if (sq[0].startsWith("TriggerRememberAmount")) {
-                    SpellAbility trigSa = sa.getTriggeringAbility();
+                    SpellAbility root = sa.getRootAbility();
                     int count = 0;
-                    for (final Object o : trigSa.getTriggerRemembered()) {
+                    for (final Object o : root.getTriggerRemembered()) {
                         if (o instanceof Integer) {
                             count += (Integer) o;
                         }
@@ -2063,7 +2063,6 @@ public class AbilityUtils {
 
         subAbility.setActivatingPlayer(sa.getActivatingPlayer());
         subAbility.setHostCard(sa.getHostCard());
-        subAbility.setOriginalHost(c);
 
         //add the spliced ability to the end of the chain
         sa.appendSubAbility(subAbility);

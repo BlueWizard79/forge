@@ -29,7 +29,6 @@ import forge.game.Game;
 import forge.game.ability.AbilityFactory;
 import forge.game.cost.Cost;
 import forge.game.player.Player;
-import forge.game.replacement.ReplacementEffect;
 import forge.game.replacement.ReplacementHandler;
 import forge.game.spellability.*;
 import forge.game.staticability.StaticAbility;
@@ -38,6 +37,7 @@ import forge.game.trigger.TriggerHandler;
 import forge.game.trigger.WrappedAbility;
 import forge.item.IPaperCard;
 import forge.item.PaperCard;
+import forge.util.CardTranslation;
 import forge.util.TextUtil;
 
 import java.util.Arrays;
@@ -139,6 +139,7 @@ public class CardFactory {
         c.clearControllers();
         c.setOwner(controller);
         c.setCopiedSpell(true);
+        c.setCopiedPermanent(original);
 
         c.setXManaCostPaidByColor(original.getXManaCostPaidByColor());
         c.setKickerMagnitude(original.getKickerMagnitude());
@@ -256,7 +257,7 @@ public class CardFactory {
             // ************** Link to different CardFactories *******************
             if (state == CardStateName.LeftSplit || state == CardStateName.RightSplit) {
                 for (final SpellAbility sa : card.getSpellAbilities()) {
-                    sa.setCardState(state);
+                    sa.setCardState(card.getState(state));
                 }
                 CardFactoryUtil.setupKeywordedAbilities(card);
                 final CardState original = card.getState(CardStateName.Original);
@@ -354,15 +355,19 @@ public class CardFactory {
     }
 
     private static void readCardFace(Card c, ICardFace face) {
+        // Build English oracle and translated oracle mapping
+        if (c.getId() >= 0) {
+            CardTranslation.buildOracleMapping(face.getName(), face.getOracleText());
+        }
 
         // Name first so Senty has the Card name
         c.setName(face.getName());
 
         for (Entry<String, String> v : face.getVariables())  c.setSVar(v.getKey(), v.getValue());
 
-        for (String r : face.getReplacements())              c.addReplacementEffect(ReplacementHandler.parseReplacement(r, c, true));
+        for (String r : face.getReplacements())              c.addReplacementEffect(ReplacementHandler.parseReplacement(r, c, true, c.getCurrentState()));
         for (String s : face.getStaticAbilities())           c.addStaticAbility(s);
-        for (String t : face.getTriggers())                  c.addTrigger(TriggerHandler.parseTrigger(t, c, true));
+        for (String t : face.getTriggers())                  c.addTrigger(TriggerHandler.parseTrigger(t, c, true, c.getCurrentState()));
 
         // keywords not before variables
         c.addIntrinsicKeywords(face.getKeywords(), false);
@@ -395,9 +400,9 @@ public class CardFactory {
                 SpellAbility sa = new SpellPermanent(c);
 
                 // Currently only for Modal, might react different when state is always set
-                if (c.getCurrentStateName() == CardStateName.Modal) {
-                    sa.setCardState(c.getCurrentStateName());
-                }
+                //if (c.getCurrentStateName() == CardStateName.Modal) {
+                    sa.setCardState(c.getCurrentState());
+                //}
                 c.addSpellAbility(sa);
             }
             // TODO add LandAbility there when refactor MayPlay
@@ -672,7 +677,6 @@ public class CardFactory {
                     if (origSVars.containsKey(s)) {
                         final String actualTrigger = origSVars.get(s);
                         final Trigger parsedTrigger = TriggerHandler.parseTrigger(actualTrigger, out, true);
-                        parsedTrigger.setOriginalHost(host);
                         state.addTrigger(parsedTrigger);
                     }
                 }
@@ -696,7 +700,6 @@ public class CardFactory {
                     if (origSVars.containsKey(s)) {
                         final String actualAbility = origSVars.get(s);
                         final SpellAbility grantedAbility = AbilityFactory.getAbility(actualAbility, out);
-                        grantedAbility.setOriginalHost(host);
                         grantedAbility.setIntrinsic(true);
                         state.addSpellAbility(grantedAbility);
                     }
@@ -709,8 +712,7 @@ public class CardFactory {
                 for (final String s : str.split(",")) {
                     if (origSVars.containsKey(s)) {
                         final String actualStatic = origSVars.get(s);
-                        final StaticAbility grantedStatic = new StaticAbility(actualStatic, out);
-                        grantedStatic.setOriginalHost(host);
+                        final StaticAbility grantedStatic = new StaticAbility(actualStatic, out, sa.getCardState());
                         grantedStatic.setIntrinsic(true);
                         state.addStaticAbility(grantedStatic);
                     }
@@ -759,26 +761,6 @@ public class CardFactory {
 
             // set the host card for copied replacement effects
             // needed for copied xPaid ETB effects (for the copy, xPaid = 0)
-            for (final ReplacementEffect rep : state.getReplacementEffects()) {
-                final SpellAbility newSa = rep.getOverridingAbility();
-                if (newSa != null && newSa.getOriginalHost() == null) {
-                    newSa.setOriginalHost(in);
-                }
-            }
-
-            // set the host card for copied spellabilities, if they are not set yet
-            for (final SpellAbility newSa : state.getSpellAbilities()) {
-                if (newSa.getOriginalHost() == null) {
-                    newSa.setOriginalHost(in);
-                }
-            }
-
-            for (final Trigger trigger : state.getTriggers()) {
-                final SpellAbility newSa = trigger.getOverridingAbility();
-                if (newSa != null && newSa.getOriginalHost() == null) {
-                    newSa.setOriginalHost(in);
-                }
-            }
 
             if (sa.hasParam("GainTextOf") && originalState != null) {
                 state.setSetCode(originalState.getSetCode());

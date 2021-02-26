@@ -7,7 +7,6 @@ import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardLists;
-import forge.game.card.CardPredicates;
 import forge.game.player.Player;
 import forge.game.player.RegisteredPlayer;
 import forge.game.spellability.SpellAbility;
@@ -43,8 +42,7 @@ public class RestartGameEffect extends SpellAbilityEffect {
             CardCollection newLibrary = new CardCollection(p.getCardsIn(restartZones, false));
             List<Card> filteredCards = null;
             if (leaveZone != null) {
-                filteredCards = CardLists.filter(p.getCardsIn(leaveZone),
-                        CardPredicates.restriction(leaveRestriction.split(","), p, sa.getHostCard(), null));
+                filteredCards = CardLists.getValidCards(p.getCardsIn(leaveZone), leaveRestriction.split(","), p, sa.getHostCard(), null);
                 newLibrary.addAll(filteredCards);
             }
 

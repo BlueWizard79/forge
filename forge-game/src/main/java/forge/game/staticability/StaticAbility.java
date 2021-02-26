@@ -31,6 +31,7 @@ import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
 import forge.game.card.CardLists;
+import forge.game.card.CardState;
 import forge.game.card.CounterType;
 import forge.game.cost.Cost;
 import forge.game.phase.PhaseHandler;
@@ -39,7 +40,9 @@ import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
+import forge.util.CardTranslation;
 import forge.util.Expressions;
+import forge.util.Lang;
 import forge.util.TextUtil;
 
 import java.util.EnumSet;
@@ -214,9 +217,10 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
     @Override
     public final String toString() {
         if (hasParam("Description") && !this.isSuppressed()) {
-            String desc = getParam("Description");
-            desc = TextUtil.fastReplace(desc, "CARDNAME", this.hostCard.getName());
-            desc = TextUtil.fastReplace(desc, "NICKNAME", this.hostCard.getName().split(",")[0]);
+            String currentName = this.hostCard.getName();
+            String desc = CardTranslation.translateSingleDescriptionText(getParam("Description"), currentName);
+            desc = TextUtil.fastReplace(desc, "CARDNAME", CardTranslation.getTranslatedName(currentName));
+            desc = TextUtil.fastReplace(desc, "NICKNAME", Lang.getInstance().getNickName(CardTranslation.getTranslatedName(currentName)));
 
             return desc;
         } else {
@@ -233,8 +237,8 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
      * @param host
      *            the host
      */
-    public StaticAbility(final String params, final Card host) {
-        this(parseParams(params, host), host);
+    public StaticAbility(final String params, final Card host, CardState state) {
+        this(parseParams(params, host), host, state);
     }
 
     /**
@@ -245,13 +249,14 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
      * @param host
      *            the host
      */
-    private StaticAbility(final Map<String, String> params, final Card host) {
+    private StaticAbility(final Map<String, String> params, final Card host, CardState state) {
         this.id = nextId();
         this.originalMapParams.putAll(params);
         this.mapParams.putAll(params);
         this.layers = this.generateLayer();
         this.hostCard = host;
         buildCommonAttributes(host);
+        this.setCardState(state);
     }
 
     public final CardCollectionView applyContinuousAbilityBefore(final StaticAbilityLayer layer, final CardCollectionView preList) {
