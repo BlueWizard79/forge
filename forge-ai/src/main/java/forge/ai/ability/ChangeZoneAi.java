@@ -1548,6 +1548,37 @@ public class ChangeZoneAi extends SpellAbilityAi {
             if (player.isOpponentOf(decider)) {
                 c = ComputerUtilCard.getBestAI(fetchList);
             } else {
+                // exclude tokens, they won't come back, and enchanted stuff, since auras will go away
+                if (!sa.hasParam("Mandatory") && origin.contains(ZoneType.Battlefield) && sa.hasParam("ChangeNum")) {
+                    fetchList = CardLists.filter(fetchList, new Predicate<Card>() {
+                        @Override
+                        public boolean apply(final Card card) {
+                            if (card.isToken()) {
+                                return false;
+                            }
+
+                            if (card.isCreature() && ComputerUtilCard.isUselessCreature(decider, card)) {
+                                return true;
+                            } else if (card.isEquipped()) {
+                                return false;
+                            } else if (card.isEnchanted()) {
+                                for (Card enc : card.getEnchantedBy()) {
+                                    if (enc.getOwner().isOpponentOf(decider)) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            } else if (card.isAura()) {
+                                return false;
+                            }
+                            return true;
+                        }
+                    });
+                    if (fetchList.isEmpty()) {
+                        return null;
+                    }
+                }
+
                 c = ComputerUtilCard.getWorstAI(fetchList);
                 if (ComputerUtilAbility.getAbilitySourceName(sa).equals("Temur Sabertooth")) {
                     Card tobounce = canBouncePermanent(player, sa, fetchList);
