@@ -21,6 +21,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import forge.card.CardStateName;
+import forge.game.CardTraitBase;
 import forge.game.IHasSVars;
 import forge.game.ability.effects.CharmEffect;
 import forge.game.card.Card;
@@ -115,8 +116,8 @@ public final class AbilityFactory {
      * 
      * @param abString
      *            a {@link java.lang.String} object.
-     * @param hostCard
-     *            a {@link forge.game.card.Card} object.
+     * @param state
+     *            a {@link forge.game.card.CardState} object.
      * @return a {@link forge.game.spellability.SpellAbility} object.
      */
     public static final SpellAbility getAbility(final String abString, final CardState state) {
@@ -226,7 +227,14 @@ public final class AbilityFactory {
             msg.append(". Looking for API: ").append(api);
             throw new RuntimeException(msg.toString());
         }
-        spellAbility.setCardState(state);
+
+        if (sVarHolder instanceof CardState) {
+            spellAbility.setCardState((CardState)sVarHolder);
+        } else if (sVarHolder instanceof CardTraitBase) {
+            spellAbility.setCardState(((CardTraitBase)sVarHolder).getCardState());
+        } else {
+            spellAbility.setCardState(state);
+        }
 
         if (mapParams.containsKey("Forecast")) {
             spellAbility.putParam("ActivationZone", "Hand");
@@ -279,6 +287,14 @@ public final class AbilityFactory {
                         return getSubAbility(state, input, sVarHolder);
                     } 
                 }));
+            }
+        }
+
+        if (api == ApiType.RollDice) {
+            for (String param : mapParams.keySet()) {
+                if (param.startsWith("On") || param.equals("Else")) {
+                    spellAbility.setAdditionalAbility(param, getSubAbility(state, mapParams.get(param), sVarHolder));
+                }
             }
         }
 
@@ -386,7 +402,6 @@ public final class AbilityFactory {
      * 
      * @param sa
      *            a {@link forge.game.spellability.SpellAbility} object.
-     * @param mapParams
      */
     private static final void initializeParams(final SpellAbility sa) {
 
@@ -402,7 +417,6 @@ public final class AbilityFactory {
      * 
      * @param sa
      *            a {@link forge.game.spellability.SpellAbility} object.
-     * @param mapParams
      */
     private static final void makeRestrictions(final SpellAbility sa) {
         // SpellAbilityRestrictions should be added in here
@@ -417,7 +431,6 @@ public final class AbilityFactory {
      * 
      * @param sa
      *            a {@link forge.game.spellability.SpellAbility} object.
-     * @param mapParams
      */
     private static final void makeConditions(final SpellAbility sa) {
         // SpellAbilityRestrictions should be added in here

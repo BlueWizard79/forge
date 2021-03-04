@@ -12,6 +12,7 @@ import forge.assets.FSkin;
 import forge.assets.FSkinColor;
 import forge.assets.FSkinFont;
 import forge.assets.FSkinImage;
+import forge.assets.ImageCache;
 import forge.game.GameLogEntryType;
 import forge.model.FModel;
 import forge.properties.ForgeConstants;
@@ -256,8 +257,8 @@ public class SettingsPage extends TabPage<SettingsScreen> {
                             localizer.getMessage("lblLater"), new Callback<Boolean>() {
                                 @Override
                                 public void run(Boolean result) {
-                                    if (result) {
-                                        Forge.restart(true);
+                                if (result) {
+                                    Forge.restart(true);
                                     }
                                 }
                             }
@@ -265,6 +266,28 @@ public class SettingsPage extends TabPage<SettingsScreen> {
                     }
                 },
                3);
+        lstSettings.addItem(new BooleanSetting(FPref.UI_LOAD_NONLEGAL_CARDS,
+                localizer.getMessage("lblEnableNonLegalCards"),
+                localizer.getMessage("nlEnableNonLegalCards")) {
+                    @Override
+                    public void select() {
+                        super.select();
+                        FOptionPane.showConfirmDialog(
+                            localizer.getMessage("lblRestartForgeDescription"),
+                            localizer.getMessage("lblRestartForge"),
+                            localizer.getMessage("lblRestart"),
+                            localizer.getMessage("lblLater"), new Callback<Boolean>() {
+                                @Override
+                                public void run(Boolean result) {
+                                    if (result) {
+                                        Forge.restart(true);
+                                        }
+                                    }
+                                }
+                            );
+                        }
+                    },
+                3);
         lstSettings.addItem(new BooleanSetting(FPref.UI_NETPLAY_COMPAT,
                 localizer.getMessage("lblExperimentalNetworkCompatibility"),
                 localizer.getMessage("nlExperimentalNetworkCompatibility")) {
@@ -310,6 +333,16 @@ public class SettingsPage extends TabPage<SettingsScreen> {
                  3);
         }
         //Graphic Options
+        lstSettings.addItem(new BooleanSetting(FPref.UI_DISABLE_CARD_IMAGES,
+                localizer.getMessage("lblDisableCardImages"),
+                localizer.getMessage("nlDisableCardImages")) {
+                    @Override
+                    public void select() {
+                        super.select();
+                        ImageCache.disposeTexture();
+                    }
+                },
+                4);
         lstSettings.addItem(new BooleanSetting(FPref.UI_ENABLE_ONLINE_IMAGE_FETCHER,
                 localizer.getMessage("cbImageFetcher"),
                 localizer.getMessage("nlImageFetcher")),

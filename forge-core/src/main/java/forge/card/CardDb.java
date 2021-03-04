@@ -166,7 +166,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         reIndex();
     }
 
-    public void initialize(boolean logMissingPerEdition, boolean logMissingSummary, boolean enableUnknownCards) {
+    public void initialize(boolean logMissingPerEdition, boolean logMissingSummary, boolean enableUnknownCards, boolean loadNonLegalCards) {
         Set<String> allMissingCards = new LinkedHashSet<>();
         List<String> missingCards = new ArrayList<>();
         CardEdition upcomingSet = null;
@@ -175,15 +175,21 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         for (CardEdition e : editions.getOrderedEditions()) {
             boolean coreOrExpSet = e.getType() == CardEdition.Type.CORE || e.getType() == CardEdition.Type.EXPANSION;
             boolean isCoreExpSet = coreOrExpSet || e.getType() == CardEdition.Type.REPRINT;
+            //todo sets with nonlegal cards should have tags in them so we don't need to specify the code here
+            boolean skip = !loadNonLegalCards && (e.getCode().equals("CMB1") || e.getBorderColor() == CardEdition.BorderColor.SILVER);
             if (logMissingPerEdition && isCoreExpSet) {
                 System.out.print(e.getName() + " (" + e.getAllCardsInSet().size() + " cards)");
             }
             if (coreOrExpSet && e.getDate().after(today) && upcomingSet == null) {
-                upcomingSet = e;
+                if (skip)
+                    upcomingSet = e;
             }
 
             for (CardEdition.CardInSet cis : e.getAllCardsInSet()) {
                 CardRules cr = rulesByName.get(cis.name);
+                if (cr != null && !cr.getType().isBasicLand() && skip)
+                    continue;
+
                 if (cr != null) {
                     addSetCard(e, cis, cr);
                 }
