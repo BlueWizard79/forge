@@ -1,36 +1,8 @@
 package forge.itemmanager.views;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Polygon;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.Shape;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.awt.event.MouseWheelEvent;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-
-import javax.swing.JComponent;
-import javax.swing.JPanel;
-import javax.swing.JViewport;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingUtilities;
-
 import forge.ImageCache;
 import forge.assets.FSkinProp;
+import forge.card.ColorSet;
 import forge.deck.DeckProxy;
 import forge.game.card.Card;
 import forge.game.card.CardView;
@@ -38,12 +10,7 @@ import forge.gui.framework.ILocalRepaint;
 import forge.item.IPaperCard;
 import forge.item.InventoryItem;
 import forge.item.PaperCard;
-import forge.itemmanager.ColumnDef;
-import forge.itemmanager.GroupDef;
-import forge.itemmanager.ItemManager;
-import forge.itemmanager.ItemManagerConfig;
-import forge.itemmanager.ItemManagerModel;
-import forge.itemmanager.SItemManagerUtil;
+import forge.itemmanager.*;
 import forge.model.FModel;
 import forge.properties.ForgePreferences;
 import forge.screens.deckeditor.CDeckEditorUI;
@@ -56,6 +23,16 @@ import forge.toolbox.special.CardZoomer;
 import forge.util.ImageUtil;
 import forge.util.Localizer;
 import forge.view.arcane.CardPanel;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 
 public class ImageView<T extends InventoryItem> extends ItemView<T> {
     private static final int PADDING = 5;
@@ -1120,6 +1097,7 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
             Rectangle bounds = itemInfo.getBounds();
             final int itemWidth = bounds.width;
             final int selBorderSize = 1;
+            boolean deckSelectMode = itemInfo.item instanceof DeckProxy;
 
             // Determine whether to render border from properties
             boolean noBorder = !isPreferenceEnabled(ForgePreferences.FPref.UI_RENDER_BLACK_BORDERS);
@@ -1170,6 +1148,37 @@ public class ImageView<T extends InventoryItem> extends ItemView<T> {
                 g.drawImage(img, null, bounds.x + borderSize, bounds.y + borderSize);
             }
             else {
+                if (deckSelectMode) {
+                    DeckProxy dp = ((DeckProxy) item);
+                    if (dp.isGeneratedDeck()) {
+                        //draw generic box
+                        FSkin.drawImage(g, FSkin.getImage(FSkinProp.IMG_DECK_GENERIC), bounds.x, bounds.y, bounds.width - 2 * cornerSize, bounds.height - 2 * cornerSize);
+                    } else {
+                        String deckImageKey = dp.getDeck().getCommanders().isEmpty() ? dp.getHighestCMCCard().getImageKey(false) : dp.getDeck().getCommanders().get(0).getImageKey(false);
+
+                        ColorSet deckColor = dp.getColor();
+                        int scale = CardFaceSymbols.getHeight() * cornerSize/8;
+                        int scaleArt = CardFaceSymbols.getHeight() * cornerSize/7;
+
+                        BufferedImage cardImage = ImageCache.scaleImage(deckImageKey, bounds.width, bounds.height, false);
+
+                        if (cardImage == null) {
+                            //draw generic box
+                            FSkin.drawImage(g, FSkin.getImage(FSkinProp.IMG_DECK_GENERIC), bounds.x, bounds.y, bounds.width - 2 * cornerSize, bounds.height - 2 * cornerSize);
+                        } else {
+                            //draw card art
+                            g.drawImage(ImageCache.getCroppedArt(cardImage,bounds.x, bounds.y,bounds.width, bounds.height).getScaledInstance(scaleArt*3,  Math.round(scaleArt*2.5f), Image.SCALE_SMOOTH),
+                                    bounds.x+bounds.width/9, 2*cornerSize+bounds.y+bounds.height/7, null);
+                            //draw deck box
+                            FSkin.drawImage(g, FSkin.getImage(FSkinProp.IMG_DECK_CARD_ART), bounds.x, bounds.y, bounds.width - 2 * cornerSize, bounds.height - 2 * cornerSize);
+                        }
+
+                        //deck colors
+                        if (deckColor != null) {
+                            CardFaceSymbols.drawColorSet(g, deckColor, bounds.x + bounds.width - (scale*2) + cornerSize, bounds.y + bounds.height/2 - (scale*2), scale, true);
+                        }
+                    }
+                }
                 g.setColor(Color.white);
                 Shape clip = g.getClip();
                 g.setClip(bounds);
