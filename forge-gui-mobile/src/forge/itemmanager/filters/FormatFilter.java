@@ -141,6 +141,9 @@ public abstract class FormatFilter<T extends InventoryItem> extends ItemFilter<T
             lstSets.addGroup("Premium Deck Series");
             lstSets.addGroup("Reprint Sets");
             lstSets.addGroup("Starter Sets");
+            lstSets.addGroup("Promo Sets");
+            lstSets.addGroup("Digital Sets");
+            lstSets.addGroup("Funny Sets");
             lstSets.addGroup("Custom Sets");
             lstSets.addGroup("Other Sets");
 
@@ -168,11 +171,20 @@ public abstract class FormatFilter<T extends InventoryItem> extends ItemFilter<T
                 case STARTER:
                     lstSets.addItem(set, 6);
                     break;
-                case THIRDPARTY:
+                case PROMOS:
                     lstSets.addItem(set, 7);
                     break;
-                default:
+                case ONLINE:
                     lstSets.addItem(set, 8);
+                    break;
+                case FUNNY:
+                    lstSets.addItem(set, 9);
+                    break;
+                case THIRDPARTY:
+                    lstSets.addItem(set, 10);
+                    break;
+                default:
+                    lstSets.addItem(set, 11);
                     break;
                 }
             }

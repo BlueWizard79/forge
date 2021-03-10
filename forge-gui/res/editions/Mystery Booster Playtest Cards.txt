@@ -4,7 +4,7 @@ Date=2019-11-07
 Name=Mystery Booster Playtest Cards
 Code2=CMB1
 MciCode=cmb1
-Type=Other
+Type=Funny
 
 [cards]
 1 R Ral's Vanguard

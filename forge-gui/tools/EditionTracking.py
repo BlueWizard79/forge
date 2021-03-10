@@ -13,7 +13,8 @@ allJson = os.path.join(toolsDir, 'AllCards.json')
 allJsonUrl = 'http://mtgjson.com/json/AllCards.json'
 
 def initializeEditions():
-	ignoredTypes = [ "From_the_Vault", "Duel_Decks", "Online", "Premium_Deck_Series" ]
+	ignoredTypes = [ "From_the_Vault", "Duel_Decks", "Online", "Premium_Deck_Series" , "Funny" , "Promos"]
+	ignoredBorders = [ "Silver" ]
 	editionSections = [ "[cards]", "[precon product]", "[borderless]", "[showcase]", "[extended art]", "[buy a box]", "[promo]" ]
 
 	print("Parsing Editions folder")
@@ -24,7 +25,7 @@ def initializeEditions():
 			with open(os.path.join(root, fileName)) as currentEdition:
 				# Check all names for this card
 				metadata = True
-				setcode = setname = settype = None
+				setcode = setname = settype = border = None
 				for line in currentEdition.readlines():
 					line = line.strip()
 					if metadata:
@@ -33,7 +34,7 @@ def initializeEditions():
 							if setcode and setcode not in setCodes:
 								setCodes.append(setcode)
 								setCodeToName[setcode] = setname
-								if settype in ignoredTypes:
+								if settype in ignoredTypes or border in ignoredBorders:
 									ignoredSet.append(setcode)
 
 						elif line.startswith("Code="):
@@ -44,6 +45,9 @@ def initializeEditions():
 
 						elif line.startswith("Type="):
 							settype = line.split("=")[1].rstrip()
+
+						elif line.startswith("Border="):
+							border = line.split("=")[1].rstrip()
 
 					else:
 						if not line:
