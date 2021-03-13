@@ -67,8 +67,9 @@ public class FDeckChooser extends FScreen {
     private NetDeckArchiveModern NetDeckArchiveModern;
     private NetDeckArchiveLegacy NetDeckArchiveLegacy;
     private NetDeckArchiveVintage NetDeckArchiveVintage;
+    private NetDeckArchiveBlock NetDeckArchiveBlock;
     private boolean refreshingDeckType;
-    private boolean firstactivation = true;
+    private boolean firstActivation = true;
 
     private final DeckManager lstDecks;
     private final FButton btnNewDeck = new FButton(Localizer.getInstance().getMessage("lblNewDeck"));
@@ -231,71 +232,81 @@ public class FDeckChooser extends FScreen {
 
     @Override
     public void onActivate() {
-        String aiSelected = "";
-        if(isAi() && firstactivation) {
-            needRefreshOnActivate = true;
-            firstactivation = false;
-            aiSelected = lstDecks.getSelectedItem().getDeck().toString();
+        String selectedDeck = "";
+        int index = 0;
+        if (lstDecks.getSelectedItem() != null) {
+            selectedDeck = lstDecks.getSelectedItem().getDeck().toString();
+            index = lstDecks.getSelectedIndex();
         }
-        if (needRefreshOnActivate) {
+        if (lstDecks.getConfig().getViewIndex() == 1 && firstActivation) {
+            firstActivation = false;
+            lstDecks.refresh();
+            if (selectedDeckType.name().startsWith("NET_")) {
+                //we can't use the index here since net decks are updated and may add decks and can be inserted anywhere
+                lstDecks.setSelectedString(selectedDeck);
+            } else {
+                //we use index here as a workaround, if the provided decks are updated somehow at least it will refresh the display
+                if (lstDecks.getSelectedIndex() < 0) {
+                    lstDecks.setSelectedIndex(index);
+                }
+            }
+        } else if (needRefreshOnActivate) {
             needRefreshOnActivate = false;
             refreshDecksList(selectedDeckType, true, null);
             switch (lstDecks.getGameType()) {
-            case Commander:
-                lstDecks.setSelectedString(DeckPreferences.getCommanderDeck());
-                break;
-            case Oathbreaker:
-                lstDecks.setSelectedString(DeckPreferences.getOathbreakerDeck());
-                break;
-            case TinyLeaders:
-                lstDecks.setSelectedString(DeckPreferences.getTinyLeadersDeck());
-                break;
-            case Brawl:
-                lstDecks.setSelectedString(DeckPreferences.getBrawlDeck());
-                break;
-            case Archenemy:
-                lstDecks.setSelectedString(DeckPreferences.getSchemeDeck());
-                break;
-            case Planechase:
-                lstDecks.setSelectedString(DeckPreferences.getPlanarDeck());
-                break;
-            case DeckManager:
-                switch (selectedDeckType) {
-                case COMMANDER_DECK:
+                case Commander:
                     lstDecks.setSelectedString(DeckPreferences.getCommanderDeck());
                     break;
-                case OATHBREAKER_DECK:
+                case Oathbreaker:
                     lstDecks.setSelectedString(DeckPreferences.getOathbreakerDeck());
                     break;
-                case TINY_LEADERS_DECK:
+                case TinyLeaders:
                     lstDecks.setSelectedString(DeckPreferences.getTinyLeadersDeck());
                     break;
-                case BRAWL_DECK:
+                case Brawl:
                     lstDecks.setSelectedString(DeckPreferences.getBrawlDeck());
                     break;
-                case SCHEME_DECK:
+                case Archenemy:
                     lstDecks.setSelectedString(DeckPreferences.getSchemeDeck());
                     break;
-                case PLANAR_DECK:
+                case Planechase:
                     lstDecks.setSelectedString(DeckPreferences.getPlanarDeck());
                     break;
-                case DRAFT_DECK:
-                    lstDecks.setSelectedString(DeckPreferences.getDraftDeck());
-                    break;
-                case SEALED_DECK:
-                    lstDecks.setSelectedString(DeckPreferences.getSealedDeck());
+                case DeckManager:
+                    switch (selectedDeckType) {
+                        case COMMANDER_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getCommanderDeck());
+                            break;
+                        case OATHBREAKER_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getOathbreakerDeck());
+                            break;
+                        case TINY_LEADERS_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getTinyLeadersDeck());
+                            break;
+                        case BRAWL_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getBrawlDeck());
+                            break;
+                        case SCHEME_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getSchemeDeck());
+                            break;
+                        case PLANAR_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getPlanarDeck());
+                            break;
+                        case DRAFT_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getDraftDeck());
+                            break;
+                        case SEALED_DECK:
+                            lstDecks.setSelectedString(DeckPreferences.getSealedDeck());
+                            break;
+                        default:
+                            lstDecks.setSelectedString(DeckPreferences.getCurrentDeck());
+                            break;
+                    }
                     break;
                 default:
-                    lstDecks.setSelectedString(DeckPreferences.getCurrentDeck());
+                    if (!lstDecks.setSelectedString(DeckPreferences.getCurrentDeck()))
+                        lstDecks.setSelectedString(selectedDeck);
                     break;
-                }
-                break;
-            default:
-                if (isAi())
-                    lstDecks.setSelectedString(aiSelected);
-                else
-                    lstDecks.setSelectedString(DeckPreferences.getCurrentDeck());
-                break;
             }
         }
     }
@@ -543,6 +554,8 @@ public class FDeckChooser extends FScreen {
                 cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_MODERN_DECK);
                 cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_LEGACY_DECK);
                 cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_VINTAGE_DECK);
+                cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_BLOCK_DECK);
+
                 break;
             case Commander:
             case Oathbreaker:
@@ -577,6 +590,7 @@ public class FDeckChooser extends FScreen {
                 cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_MODERN_DECK);
                 cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_LEGACY_DECK);
                 cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_VINTAGE_DECK);
+                cmbDeckTypes.addItem(DeckType.NET_ARCHIVE_BLOCK_DECK);
                 break;
             default:
                 cmbDeckTypes.addItem(DeckType.CUSTOM_DECK);
@@ -751,6 +765,39 @@ public class FDeckChooser extends FScreen {
                         });
                        return;
                     }
+
+
+
+                    if (!refreshingDeckType&&(deckType == DeckType.NET_ARCHIVE_BLOCK_DECK)) {
+                        FThreads.invokeInBackgroundThread(new Runnable() { //needed for loading net decks
+                            @Override
+                            public void run() {
+                                GameType gameType = lstDecks.getGameType();
+                                final NetDeckArchiveBlock category = NetDeckArchiveBlock.selectAndLoad(gameType);
+
+                                FThreads.invokeInEdtLater(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (category == null) {
+                                            cmbDeckTypes.setSelectedItem(selectedDeckType); //restore old selection if user cancels
+                                            if (selectedDeckType == deckType && NetDeckArchiveBlock != null) {
+                                                cmbDeckTypes.setText(NetDeckArchiveBlock.getDeckType());
+                                            }
+                                            return;
+                                        }
+
+                                        NetDeckArchiveBlock = category;
+                                        refreshDecksList(deckType, true, e);
+                                    }
+                                });
+                            }
+                        });
+                        return;
+                    }
+
+
+
+
                     refreshDecksList(deckType, false, e);
                 }
             });
@@ -979,7 +1026,13 @@ public class FDeckChooser extends FScreen {
                 pool = DeckProxy.getNetArchiveVintageDecks(NetDeckArchiveVintage);
                 config = ItemManagerConfig.NET_ARCHIVE_VINTAGE_DECKS;
                 break;
-
+            case NET_ARCHIVE_BLOCK_DECK:
+                if (NetDeckArchiveBlock!= null) {
+                    cmbDeckTypes.setText(NetDeckArchiveBlock.getDeckType());
+                }
+                pool = DeckProxy.getNetArchiveBlockecks(NetDeckArchiveBlock);
+                config = ItemManagerConfig.NET_ARCHIVE_BLOCK_DECKS;
+                break;
         case NET_DECK:
         case NET_COMMANDER_DECK:
             if (netDeckCategory != null) {
@@ -1262,6 +1315,10 @@ public class FDeckChooser extends FScreen {
                 if (deckType.startsWith(NetDeckArchiveVintage.PREFIX)) {
                     NetDeckArchiveVintage = NetDeckArchiveVintage.selectAndLoad(lstDecks.getGameType(), deckType.substring(NetDeckArchiveVintage.PREFIX.length()));
                     return DeckType.NET_ARCHIVE_VINTAGE_DECK;
+                }
+                if (deckType.startsWith(NetDeckArchiveBlock.PREFIX)) {
+                    NetDeckArchiveBlock = NetDeckArchiveBlock.selectAndLoad(lstDecks.getGameType(), deckType.substring(NetDeckArchiveBlock.PREFIX.length()));
+                    return DeckType.NET_ARCHIVE_BLOCK_DECK;
                 }
                 return DeckType.valueOf(deckType);
             }

@@ -232,9 +232,11 @@ public class TextRenderer {
                             continue; //skip '}' character
                         }
                     }
-                    text.insert(0, '{'); //if not a symbol, render as text
-                    if (lastSpaceIdx >= 0) {
-                        lastSpaceIdx++;
+                    if (!hideReminderText || inReminderTextCount == 0) {
+                        text.insert(0, '{'); //if not a symbol, render as text
+                        if (lastSpaceIdx >= 0) {
+                            lastSpaceIdx++;
+                        }
                     }
                 }
                 break;
@@ -302,7 +304,6 @@ public class TextRenderer {
                 }
                 break;
             case '(':
-            case '（':
                 if (inSymbolCount > 0) {
                     inSymbolCount = 0;
                     text.insert(0, '{'); //if not a symbol, render as text
@@ -323,7 +324,6 @@ public class TextRenderer {
                 }
                 break;
             case ')':
-            case '）':
                 if (inSymbolCount > 0) {
                     inSymbolCount = 0;
                     text.insert(0, '{'); //if not a symbol, render as text

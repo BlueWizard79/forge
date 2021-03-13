@@ -35,7 +35,7 @@ import forge.game.zone.ZoneType;
 import forge.util.CardTranslation;
 import forge.util.Lang;
 import forge.util.Localizer;
-import forge.util.collect.FCollectionView;
+import forge.util.collect.FCollection;
 
 /**
  * <p>
@@ -238,7 +238,7 @@ public abstract class SpellAbilityEffect {
     }
 
 
-    protected static void registerDelayedTrigger(final SpellAbility sa, String location, final List<Card> crds) {
+    protected static void registerDelayedTrigger(final SpellAbility sa, String location, final Iterable<Card> crds) {
         boolean intrinsic = sa.isIntrinsic();
         boolean your = location.startsWith("Your");
         boolean combat = location.endsWith("Combat");
@@ -298,9 +298,9 @@ public abstract class SpellAbilityEffect {
         if (location.equals("Hand")) {
             trigSA = "DB$ ChangeZone | Defined$ DelayTriggerRememberedLKI | Origin$ Battlefield | Destination$ Hand";
         } else if (location.equals("SacrificeCtrl")) {
-            trigSA = "DB$ SacrificeAll | Defined$ DelayTriggerRemembered";
+            trigSA = "DB$ SacrificeAll | Defined$ DelayTriggerRememberedLKI";
         } else if (location.equals("Sacrifice")) {
-            trigSA = "DB$ SacrificeAll | Defined$ DelayTriggerRemembered | Controller$ You";
+            trigSA = "DB$ SacrificeAll | Defined$ DelayTriggerRememberedLKI | Controller$ You";
         } else if (location.equals("Exile")) {
             trigSA = "DB$ ChangeZone | Defined$ DelayTriggerRememberedLKI | Origin$ Battlefield | Destination$ Exile";
         } else if (location.equals("Destroy")) {
@@ -457,6 +457,7 @@ public abstract class SpellAbilityEffect {
             }
         }
         eff.setOwner(controller);
+        eff.setSVars(sa.getSVars());
 
         eff.setImageKey(image);
         if (eff.getType().hasType(CardType.CoreType.Emblem)) {
@@ -560,14 +561,16 @@ public abstract class SpellAbilityEffect {
 
         if (sa.hasParam(attackingParam) && combat.getAttackingPlayer().equals(controller)) {
             String attacking = sa.getParam(attackingParam);
+
             GameEntity defender = null;
-            FCollectionView<GameEntity> defs = null;
+            FCollection<GameEntity> defs = null;
             if ("True".equalsIgnoreCase(attacking)) {
-                defs = combat.getDefenders();
+                defs = (FCollection<GameEntity>) combat.getDefenders();
             } else if (sa.hasParam("ChoosePlayerOrPlaneswalker")) {
-                Player defendingPlayer = Iterables.getFirst(AbilityUtils.getDefinedPlayers(host, attacking, sa), null);
-                if (defendingPlayer != null) {
-                    defs = game.getCombat().getDefendersControlledBy(defendingPlayer);
+                PlayerCollection defendingPlayers = AbilityUtils.getDefinedPlayers(host, attacking, sa);
+                defs = new FCollection<>();
+                for (Player p : defendingPlayers) {
+                    defs.addAll(game.getCombat().getDefendersControlledBy(p));
                 }
             } else {
                 defs = AbilityUtils.getDefinedEntities(host, attacking, sa);
@@ -576,7 +579,14 @@ public abstract class SpellAbilityEffect {
             if (defs != null) {
                 Map<String, Object> params = Maps.newHashMap();
                 params.put("Attacker", c);
-                defender = controller.getController().chooseSingleEntityForEffect(defs, sa,
+                Player chooser;
+                if (sa.hasParam("Chooser")) {
+                    chooser = Iterables.getFirst(AbilityUtils.getDefinedPlayers(host, sa.getParam("Chooser"), sa), null);
+                }
+                else {
+                    chooser = controller;
+                }
+                defender = chooser.getController().chooseSingleEntityForEffect(defs, sa,
                         Localizer.getInstance().getMessage("lblChooseDefenderToAttackWithCard", CardTranslation.getTranslatedName(c.getName())), false, params);
             }
 
