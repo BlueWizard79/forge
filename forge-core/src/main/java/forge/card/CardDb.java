@@ -18,18 +18,12 @@
 package forge.card;
 
 import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimaps;
-
+import com.google.common.collect.*;
 import forge.card.CardEdition.CardInSet;
 import forge.card.CardEdition.Type;
 import forge.deck.generation.IDeckGenPool;
 import forge.item.PaperCard;
 import forge.util.*;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -402,6 +396,16 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
     public PaperCard getCardFromEdition(final String cardName, final Date printedBefore, final SetPreference fromSet, int artIndex) {
         final CardRequest cr = CardRequest.fromString(cardName);
         List<PaperCard> cards = getAllCards(cr.cardName);
+        if (printedBefore != null){
+            cards = Lists.newArrayList(Iterables.filter(cards, new Predicate<PaperCard>() {
+                @Override public boolean apply(PaperCard c) {
+                    CardEdition ed = editions.get(c.getEdition());
+                    return ed.getDate().before(printedBefore); }
+            }));
+        }
+
+        if (cards.size() == 0)  // Don't bother continuing! No cards has been found!
+            return null;
         boolean cardsListReadOnly = true;
 
         if (StringUtils.isNotBlank(cr.edition)) {
@@ -545,6 +549,15 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
     @Override
     public Collection<PaperCard> getAllCards() {
         return roAllCards;
+    }
+
+    public Collection<PaperCard> getAllNonPromoCards() {
+        return Lists.newArrayList(Iterables.filter(this.roAllCards, new Predicate<PaperCard>() {
+            @Override
+            public boolean apply(final PaperCard paperCard) {
+                return editions.getEditionByCodeOrThrow(paperCard.getEdition()).getType() != Type.PROMOS;
+            }
+        }));
     }
 
     public String getName(final String cardName) {
