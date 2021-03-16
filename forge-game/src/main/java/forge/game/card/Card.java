@@ -58,8 +58,6 @@ import forge.trackable.Tracker;
 import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
-import forge.util.maps.HashMapOfLists;
-import forge.util.maps.MapOfLists;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.tuple.Pair;
@@ -99,6 +97,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private CardCollection hauntedBy, devouredCards, exploitedCards, delvedCards, convokedCards, imprintedCards, encodedCards;
     private CardCollection mustBlockCards, gainControlTargets, chosenCards, blockedThisTurn, blockedByThisTurn;
     private CardCollection mergedCards;
+
+    private CardCollection untilLeavesBattlefield = new CardCollection();
 
     // if this card is attached or linked to something, what card is it currently attached to
     private Card encoding, cloneOrigin, haunting, effectSource, pairedWith, meldedWith;
@@ -144,7 +144,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private Map<String, String> originalSVars = Maps.newHashMap();
 
     private final Set<Object> rememberedObjects = Sets.newLinkedHashSet();
-    private final MapOfLists<GameEntity, Object> rememberMap = new HashMapOfLists<>(CollectionSuppliers.arrayLists());
     private Map<Player, String> flipResult;
 
     private Map<Card, Integer> receivedDamageFromThisTurn = Maps.newHashMap();
@@ -938,13 +937,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final void clearConvoked() {
         convokedCards = null;
-    }
-
-    public MapOfLists<GameEntity, Object> getRememberMap() {
-        return rememberMap;
-    }
-    public final void addRememberMap(final GameEntity e, final List<Object> o) {
-        rememberMap.addAll(e, o);
     }
 
     public final Iterable<Object> getRemembered() {
@@ -2273,7 +2265,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         continue;
                     }
                     final Card host = stAb.getHostCard();
-                    if (isValid(stAb.getParam("ValidAttacker").split(","), host.getController(), host, null)) {
+                    if (isValid(stAb.getParam("ValidAttacker").split(","), host.getController(), host, stAb)) {
                         String currentName = (host.getName());
                         String desc1 = TextUtil.fastReplace(stAb.toString(), "CARDNAME", currentName);
                         String desc = TextUtil.fastReplace(desc1,"NICKNAME", currentName.split(",")[0]);
@@ -4686,7 +4678,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     // Takes one argument like Permanent.Blue+withFlying
     @Override
-    public final boolean isValid(final String restriction, final Player sourceController, final Card source, SpellAbility spellAbility) {
+    public final boolean isValid(final String restriction, final Player sourceController, final Card source, CardTraitBase spellAbility) {
         if (isImmutable() && source != null && !source.isRemembered(this) &&
                 !(restriction.startsWith("Emblem") || restriction.startsWith("Effect"))) { // special case exclusion
             return false;
@@ -4726,7 +4718,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     // Takes arguments like Blue or withFlying
     @Override
-    public boolean hasProperty(final String property, final Player sourceController, final Card source, SpellAbility spellAbility) {
+    public boolean hasProperty(final String property, final Player sourceController, final Card source, CardTraitBase spellAbility) {
         return CardProperty.cardHasProperty(this, property, sourceController, source, spellAbility);
     }
 
@@ -7011,5 +7003,21 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return CardEdition.BorderColor.BLACK;
         }
         return edition.getBorderColor();
+    }
+
+    public final void addUntilLeavesBattlefield(final Card c) {
+        untilLeavesBattlefield = view.addCard(untilLeavesBattlefield, c, TrackableProperty.UntilLeavesBattlefield);
+    }
+    public final void addUntilLeavesBattlefield(final Iterable<Card> cards) {
+        untilLeavesBattlefield = view.addCards(untilLeavesBattlefield, cards, TrackableProperty.UntilLeavesBattlefield);
+    }
+    public final void removeUntilLeavesBattlefield(final Card c) {
+        untilLeavesBattlefield = view.removeCard(untilLeavesBattlefield, c, TrackableProperty.UntilLeavesBattlefield);
+    }
+    public final void removeUntilLeavesBattlefield(final Iterable<Card> cards) {
+        untilLeavesBattlefield = view.removeCards(untilLeavesBattlefield, cards, TrackableProperty.UntilLeavesBattlefield);
+    }
+    public final void clearUntilLeavesBattlefield() {
+        untilLeavesBattlefield = view.clearCards(untilLeavesBattlefield, TrackableProperty.UntilLeavesBattlefield);
     }
 }
