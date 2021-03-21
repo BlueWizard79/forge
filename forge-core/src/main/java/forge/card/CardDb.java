@@ -17,18 +17,39 @@
  */
 package forge.card;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.google.common.base.Predicate;
-import com.google.common.collect.*;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+
 import forge.card.CardEdition.CardInSet;
 import forge.card.CardEdition.Type;
 import forge.deck.generation.IDeckGenPool;
 import forge.item.PaperCard;
-import forge.util.*;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-
-import java.util.*;
-import java.util.Map.Entry;
+import forge.util.Aggregates;
+import forge.util.CollectionSuppliers;
+import forge.util.Lang;
+import forge.util.MyRandom;
+import forge.util.TextUtil;
 
 public final class CardDb implements ICardDatabase, IDeckGenPool {
     public final static String foilSuffix = "+";
@@ -232,7 +253,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         reIndex();
     }
 
-    private void addCard(PaperCard paperCard) {
+    public void addCard(PaperCard paperCard) {
         allCardsByName.put(paperCard.getName(), paperCard);
 
         if (paperCard.getRules().getSplitType() == CardSplitType.None) { return; }
@@ -555,7 +576,13 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         return Lists.newArrayList(Iterables.filter(this.roAllCards, new Predicate<PaperCard>() {
             @Override
             public boolean apply(final PaperCard paperCard) {
-                return editions.getEditionByCodeOrThrow(paperCard.getEdition()).getType() != Type.PROMOS;
+                CardEdition edition = null;
+                try {
+                    edition = editions.getEditionByCodeOrThrow(paperCard.getEdition());
+                } catch (Exception ex) {
+                    return false;
+                }
+                return edition != null && edition.getType() != Type.PROMOS;
             }
         }));
     }

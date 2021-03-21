@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import forge.card.MagicColor;
-import forge.util.TextUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Iterables;
@@ -15,6 +13,7 @@ import com.google.common.collect.Table;
 
 import forge.GameCommand;
 import forge.card.CardType;
+import forge.card.MagicColor;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameObject;
@@ -37,6 +36,7 @@ import forge.game.zone.ZoneType;
 import forge.util.CardTranslation;
 import forge.util.Lang;
 import forge.util.Localizer;
+import forge.util.TextUtil;
 import forge.util.collect.FCollection;
 
 /**
@@ -239,6 +239,14 @@ public abstract class SpellAbilityEffect {
                 : AbilityUtils.getDefinedObjects(sa.getHostCard(), sa.getParam(definedParam), sa);
     }
 
+    protected final static List<Card> getCardsfromTargets(final SpellAbility sa) {
+        List<Card> cards = getTargetCards(sa);
+        List<SpellAbility> spells = getTargetSpells(sa);
+        for (SpellAbility s : spells) {
+            cards.add(s.getHostCard());
+        }
+        return cards;
+    }
 
     protected static void registerDelayedTrigger(final SpellAbility sa, String location, final Iterable<Card> crds) {
         boolean intrinsic = sa.isIntrinsic();

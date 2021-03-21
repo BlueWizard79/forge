@@ -1,5 +1,11 @@
 package forge.game.ability.effects;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
+
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
@@ -15,7 +21,15 @@ import forge.game.GameLogEntryType;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
-import forge.game.card.*;
+import forge.game.card.Card;
+import forge.game.card.CardCollection;
+import forge.game.card.CardCollectionView;
+import forge.game.card.CardLists;
+import forge.game.card.CardPredicates;
+import forge.game.card.CardUtil;
+import forge.game.card.CardView;
+import forge.game.card.CardZoneTable;
+import forge.game.card.CounterType;
 import forge.game.event.GameEventCombatChanged;
 import forge.game.player.DelayedReveal;
 import forge.game.player.Player;
@@ -31,17 +45,12 @@ import forge.game.trigger.TriggerType;
 import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
 import forge.util.Aggregates;
+import forge.util.CardTranslation;
 import forge.util.Lang;
+import forge.util.Localizer;
 import forge.util.MessageUtil;
 import forge.util.TextUtil;
 import forge.util.collect.FCollectionView;
-import forge.util.Localizer;
-import forge.util.CardTranslation;
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 
 public class ChangeZoneEffect extends SpellAbilityEffect {
 
@@ -1443,6 +1452,8 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
         Card movedCard = null;
         if (srcSA.hasParam("Destination")) {
             final boolean remember = srcSA.hasParam("RememberChanged");
+            final boolean rememberSpell = srcSA.hasParam("RememberSpell");
+            final boolean imprint = srcSA.hasParam("Imprint");
             if (tgtSA.isAbility()) {
                 // Shouldn't be able to target Abilities but leaving this in for now
             } else if (srcSA.getParam("Destination").equals("Graveyard")) {
@@ -1462,7 +1473,8 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             } else if (srcSA.getParam("Destination").equals("BottomOfLibrary")) {
                 movedCard = game.getAction().moveToBottomOfLibrary(tgtHost, srcSA, params);
             } else if (srcSA.getParam("Destination").equals("Library")) {
-                movedCard = game.getAction().moveToBottomOfLibrary(tgtHost, srcSA, params);
+                final int libraryPos = srcSA.hasParam("LibraryPosition") ? AbilityUtils.calculateAmount(tgtHost, srcSA.getParam("LibraryPosition"), srcSA) : 0;
+                movedCard = game.getAction().moveToLibrary(tgtHost, libraryPos, srcSA, params);
                 if (srcSA.hasParam("Shuffle") && "True".equals(srcSA.getParam("Shuffle"))) {
                     tgtHost.getOwner().shuffle(srcSA);
                 }
@@ -1474,6 +1486,12 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             if (remember) {
                 srcSA.getHostCard().addRemembered(tgtHost);
                 // TODO or remember moved?
+            }
+            if (rememberSpell) {
+                srcSA.getHostCard().addRemembered(tgtSA);
+            }
+            if (imprint) {
+                srcSA.getHostCard().addImprintedCard(tgtHost);
             }
 
             if (!tgtSA.isAbility()) {
