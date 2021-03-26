@@ -1247,17 +1247,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         currentState.addTrigger(t);
         return t;
     }
-    @Deprecated
-    public final void removeTrigger(final Trigger t) {
-        currentState.removeTrigger(t);
-    }
-    @Deprecated
-    public final void removeTrigger(final Trigger t, final CardStateName state) {
-        getState(state).removeTrigger(t);
-    }
-    public final void clearTriggersNew() {
-        currentState.clearTriggers();
-    }
 
     public final boolean hasTrigger(final Trigger t) {
        return currentState.hasTrigger(t);
@@ -1679,6 +1668,17 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final void setExiledWith(final Card e) {
         exiledWith = e;
+    }
+
+    public final void cleanupExiledWith() {
+        if (exiledWith == null) {
+            return;
+        }
+
+        exiledWith.removeUntilLeavesBattlefield(this);
+
+        exiledWith = null;
+        exiledBy = null;
     }
 
     public final Player getExiledBy() { return exiledBy; }
@@ -7075,6 +7075,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return CardEdition.BorderColor.BLACK;
         }
         return edition.getBorderColor();
+    }
+
+    public final CardCollectionView getUntilLeavesBattlefield() {
+        return CardCollection.getView(untilLeavesBattlefield);
     }
 
     public final void addUntilLeavesBattlefield(final Card c) {
