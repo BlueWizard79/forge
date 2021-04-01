@@ -17,10 +17,12 @@
  */
 package forge.game.player;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -219,6 +221,8 @@ public class Player extends GameEntity implements Comparable<Player> {
     private CardCollection lostOwnership = new CardCollection();
     private CardCollection gainedOwnership = new CardCollection();
     private int numManaConversion = 0;
+    // The SA currently being paid for
+    private Deque<SpellAbility> paidForStack = new ArrayDeque<>();
 
     private Card monarchEffect = null;
     private Card blessingEffect = null;
@@ -1505,27 +1509,30 @@ public class Player extends GameEntity implements Comparable<Player> {
             c = game.getAction().moveToHand(c, cause);
             drawn.add(c);
 
-            for(Player p : pList) {
+            for (Player p : pList) {
                 if (!revealed.containsKey(p)) {
                     revealed.put(p, new CardCollection());
                 }
                 revealed.get(p).add(c);
             }
 
-            setLastDrawnCard(c);
-            c.setDrawnThisTurn(true);
-            numDrawnThisTurn++;
-            if (game.getPhaseHandler().is(PhaseType.DRAW)) {
-                numDrawnThisDrawStep++;
-            }
-            view.updateNumDrawnThisTurn(this);
+            final boolean gameStarted = game.getAge().ordinal() > GameStage.Mulligan.ordinal();
+            if (gameStarted) {
+                setLastDrawnCard(c);
+                c.setDrawnThisTurn(true);
+                numDrawnThisTurn++;
+                if (game.getPhaseHandler().is(PhaseType.DRAW)) {
+                    numDrawnThisDrawStep++;
+                }
+                view.updateNumDrawnThisTurn(this);
 
-            // Run triggers
-            final Map<AbilityKey, Object> runParams = Maps.newHashMap();
-            runParams.put(AbilityKey.Card, c);
-            runParams.put(AbilityKey.Number, numDrawnThisTurn);
-            runParams.put(AbilityKey.Player, this);
-            game.getTriggerHandler().runTrigger(TriggerType.Drawn, runParams, false);
+                // Run triggers
+                final Map<AbilityKey, Object> runParams = Maps.newHashMap();
+                runParams.put(AbilityKey.Card, c);
+                runParams.put(AbilityKey.Number, numDrawnThisTurn);
+                runParams.put(AbilityKey.Player, this);
+                game.getTriggerHandler().runTrigger(TriggerType.Drawn, runParams, false);
+            }
         }
         else { // Lose by milling is always on. Give AI many cards it cannot play if you want it not to undertake actions
             triedToDrawFromEmptyLibrary = true;
@@ -3279,6 +3286,16 @@ public class Player extends GameEntity implements Comparable<Player> {
     @Override
     public PlayerView getView() {
         return view;
+    }
+
+    public SpellAbility getPaidForSA() {
+        return paidForStack.peek();
+    }
+    public void pushPaidForSA(SpellAbility sa) {
+        paidForStack.push(sa);
+    }
+    public void popPaidForSA() {
+        paidForStack.pop();
     }
 
     public boolean isMonarch() {

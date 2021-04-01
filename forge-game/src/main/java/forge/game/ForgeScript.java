@@ -2,10 +2,12 @@ package forge.game;
 
 import forge.card.ColorSet;
 import forge.card.MagicColor;
+import forge.card.mana.ManaAtom;
 import forge.game.ability.AbilityUtils;
 import forge.game.card.Card;
 import forge.game.card.CardState;
 import forge.game.cost.Cost;
+import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.staticability.StaticAbility;
@@ -187,6 +189,25 @@ public class ForgeScript {
             int y = sa.getPayCosts().getTotalMana().getCMC();
             int x = AbilityUtils.calculateAmount(spellAbility.getHostCard(), property.substring(5), spellAbility);
             if (!Expressions.compare(y, property, x)) {
+                return false;
+            }
+        } else if (property.equals("ManaAbilityCantPaidFor")) {
+            SpellAbility paidFor = sourceController.getPaidForSA();
+            if (paidFor == null) {
+                return false;
+            }
+            ManaCostBeingPaid manaCost = paidFor.getManaCostBeingPaid();
+            // The following code is taken from InputPayMana.java, to determine if this mana ability can pay for SA currently being paid
+            byte colorCanUse = 0;
+            for (final byte color : ManaAtom.MANATYPES) {
+                if (manaCost.isAnyPartPayableWith(color, sourceController.getManaPool())) {
+                    colorCanUse |= color;
+                }
+            }
+            if (manaCost.isAnyPartPayableWith((byte) ManaAtom.GENERIC, sourceController.getManaPool())) {
+                colorCanUse |= ManaAtom.GENERIC;
+            }
+            if (sa.isManaAbilityFor(paidFor, colorCanUse)) {
                 return false;
             }
         } else if (sa.getHostCard() != null) {

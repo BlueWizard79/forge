@@ -1110,12 +1110,18 @@ public class AiController {
         final CardCollection discardList = new CardCollection();
         int count = 0;
         if (sa != null) {
+            String logic = sa.getParamOrDefault("AILogic", "");
             sourceCard = sa.getHostCard();
-            if ("Always".equals(sa.getParam("AILogic")) && !validCards.isEmpty()) {
+            if ("Always".equals(logic) && !validCards.isEmpty()) {
                 min = 1;
-            } else if ("VolrathsShapeshifter".equals(sa.getParam("AILogic"))) {
+            } else if (logic.startsWith("UnlessAtLife.")) {
+                int threshold = AbilityUtils.calculateAmount(sourceCard, logic.substring(logic.indexOf(".") + 1), sa);
+                if (player.getLife() <= threshold) {
+                    min = 1;
+                }
+            } else if ("VolrathsShapeshifter".equals(logic)) {
                 return SpecialCardAi.VolrathsShapeshifter.targetBestCreature(player, sa);
-            } else if ("DiscardCMCX".equals(sa.getParam("AILogic"))) {
+            } else if ("DiscardCMCX".equals(logic)) {
                 final int cmc = sa.getXManaCostPaid();
                 CardCollection discards = CardLists.filter(player.getCardsIn(ZoneType.Hand), CardPredicates.hasCMC(cmc));
                 if (discards.isEmpty()) {

@@ -82,14 +82,15 @@ public class CopySpellAbilityEffect extends SpellAbilityEffect {
         boolean isOptional = sa.hasParam("Optional");
 
         for (Player controller : controllers) {
-            if (isOptional && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoyouWantCopyTheSpell", CardTranslation.getTranslatedName(card.getName())))) {
-                continue;
-            }
 
             List<SpellAbility> copies = Lists.newArrayList();
 
             SpellAbility chosenSA = controller.getController().chooseSingleSpellForEffect(tgtSpells, sa,
                     Localizer.getInstance().getMessage("lblSelectASpellCopy"), ImmutableMap.of());
+
+            if (isOptional && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoyouWantCopyTheSpell", CardTranslation.getTranslatedName(chosenSA.getHostCard().getName())))) {
+                continue;
+            }
 
             if (sa.hasParam("CopyForEachCanTarget")) {
                 // Find subability or rootability that has targets

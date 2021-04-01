@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -62,6 +63,7 @@ import forge.game.cost.CostRemoveCounter;
 import forge.game.event.GameEventCardStatsChanged;
 import forge.game.keyword.Keyword;
 import forge.game.mana.Mana;
+import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.replacement.ReplacementEffect;
@@ -108,6 +110,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private ManaCost multiKickerManaCost = null;
     private Player activatingPlayer = null;
     private Player targetingPlayer = null;
+    private Pair<Long, Player> controlledByPlayer = null;
+    private ManaCostBeingPaid manaCostBeingPaid = null;
 
     private SpellAbility grantorOriginal = null;
     private StaticAbility grantorStatic = null;
@@ -135,7 +139,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private SpellAbilityCondition conditions = new SpellAbilityCondition();
     private AbilitySub subAbility = null;
 
-    private Map<String, AbilitySub> additionalAbilities = Maps.newHashMap();
+    private Map<String, SpellAbility> additionalAbilities = Maps.newHashMap();
     private Map<String, List<AbilitySub>> additionalAbilityLists = Maps.newHashMap();
 
     protected ApiType api = null;
@@ -234,7 +238,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (subAbility != null) {
             subAbility.setHostCard(c);
         }
-        for (AbilitySub sa : additionalAbilities.values()) {
+        for (SpellAbility sa : additionalAbilities.values()) {
             if (sa.getHostCard() != c) {
                 sa.setHostCard(c);
             }
@@ -433,7 +437,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (subAbility != null) {
             updated |= subAbility.setActivatingPlayer(player, lki);
         }
-        for (AbilitySub sa : additionalAbilities.values()) {
+        for (SpellAbility sa : additionalAbilities.values()) {
             updated |= sa.setActivatingPlayer(player, lki);
         }
         for (List<AbilitySub> list : additionalAbilityLists.values()) {
@@ -452,6 +456,31 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
     public void setTargetingPlayer(Player targetingPlayer0) {
         targetingPlayer = targetingPlayer0;
+    }
+
+    /**
+     * @return returns who controls the controller of this sa when it is resolving (for Word of Command effect). Null means not being controlled by other
+     */
+    public Pair<Long, Player> getControlledByPlayer() {
+        return controlledByPlayer;
+    }
+    /**
+     * @param ts time stamp of the control player effect
+     * @param controller the player who will control the controller of this sa
+     */
+    public void setControlledByPlayer(long ts, Player controller) {
+        if (controller != null) {
+            controlledByPlayer = Pair.of(ts, controller);
+        } else {
+            controlledByPlayer = null;
+        }
+    }
+
+    public ManaCostBeingPaid getManaCostBeingPaid() {
+        return manaCostBeingPaid;
+    }
+    public void setManaCostBeingPaid(ManaCostBeingPaid costBeingPaid) {
+        manaCostBeingPaid = costBeingPaid;
     }
 
     public boolean isSpell() { return false; }
@@ -813,7 +842,14 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             }
             String desc = node.getDescription();
             if (node.getHostCard() != null) {
-                String currentName = node.getHostCard().getName();
+                String currentName;
+                // if alternate state is viewed while card uses original
+                if (node.isIntrinsic() && !node.getHostCard().isMutated() && node.cardState != null) {
+                    currentName = node.cardState.getName();
+                }
+                else {
+                    currentName = node.getHostCard().getName();
+                }
                 desc = CardTranslation.translateMultipleDescriptionText(desc, currentName);
                 desc = TextUtil.fastReplace(desc, "CARDNAME", CardTranslation.getTranslatedName(currentName));
                 desc = TextUtil.fastReplace(desc, "NICKNAME", Lang.getInstance().getNickName(CardTranslation.getTranslatedName(currentName)));
@@ -839,10 +875,10 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         view.updateDescription(this); //description changes when sub-abilities change
     }
 
-    public Map<String, AbilitySub> getAdditionalAbilities() {
+    public Map<String, SpellAbility> getAdditionalAbilities() {
         return additionalAbilities;
     }
-    public AbilitySub getAdditionalAbility(final String name) {
+    public SpellAbility getAdditionalAbility(final String name) {
         if (hasAdditionalAbility(name)) {
             return additionalAbilities.get(name);
         }
@@ -853,11 +889,13 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         return additionalAbilities.containsKey(name);
     }
 
-    public void setAdditionalAbility(final String name, final AbilitySub sa) {
+    public void setAdditionalAbility(final String name, final SpellAbility sa) {
         if (sa == null) {
             additionalAbilities.remove(name);
         } else {
-            sa.setParent(this);
+            if (sa instanceof AbilitySub) {
+                ((AbilitySub)sa).setParent(this);
+            }
             additionalAbilities.put(name, sa);
         }
         view.updateDescription(this); //description changes when sub-abilities change
@@ -2044,7 +2082,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 subAbility.changeText();
             }
         }
-        for (AbilitySub sa : additionalAbilities.values()) {
+        for (SpellAbility sa : additionalAbilities.values()) {
             sa.changeText();
         }
 
@@ -2069,7 +2107,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 subAbility.changeTextIntrinsic(colorMap, typeMap);
             }
         }
-        for (AbilitySub sa : additionalAbilities.values()) {
+        for (SpellAbility sa : additionalAbilities.values()) {
             sa.changeTextIntrinsic(colorMap, typeMap);
         }
 
@@ -2086,7 +2124,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (subAbility != null) {
             subAbility.setIntrinsic(i);
         }
-        for (AbilitySub sa : additionalAbilities.values()) {
+        for (SpellAbility sa : additionalAbilities.values()) {
             if (sa.isIntrinsic() != i) {
                 sa.setIntrinsic(i);
             }

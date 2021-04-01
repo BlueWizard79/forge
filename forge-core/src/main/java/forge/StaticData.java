@@ -129,8 +129,9 @@ public class StaticData {
         {
             if (customCards.getAllCards().size() > 0) {
                 Collection<PaperCard> paperCards = customCards.getAllCards();
-                for(PaperCard p: paperCards)
+                for(PaperCard p: paperCards) {
                     commonCards.addCard(p);
+                }
             }
         }
     }

@@ -2,15 +2,7 @@ package forge.ai.ability;
 
 import com.google.common.base.Predicate;
 
-import forge.ai.AiController;
-import forge.ai.AiProps;
-import forge.ai.ComputerUtil;
-import forge.ai.ComputerUtilCard;
-import forge.ai.ComputerUtilCost;
-import forge.ai.PlayerControllerAi;
-import forge.ai.SpecialAiLogic;
-import forge.ai.SpecialCardAi;
-import forge.ai.SpellAbilityAi;
+import forge.ai.*;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
 import forge.game.card.Card;
@@ -122,15 +114,19 @@ public class DestroyAi extends SpellAbilityAi {
 
         CardCollection list;
 
-
-
         if (ComputerUtil.preventRunAwayActivations(sa)) {
             return false;
         }
 
-
         // Targeting
         if (sa.usesTargeting()) {
+            // If there's X in payment costs and it's tied to targeting, make sure we set the XManaCostPaid first
+            // (e.g. Heliod's Intervention)
+            if ("X".equals(sa.getTargetRestrictions().getMinTargets()) && sa.getSVar("X").equals("Count$xPaid")) {
+                int xPay = ComputerUtilCost.getMaxXValue(sa, ai);
+                sa.getRootAbility().setXManaCostPaid(xPay);
+            }
+
             // Assume there where already enough targets chosen by AI Logic Above
             if (!sa.canAddMoreTarget() && sa.isTargetNumberValid()) {
                 return true;
@@ -140,11 +136,11 @@ public class DestroyAi extends SpellAbilityAi {
             sa.resetTargets();
             int maxTargets;
 
-            if (sa.costHasManaX()) {
+            if (sa.getRootAbility().costHasManaX()) {
                 // TODO: currently the AI will maximize mana spent on X, trying to maximize damage. This may need improvement.
                 maxTargets = ComputerUtilCost.getMaxXValue(sa, ai);
                 // need to set XPaid to get the right number for
-                sa.setXManaCostPaid(maxTargets);
+                sa.getRootAbility().setXManaCostPaid(maxTargets);
                 // need to check for maxTargets
                 maxTargets = Math.min(maxTargets, sa.getMaxTargets());
             } else {

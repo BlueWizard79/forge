@@ -86,7 +86,7 @@ public final class CEditorCommander extends CDeckEditor<Deck> {
         if (gameType == GameType.Brawl){
             GameFormat format = FModel.getFormats().get("Brawl");
             Predicate<CardRules> commanderFilter = CardRulesPredicates.Presets.CAN_BE_BRAWL_COMMANDER;
-            commanderPool = ItemPool.createFrom(commonCards.getAllCards(Predicates.and(
+            commanderPool = ItemPool.createFrom(commonCards.getAllCardsNoAlt(Predicates.and(
                     format.getFilterPrinted(), Predicates.compose(commanderFilter, PaperCard.FN_GET_RULES))), PaperCard.class);
             normalPool = ItemPool.createFrom(format.getAllCards(), PaperCard.class);
         }
@@ -94,8 +94,8 @@ public final class CEditorCommander extends CDeckEditor<Deck> {
             Predicate<CardRules> commanderFilter = gameType == GameType.Oathbreaker
                     ? Predicates.or(CardRulesPredicates.Presets.CAN_BE_OATHBREAKER, CardRulesPredicates.Presets.CAN_BE_SIGNATURE_SPELL)
                     : CardRulesPredicates.Presets.CAN_BE_COMMANDER;
-            commanderPool = ItemPool.createFrom(commonCards.getAllCards(Predicates.compose(commanderFilter, PaperCard.FN_GET_RULES)),PaperCard.class);
-            normalPool = ItemPool.createFrom(commonCards.getAllCards(), PaperCard.class);
+            commanderPool = ItemPool.createFrom(commonCards.getAllCardsNoAlt(Predicates.compose(commanderFilter, PaperCard.FN_GET_RULES)),PaperCard.class);
+            normalPool = ItemPool.createFrom(commonCards.getAllCardsNoAlt(), PaperCard.class);
         }
 
         CardManager catalogManager = new CardManager(getCDetailPicture(), true, false);
