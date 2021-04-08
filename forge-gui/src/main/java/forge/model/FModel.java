@@ -24,6 +24,7 @@ import java.util.Set;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicates;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 
 import forge.CardStorageReader;
@@ -113,7 +114,7 @@ public final class FModel {
     private static IStorage<ConquestPlane> planes;
     private static IStorage<QuestWorld> worlds;
     private static GameFormat.Collection formats;
-    private static ItemPool<PaperCard> uniqueCardsNoAlt, allCardsNoAlt, planechaseCards, archenemyCards;
+    private static ItemPool<PaperCard> uniqueCardsNoAlt, allCardsNoAlt, planechaseCards, archenemyCards, brawlCommander, oathbreakerCommander, tinyLeadersCommander, commanderPool, avatarPool, conspiracyPool;
 
     public static void initialize(final IProgressBar progressBar, Function<ForgePreferences, Void> adjustPrefs) {
         //init version to log
@@ -276,11 +277,29 @@ public final class FModel {
             }
         }
 
-        //preload Itempool
-        uniqueCardsNoAlt = ItemPool.createFrom(getMagicDb().getCommonCards().getUniqueCardsNoAlt(), PaperCard.class);
-        allCardsNoAlt = ItemPool.createFrom(getMagicDb().getCommonCards().getAllCardsNoAlt(), PaperCard.class);
+        allCardsNoAlt = ItemPool.createFrom(Iterables.concat(getMagicDb().getCommonCards().getAllCardsNoAlt(), getMagicDb().getCustomCards().getAllCardsNoAlt()), PaperCard.class);
         archenemyCards = ItemPool.createFrom(getMagicDb().getVariantCards().getAllCards(Predicates.compose(CardRulesPredicates.Presets.IS_SCHEME, PaperCard.FN_GET_RULES)), PaperCard.class);
-        planechaseCards = ItemPool.createFrom(FModel.getMagicDb().getVariantCards().getAllCards(Predicates.compose(CardRulesPredicates.Presets.IS_PLANE_OR_PHENOMENON, PaperCard.FN_GET_RULES)), PaperCard.class);
+        planechaseCards = ItemPool.createFrom(getMagicDb().getVariantCards().getAllCards(Predicates.compose(CardRulesPredicates.Presets.IS_PLANE_OR_PHENOMENON, PaperCard.FN_GET_RULES)), PaperCard.class);
+        if (GuiBase.getInterface().isLibgdxPort()) {
+            //preload mobile Itempool
+            uniqueCardsNoAlt = ItemPool.createFrom(Iterables.concat(getMagicDb().getCommonCards().getUniqueCardsNoAlt(), getMagicDb().getCustomCards().getUniqueCardsNoAlt()), PaperCard.class);
+        } else {
+            //preload Desktop Itempool
+            commanderPool = ItemPool.createFrom(Iterables.concat(
+                    getMagicDb().getCommonCards().getAllCardsNoAlt(Predicates.compose(CardRulesPredicates.Presets.CAN_BE_COMMANDER, PaperCard.FN_GET_RULES)),
+                    getMagicDb().getCustomCards().getAllCardsNoAlt(Predicates.compose(CardRulesPredicates.Presets.CAN_BE_COMMANDER, PaperCard.FN_GET_RULES))), PaperCard.class);
+            brawlCommander = ItemPool.createFrom(Iterables.concat(getMagicDb().getCommonCards().getAllCardsNoAlt(Predicates.and(
+                    FModel.getFormats().get("Brawl").getFilterPrinted(), Predicates.compose(CardRulesPredicates.Presets.CAN_BE_BRAWL_COMMANDER, PaperCard.FN_GET_RULES))), getMagicDb().getCustomCards().getAllCardsNoAlt(Predicates.and(
+                    FModel.getFormats().get("Brawl").getFilterPrinted(), Predicates.compose(CardRulesPredicates.Presets.CAN_BE_BRAWL_COMMANDER, PaperCard.FN_GET_RULES)))), PaperCard.class);
+            oathbreakerCommander = ItemPool.createFrom(Iterables.concat(
+                    getMagicDb().getCommonCards().getAllCardsNoAlt(Predicates.compose(Predicates.or(CardRulesPredicates.Presets.CAN_BE_OATHBREAKER, CardRulesPredicates.Presets.CAN_BE_SIGNATURE_SPELL), PaperCard.FN_GET_RULES)),
+                    getMagicDb().getCustomCards().getAllCardsNoAlt(Predicates.compose(Predicates.or(CardRulesPredicates.Presets.CAN_BE_OATHBREAKER, CardRulesPredicates.Presets.CAN_BE_SIGNATURE_SPELL), PaperCard.FN_GET_RULES))), PaperCard.class);
+            tinyLeadersCommander = ItemPool.createFrom(Iterables.concat(
+                    getMagicDb().getCommonCards().getAllCardsNoAlt(Predicates.compose(CardRulesPredicates.Presets.CAN_BE_TINY_LEADERS_COMMANDER, PaperCard.FN_GET_RULES)),
+                    getMagicDb().getCustomCards().getAllCardsNoAlt(Predicates.compose(CardRulesPredicates.Presets.CAN_BE_TINY_LEADERS_COMMANDER, PaperCard.FN_GET_RULES))), PaperCard.class);
+            avatarPool = ItemPool.createFrom(getMagicDb().getVariantCards().getAllCards(Predicates.compose(CardRulesPredicates.Presets.IS_VANGUARD, PaperCard.FN_GET_RULES)), PaperCard.class);
+            conspiracyPool = ItemPool.createFrom(getMagicDb().getVariantCards().getAllCards(Predicates.compose(CardRulesPredicates.Presets.IS_CONSPIRACY, PaperCard.FN_GET_RULES)), PaperCard.class);
+        }
     }
 
     private static boolean deckGenMatrixLoaded=false;
@@ -311,6 +330,30 @@ public final class FModel {
 
     public static ItemPool<PaperCard> getPlanechaseCards() {
         return planechaseCards;
+    }
+
+    public static ItemPool<PaperCard> getBrawlCommander() {
+        return brawlCommander;
+    }
+
+    public static ItemPool<PaperCard> getOathbreakerCommander() {
+        return oathbreakerCommander;
+    }
+
+    public static ItemPool<PaperCard> getTinyLeadersCommander() {
+        return tinyLeadersCommander;
+    }
+
+    public static ItemPool<PaperCard> getCommanderPool() {
+        return commanderPool;
+    }
+
+    public static ItemPool<PaperCard> getAvatarPool() {
+        return avatarPool;
+    }
+
+    public static ItemPool<PaperCard> getConspiracyPool() {
+        return conspiracyPool;
     }
 
     private static boolean keywordsLoaded = false;

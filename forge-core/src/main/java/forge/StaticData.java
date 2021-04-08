@@ -2,7 +2,6 @@ package forge;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -122,14 +121,14 @@ public class StaticData {
                 Collections.sort(filtered);
             }
 
-            commonCards = new CardDb(regularCards, editions);
-            variantCards = new CardDb(variantsCards, editions);
-            customCards = new CardDb(customizedCards, customEditions);
+            commonCards = new CardDb(regularCards, editions, filtered);
+            variantCards = new CardDb(variantsCards, editions, filtered);
+            customCards = new CardDb(customizedCards, customEditions, filtered);
 
             //must initialize after establish field values for the sake of card image logic
-            commonCards.initialize(false, false, enableUnknownCards, filtered);
-            variantCards.initialize(false, false, enableUnknownCards, filtered);
-            customCards.initialize(false, false, enableUnknownCards, filtered);
+            commonCards.initialize(false, false, enableUnknownCards);
+            variantCards.initialize(false, false, enableUnknownCards);
+            customCards.initialize(false, false, enableUnknownCards);
         }
 
         {
@@ -141,15 +140,6 @@ public class StaticData {
                 tokens.put(card.getNormalizedName(), card);
             }
             allTokens = new TokenDb(tokens, editions);
-        }
-
-        {
-            if (customCards.getAllCards().size() > 0) {
-                Collection<PaperCard> paperCards = customCards.getAllCards();
-                for(PaperCard p: paperCards) {
-                    commonCards.addCard(p);
-                }
-            }
         }
     }
 

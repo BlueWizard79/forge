@@ -332,6 +332,13 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
                 runParams.put(AbilityKey.Crew, sp.getPaidList("TappedCards"));
                 game.getTriggerHandler().runTrigger(TriggerType.Crewed, runParams, false);
             }
+
+            // Run AbilityTriggered
+            if (sp.isTrigger()) {
+                Map<AbilityKey, Object> newRunParams = (Map<AbilityKey, Object>) sp.getTriggeringObject(AbilityKey.TriggeredParams);
+                newRunParams.put(AbilityKey.SpellAbility, sp);
+                game.getTriggerHandler().runTrigger(TriggerType.AbilityTriggered, newRunParams, false);
+            }
         } else {
             // Run Copy triggers
             if (sp.isSpell()) {
@@ -440,8 +447,9 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             game.getPhaseHandler().setPriority(sp.getActivatingPlayer());
         }
 
-        game.getAction().checkStaticAbilities();
+        //FIXME: additional check cmc, etc..
         game.getTriggerHandler().resetActiveTriggers();
+        game.getAction().checkStaticAbilities();
 
         if (sp.isSpell() && !sp.isCopied()) {
             thisTurnCast.add(CardUtil.getLKICopy(sp.getHostCard()));

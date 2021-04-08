@@ -392,6 +392,14 @@ public class CardFactoryUtil {
 
         int n = 0;
 
+        if (l[0].startsWith("TotalCommanderCastFromCommandZone")) {
+            int totCast = 0;
+            for (Player p : players) {
+                totCast += p.getTotalCommanderCast();
+            }
+            return doXMath(totCast, m, source);
+        }
+
         // methods for getting the highest/lowest playerXCount from a range of players
         if (l[0].startsWith("Highest")) {
             for (final Player player : players) {
@@ -800,7 +808,7 @@ public class CardFactoryUtil {
             final List<Integer> powers = Lists.newArrayList();
             final String restriction = l[0].substring(15);
             final String[] rest = restriction.split(",");
-            CardCollection list = CardLists.getValidCards(cc.getGame().getCardsInGame(), rest, cc, c, null);
+            CardCollection list = CardLists.getValidCards(cc.getGame().getCardsIn(ZoneType.Battlefield), rest, cc, c, null);
             for (final Card card : list) {
                 Integer pow = card.getNetPower();
                 if (!powers.contains(pow)) {
@@ -1286,9 +1294,13 @@ public class CardFactoryUtil {
         }
         // Count$SumCMC_valid
         if (sq[0].contains("SumCMC")) {
+            ZoneType zone = ZoneType.Battlefield;
+            //graveyard support for Inferno Project (may need other zones or multi-zone in future)
+            if (sq[0].contains("Graveyard"))
+                zone = ZoneType.Graveyard;
             final String[] restrictions = l[0].split("_");
             final String[] rest = restrictions[1].split(",");
-            CardCollectionView cardsonbattlefield = game.getCardsIn(ZoneType.Battlefield);
+            CardCollectionView cardsonbattlefield = game.getCardsIn(zone);
             CardCollection filteredCards = CardLists.getValidCards(cardsonbattlefield, rest, cc, c, null);
             return Aggregates.sum(filteredCards, CardPredicates.Accessors.fnGetCmc);
         }
@@ -2476,6 +2488,24 @@ public class CardFactoryUtil {
 
             final Trigger trigger = TriggerHandler.parseTrigger(upkeepTrig, card, intrinsic);
             trigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
+
+            inst.addTrigger(trigger);
+        } else if (keyword.equals("Demonstrate")) {
+            final String trigScript = "Mode$ SpellCast | ValidCard$ Card.Self | TriggerDescription$ Demonstrate (" + inst.getReminderText() + ")";
+            final String youCopyStr = "DB$ CopySpellAbility | Defined$ TriggeredSpellAbility | MayChooseTarget$ True | Optional$ True | RememberCopies$ True";
+            final String chooseOppStr = "DB$ ChoosePlayer | Defined$ You | Choices$ Player.Opponent | ConditionDefined$ Remembered | ConditionPresent$ Spell";
+            final String oppCopyStr = "DB$ CopySpellAbility | Controller$ ChosenPlayer | Defined$ TriggeredSpellAbility | MayChooseTarget$ True | ConditionDefined$ Remembered | ConditionPresent$ Spell";
+            final String cleanupStr = "DB$ Cleanup | ClearRemembered$ True | ClearChosenPlayer$ True";
+
+            final Trigger trigger = TriggerHandler.parseTrigger(trigScript, card, intrinsic);
+            final SpellAbility youCopy = AbilityFactory.getAbility(youCopyStr, card);
+            final AbilitySub chooseOpp = (AbilitySub) AbilityFactory.getAbility(chooseOppStr, card);
+            final AbilitySub oppCopy = (AbilitySub) AbilityFactory.getAbility(oppCopyStr, card);
+            final AbilitySub cleanup = (AbilitySub) AbilityFactory.getAbility(cleanupStr, card);
+            oppCopy.setSubAbility(cleanup);
+            chooseOpp.setSubAbility(oppCopy);
+            youCopy.setSubAbility(chooseOpp);
+            trigger.setOverridingAbility(youCopy);
 
             inst.addTrigger(trigger);
         } else if (keyword.equals("Dethrone")) {
@@ -4864,6 +4894,11 @@ public class CardFactoryUtil {
         }
 
         altCostSA.setDescription(costDescription);
+
+        if (params.containsKey("StackDescription")) {
+            altCostSA.setStackDescription(params.get("StackDescription"));
+        }
+
         return altCostSA;
     }
 

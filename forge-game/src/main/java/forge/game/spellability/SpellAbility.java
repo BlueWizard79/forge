@@ -572,7 +572,9 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     public int getActivationsThisGame() {
         return getHostCard().getAbilityActivatedThisGame(this);
     }
-
+    public int getResolvedThisTurn() {
+        return getHostCard().getAbilityResolvedThisTurn(this);
+    }
 
     public SpellAbilityCondition getConditions() {
         return conditions;
@@ -1081,6 +1083,15 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             newSA.mapParams.put("WithoutManaCost", "True");
         }
         newSA.setDescription(newSA.getDescription() + " (without paying its mana cost)");
+
+        //Normal copied spell will not copy castFaceDown flag
+        //But copyWithNoManaCost is used to get SA without mana cost
+        //So it need to copy the castFaceDown flag too
+        if (newSA instanceof Spell) {
+            Spell spell = (Spell) newSA;
+            spell.setCastFaceDown(this.isCastFaceDown());
+        }
+
         return newSA;
     }
 

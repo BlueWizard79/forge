@@ -34,7 +34,6 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
-import com.google.common.cache.RemovalCause;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 
@@ -77,13 +76,16 @@ public class ImageCache {
             .removalListener(new RemovalListener<String, Texture>() {
                 @Override
                 public void onRemoval(RemovalNotification<String, Texture> removalNotification) {
-                    if(removalNotification.wasEvicted()||removalNotification.getCause() == RemovalCause.EXPIRED) {
-                        removalNotification.getValue().dispose();
+                    if (removalNotification.wasEvicted()) {
+                        if (removalNotification.getValue() != ImageCache.defaultImage)
+                            removalNotification.getValue().dispose();
+
+                        CardRenderer.clearcardArtCache();
                     }
-                    CardRenderer.clearcardArtCache();
                 }
             })
             .build(new ImageLoader());
+    private static final LoadingCache<String, Texture> otherCache = CacheBuilder.newBuilder().build(new OtherImageLoader());
     public static final Texture defaultImage;
     public static FImage BlackBorder = FSkinImage.IMG_BORDER_BLACK;
     public static FImage WhiteBorder = FSkinImage.IMG_BORDER_WHITE;
@@ -113,17 +115,17 @@ public class ImageCache {
     }
 
     public static void disposeTexture(){
-        for (Texture t: cache.asMap().values()) {
-            if (!t.toString().contains("pics/icons")) //fixes quest avatars black texture. todo: filter textures that are safe to dispose...
-                if(!t.toString().contains("@"))  //generated texture don't need to be disposed manually
-                    t.dispose();
-        }
         CardRenderer.clearcardArtCache();
         clear();
     }
 
     public static Texture getImage(InventoryItem ii) {
-        return getImage(ii.getImageKey(false), true);
+        String imageKey = ii.getImageKey(false);
+        if (imageKey != null) {
+            if(imageKey.startsWith(ImageKeys.CARD_PREFIX) || imageKey.startsWith(ImageKeys.TOKEN_PREFIX))
+                return getImage(ii.getImageKey(false), true, false);
+        }
+        return getImage(ii.getImageKey(false), true, true);
     }
 
     /**
@@ -133,7 +135,7 @@ public class ImageCache {
     public static FImage getIcon(IHasIcon ihi) {
         String imageKey = ihi.getIconImageKey();
         final Texture icon;
-        if (missingIconKeys.contains(imageKey) || (icon = getImage(ihi.getIconImageKey(), false)) == null) {
+        if (missingIconKeys.contains(imageKey) || (icon = getImage(ihi.getIconImageKey(), false, true)) == null) {
             missingIconKeys.add(imageKey);
             return FSkinImage.UNKNOWN;
         }
@@ -182,6 +184,9 @@ public class ImageCache {
      * </p>
      */
     public static Texture getImage(String imageKey, boolean useDefaultIfNotFound) {
+        return getImage(imageKey, useDefaultIfNotFound, false);
+    }
+    public static Texture getImage(String imageKey, boolean useDefaultIfNotFound, boolean useOtherCache) {
         if (StringUtils.isEmpty(imageKey)) {
             return null;
         }
@@ -200,7 +205,7 @@ public class ImageCache {
         Texture image;
         if (useDefaultIfNotFound) {
             // Load from file and add to cache if not found in cache initially.
-            image = cache.getIfPresent(imageKey);
+            image = useOtherCache ? otherCache.getIfPresent(imageKey) : cache.getIfPresent(imageKey);
 
             if (image != null) { return image; }
 
@@ -215,7 +220,7 @@ public class ImageCache {
             imageLoaded = true;
         }
 
-        try { image = cache.get(imageKey); }
+        try { image = useOtherCache ? otherCache.get(imageKey) : cache.get(imageKey); }
         catch (final Exception ex) {
             image = null;
         }
@@ -225,7 +230,10 @@ public class ImageCache {
         if (image == null) {
             if (useDefaultIfNotFound) {
                 image = defaultImage;
-                cache.put(imageKey, defaultImage);
+                if (useOtherCache)
+                    otherCache.put(imageKey, defaultImage);
+                else
+                    cache.put(imageKey, defaultImage);
                 if (imageBorder.get(image.toString()) == null)
                     imageBorder.put(image.toString(), Pair.of(Color.valueOf("#171717").toString(), false)); //black border
             }
@@ -245,11 +253,12 @@ public class ImageCache {
             return;
         if(deck == null||!Forge.enablePreloadExtendedArt)
             return;
-        for (PaperCard p : deck.getAllCardsInASinglePool().toFlatList()) {
-            if (getImage(p.getImageKey(false),false) == null)
-                System.err.println("could not load card image:"+p.toString());
+        if (deck.getAllCardsInASinglePool().toFlatList().size() <= 100) {
+            for (PaperCard p : deck.getAllCardsInASinglePool().toFlatList()) {
+                if (getImage(p.getImageKey(false),false) == null)
+                    System.err.println("could not load card image:"+p.toString());
+            }
         }
-
     }
     public static TextureRegion croppedBorderImage(Texture image) {
         if (!image.toString().contains(".fullborder."))

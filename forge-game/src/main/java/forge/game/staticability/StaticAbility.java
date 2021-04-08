@@ -162,7 +162,7 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
             layers.add(StaticAbilityLayer.COLOR);
         }
 
-        if (hasParam("RemoveAllAbilities") || hasParam("GainsAbilitiesOf")) {
+        if (hasParam("RemoveAllAbilities") || hasParam("GainsAbilitiesOf") || hasParam("GainsAbilitiesDefined")) {
             layers.add(StaticAbilityLayer.ABILITIES);
         }
 
@@ -537,6 +537,10 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
                 }
             } else if (condition.equals("NotPlayerTurn")) {
                 if (ph.isPlayerTurn(controller)) {
+                    return false;
+                }
+            } else if (condition.equals("ExtraTurn")) {
+                if (!game.getPhaseHandler().getPlayerTurn().isExtraTurn()) {
                     return false;
                 }
             } else if (condition.equals("PermanentOfEachColor")) {

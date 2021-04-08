@@ -114,10 +114,15 @@ public class FDeckViewer extends FScreen {
     private DeckSection currentSection;
 
     public static void show(final Deck deck0) {
+        show(deck0, false);
+    }
+    public static void show(final Deck deck0, boolean noPreload) {
         if (deck0 == null) { return; }
 
-        /*preload deck to cache*/
-        ImageCache.preloadCache(deck0);
+        if (!noPreload){
+            /*preload deck to cache*/
+            ImageCache.preloadCache(deck0);
+        }
 
         deckViewer = new FDeckViewer(deck0);
         deckViewer.setRotate180(MatchController.getView() != null && MatchController.getView().isTopHumanPlayerActive());
