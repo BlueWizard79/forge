@@ -3,22 +3,11 @@ package forge.ai;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
+import com.google.common.collect.*;
 import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
 
 import forge.StaticData;
 import forge.card.CardStateName;
@@ -27,7 +16,6 @@ import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameObject;
 import forge.game.ability.AbilityFactory;
-import forge.game.ability.AbilityKey;
 import forge.game.ability.effects.DetachedCardEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCloneStates;
@@ -45,7 +33,6 @@ import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.spellability.AbilityManaPart;
 import forge.game.spellability.SpellAbility;
-import forge.game.trigger.TriggerType;
 import forge.game.zone.PlayerZone;
 import forge.game.zone.ZoneType;
 import forge.item.IPaperCard;
@@ -769,23 +756,10 @@ public abstract class GameState {
         }
         game.fireEvent(new GameEventAttackersDeclared(attackingPlayer, attackersMap));
 
-        if (!combat.getAttackers().isEmpty()) {
-            List<GameEntity> attackedTarget = Lists.newArrayList();
-            for (final Card c : combat.getAttackers()) {
-                attackedTarget.add(combat.getDefenderByAttacker(c));
-            }
-            final Map<AbilityKey, Object> runParams = Maps.newEnumMap(AbilityKey.class);
-            runParams.put(AbilityKey.Attackers, combat.getAttackers());
-            runParams.put(AbilityKey.AttackingPlayer, combat.getAttackingPlayer());
-            runParams.put(AbilityKey.AttackedTarget, attackedTarget);
-            game.getTriggerHandler().runTrigger(TriggerType.AttackersDeclared, runParams, false);
-        }
-
         for (final Card c : combat.getAttackers()) {
-            CombatUtil.checkDeclaredAttacker(game, c, combat);
+            CombatUtil.checkDeclaredAttacker(game, c, combat, false);
         }
 
-        game.getTriggerHandler().resetActiveTriggers();
         game.updateCombatForView();
         game.fireEvent(new GameEventCombatChanged());
 

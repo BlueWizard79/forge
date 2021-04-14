@@ -8,6 +8,8 @@ import org.apache.commons.lang3.StringUtils;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
+import forge.StaticData;
+import forge.card.CardDb;
 import forge.card.ColorSet;
 import forge.card.MagicColor;
 import forge.card.mana.ManaCost;
@@ -31,6 +33,7 @@ import forge.game.spellability.OptionalCost;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
+import forge.item.PaperCard;
 import forge.util.Expressions;
 import forge.util.TextUtil;
 import forge.util.collect.FCollectionView;
@@ -1749,7 +1752,7 @@ public class CardProperty {
                 return false;
             }
         } else if (property.equals("NoAbilities")) {
-            if (!((card.getAbilityText().trim().equals("") || card.isFaceDown()) && (card.getUnhiddenKeywords().isEmpty()))) {
+            if (!card.hasNoAbilities()) {
                 return false;
             }
         } else if (property.equals("HasCounters")) {
@@ -1792,7 +1795,8 @@ public class CardProperty {
             }
         } else if (property.startsWith("set")) {
             final String setCode = property.substring(3, 6);
-            if (!card.getSetCode().equals(setCode)) {
+            final PaperCard setCard = StaticData.instance().getCommonCards().getCardFromEdition(card.getName(), CardDb.SetPreference.Earliest);
+            if (!setCard.getEdition().equals(setCode)) {
                 return false;
             }
         } else if (property.startsWith("inZone")) {

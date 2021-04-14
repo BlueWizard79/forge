@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -162,14 +163,22 @@ public abstract class CardTraitBase extends GameObject implements IHasCardView, 
      * @return a boolean.
      */
     public boolean matchesValid(final Object o, final String[] valids, final Card srcCard) {
+        return matchesValid(o, valids, srcCard, srcCard.getController());
+    }
+
+    public boolean matchesValid(final Object o, final String[] valids, final Card srcCard, final Player srcPlayer) {
         if (o instanceof GameObject) {
             final GameObject c = (GameObject) o;
-            return c.isValid(valids, srcCard.getController(), srcCard, this);
+            return c.isValid(valids, srcPlayer, srcCard, this);
         } else if (o instanceof Iterable<?>) {
             for (Object o2 : (Iterable<?>)o) {
-                if (matchesValid(o2, valids, srcCard)) {
+                if (matchesValid(o2, valids, srcCard, srcPlayer)) {
                     return true;
                 }
+            }
+        } else if (o instanceof String) {
+            if (ArrayUtils.contains(valids, o)) {
+                return true;
             }
         }
 

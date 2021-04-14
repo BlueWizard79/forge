@@ -396,6 +396,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                     canChooseZero = false;
                 }
             }
+            if (ability.getHostCard().hasKeyword("Spend only colored mana on X. No more than one mana of each color may be spent this way.")) {
+                max = 5;
+            }
         }
         final int min = canChooseZero ? 0 : 1;
 
@@ -1130,7 +1133,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         }
         final TargetChoices oldTarget = sa.getTargets();
         final TargetSelection select = new TargetSelection(this, sa);
-        sa.resetTargets();
+        sa.clearTargets();
         if (select.chooseTargets(oldTarget.size(), Lists.newArrayList(oldTarget.getDividedValues()), filter, optional)) {
             return sa.getTargets();
         } else {

@@ -1030,7 +1030,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             getGame().getTriggerHandler().runTrigger(TriggerType.CounterAddedOnce, AbilityKey.newMap(runParams), false);
         }
         if (table != null) {
-            table.put(this, counterType, addAmount);
+            table.put(source, this, counterType, addAmount);
         }
         return addAmount;
     }
@@ -3127,6 +3127,8 @@ public class Player extends GameEntity implements Comparable<Player> {
         int deckSize = getCardsIn(ZoneType.Library).size();
         int minSize = game.getMatch().getRules().getGameType().getDeckFormat().getMainRange().getMinimum();
 
+        game.getAction().checkStaticAbilities(false);
+
         for (final Card c : getCardsIn(ZoneType.Sideboard)) {
             for (KeywordInterface inst : c.getKeywords()) {
                 if (!(inst instanceof Companion)) {
@@ -3426,11 +3428,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean isCursed() {
-        if (this.attachedCards == null) {
-            return false;
-        }
-
-        return CardLists.count(attachedCards, CardPredicates.Presets.CURSE) > 0;
+        return CardLists.count(getAttachedCards(), CardPredicates.Presets.CURSE) > 0;
     }
 
     public boolean canDiscardBy(SpellAbility sa) {

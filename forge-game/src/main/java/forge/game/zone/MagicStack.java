@@ -335,6 +335,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
 
             // Run AbilityTriggered
             if (sp.isTrigger()) {
+                @SuppressWarnings("unchecked")
                 Map<AbilityKey, Object> newRunParams = (Map<AbilityKey, Object>) sp.getTriggeringObject(AbilityKey.TriggeredParams);
                 newRunParams.put(AbilityKey.SpellAbility, sp);
                 game.getTriggerHandler().runTrigger(TriggerType.AbilityTriggered, newRunParams, false);
@@ -380,6 +381,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
                         game.getTriggerHandler().runTrigger(TriggerType.BecomesTarget, runParams, false);
                     }
                     runParams.put(AbilityKey.Targets, tc);
+                    runParams.put(AbilityKey.Cause, s.getHostCard());
                     game.getTriggerHandler().runTrigger(TriggerType.BecomesTargetOnce, runParams, false);
                 }
             }
@@ -392,6 +394,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             game.getTriggerHandler().runTrigger(TriggerType.BecomesTarget, runParams, false);
 
             runParams.put(AbilityKey.Targets, Lists.newArrayList(sp.getTargetCard()));
+            runParams.put(AbilityKey.Cause, sp.getHostCard());
             game.getTriggerHandler().runTrigger(TriggerType.BecomesTargetOnce, runParams, false);
         }
 
@@ -695,7 +698,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         stack.remove(si);
         frozenStack.remove(si);
         game.updateStackForView();
-        SpellAbility sa = si.getSpellAbility(true);
+        SpellAbility sa = si.getSpellAbility(false);
         sa.setLastStateBattlefield(CardCollection.EMPTY);
         sa.setLastStateGraveyard(CardCollection.EMPTY);
         game.fireEvent(new GameEventSpellRemovedFromStack(sa));

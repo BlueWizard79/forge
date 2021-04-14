@@ -704,21 +704,8 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
                     System.out.printf("Basics[%s]: %d/%d = %f%% = %d cards%n", MagicColor.Constant.BASIC_LANDS.get(i), clrCnts[i], totalColor, 100*p, nLand + 1);
                 }
 
-                PaperCard snowLand = null;
-                // if appropriate snow-covered lands are available, add them
-                for (final PaperCard cp : basicLands) {
-                    if (cp.getName().equals(MagicColor.Constant.SNOW_LANDS.get(i))) {
-                        snowLand = cp;
-                        break;
-                    }
-                }
-
                 for (int j = 0; j < nLand; j++) {
-                    if(snowLand!=null){
-                        deckList.add(snowLand);
-                    }else {
-                        deckList.add(getBasicLand(i));
-                    }
+                    deckList.add(getBasicLand(i));
                 }
             }
         }
@@ -740,7 +727,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
      *             the set to take basic lands from (pass 'null' for random).
      * @return card
      */
-    private PaperCard getBasicLand(final int basicLand) {
+    protected PaperCard getBasicLand(final int basicLand) {
         String set;
         if (setsWithBasicLands.size() > 1) {
             set = setsWithBasicLands.get(MyRandom.getRandom().nextInt(setsWithBasicLands.size() - 1));
@@ -844,25 +831,12 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
 
         for (final PaperCard card : lands) {
             if (landsNeeded > minBasics) {
-                // Throw out any dual-lands for the wrong colors. Assume
-                // everything else is either
-                // (a) dual-land of the correct two colors, or
-                // (b) a land that generates colorless mana and has some other
-                // beneficial effect.
-                if (!card.getRules().getColorIdentity().isColorless() && card.getRules().getColorIdentity().getSharedColors(colors).countColors()==0
-                        || card.getRules().getColorIdentity().isMulticolor()&&colors.isMonoColor()){//remove dual lands from mono coloured decks
-                    //skip as does not match colours
-                    if (logToConsole) {
-                        System.out.println("Excluding NonBasicLand: " + card.getName());
-                    }
-                    continue;
-                }
-                if (!inverseDLands.contains(card.getName())&&!dLands.contains(card.getName())&&MyRandom.getRandom().nextInt(100)<90) {
+                // Use only lands that are within our colors
+                if (card.getRules().getDeckbuildingColors().hasNoColorsExcept(colors)) {
                     landsToAdd.add(card);
                     landsNeeded--;
-                    if (logToConsole) {
-                        System.out.println("NonBasicLand[" + landsNeeded + "]:" + card.getName());
-                    }
+                } else if (logToConsole) {
+                    System.out.println("Excluding NonBasicLand: " + card.getName());
                 }
             }
         }
