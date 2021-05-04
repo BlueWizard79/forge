@@ -85,6 +85,7 @@ import forge.gui.GuiBase;
 import forge.gui.GuiChoose;
 import forge.gui.GuiDialog;
 import forge.gui.GuiUtils;
+import forge.gui.MenuScroller;
 import forge.gui.SOverlayUtils;
 import forge.gui.framework.DragCell;
 import forge.gui.framework.EDocID;
@@ -270,7 +271,7 @@ public final class CMatchUI
      * View deck list.
      */
     public void viewDeckList() {
-        if (!isInGame()) {
+        if (!isInGame() || getCurrentPlayer() == null) {
             return;
         }
         final Deck deck = getGameView().getDeck(getCurrentPlayer());
@@ -907,6 +908,9 @@ public final class CMatchUI
 
         //show menu if mouse was trigger for ability
         final JPopupMenu menu = new JPopupMenu(Localizer.getInstance().getMessage("lblAbilities"));
+        //add scroll area when too big
+        // TODO: do we need a user setting for the scrollCount?
+        MenuScroller.setScrollerFor(menu, 8, 125, 3, 1);
 
         boolean enabled;
         int firstEnabled = -1;

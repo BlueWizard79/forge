@@ -162,6 +162,8 @@ public class PhaseHandler implements java.io.Serializable {
         boolean isTopsy = playerTurn.getAmountOfKeyword("The phases of your turn are reversed.") % 2 == 1;
         boolean turnEnded = false;
 
+        game.getStack().clearUndoStack(); //can't undo action from previous phase
+
         if (bRepeatCleanup) { // for when Cleanup needs to repeat itself
             bRepeatCleanup = false;
         }
@@ -183,6 +185,28 @@ public class PhaseHandler implements java.io.Serializable {
                 turnEnded = PhaseType.isLast(phase, isTopsy);
                 setPhase(PhaseType.getNext(phase, isTopsy));
             }
+
+            if (turnEnded) {
+                turn++;
+                extraPhases.clear();
+                game.updateTurnForView();
+                game.fireEvent(new GameEventTurnBegan(playerTurn, turn));
+
+                // Tokens starting game in play should suffer from Sum. Sickness
+                for (final Card c : playerTurn.getCardsIncludePhasingIn(ZoneType.Battlefield)) {
+                    if (playerTurn.getTurn() > 0 || !c.isStartsGameInPlay()) {
+                        c.setSickness(false);
+                    }
+                }
+                playerTurn.incrementTurn();
+
+                game.getAction().resetActivationsPerTurn();
+
+                final List<Card> lands = CardLists.filter(playerTurn.getLandsInPlay(), Presets.UNTAPPED);
+                playerTurn.setNumPowerSurgeLands(lands.size());
+            }
+            //update tokens
+            game.fireEvent(new GameEventTokenStateUpdate(playerTurn.getTokensInPlay()));
 
             // Replacement effects
             final Map<AbilityKey, Object> repRunParams = AbilityKey.mapFromAffected(playerTurn);
@@ -206,32 +230,7 @@ public class PhaseHandler implements java.io.Serializable {
             }
         }
 
-        game.getStack().clearUndoStack(); //can't undo action from previous phase
-
         String phaseType = oldPhase == phase ? "Repeat" : phase == PhaseType.getNext(oldPhase, isTopsy) ? "" : "Additional";
-
-        if (turnEnded) {
-            turn++;
-            extraPhases.clear();
-            game.updateTurnForView();
-            game.fireEvent(new GameEventTurnBegan(playerTurn, turn));
-
-            // Tokens starting game in play should suffer from Sum. Sickness
-            for (final Card c : playerTurn.getCardsIncludePhasingIn(ZoneType.Battlefield)) {
-                if (playerTurn.getTurn() > 0 || !c.isStartsGameInPlay()) {
-                    c.setSickness(false);
-                }
-            }
-            playerTurn.incrementTurn();
-
-            game.getAction().resetActivationsPerTurn();
-
-            final List<Card> lands = CardLists.filter(playerTurn.getLandsInPlay(), Presets.UNTAPPED);
-            playerTurn.setNumPowerSurgeLands(lands.size());
-        }
-        //update tokens
-        game.fireEvent(new GameEventTokenStateUpdate(playerTurn.getTokensInPlay()));
-
         game.fireEvent(new GameEventTurnPhase(playerTurn, phase, phaseType));
     }
 
@@ -398,7 +397,7 @@ public class PhaseHandler implements java.io.Serializable {
                                 discarded.add(c);
                             }
                         }
-                        table.triggerChangesZoneAll(game);
+                        table.triggerChangesZoneAll(game, null);
 
                         if (!discarded.isEmpty()) {
                             final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
@@ -619,7 +618,7 @@ public class PhaseHandler implements java.io.Serializable {
                     final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
                     runParams.put(AbilityKey.Attackers, combat.getAttackersOf(ge));
                     runParams.put(AbilityKey.AttackingPlayer, combat.getAttackingPlayer());
-                    runParams.put(AbilityKey.AttackedTarget, ge);
+                    runParams.put(AbilityKey.AttackedTarget, Collections.singletonList(ge));
                     attackedTarget.add(ge);
                     game.getTriggerHandler().runTrigger(TriggerType.AttackersDeclaredOneTarget, runParams, false);
                 }
@@ -1068,7 +1067,7 @@ public class PhaseHandler implements java.io.Serializable {
                             // currently there can be only one Spell put on the Stack at once, or Land Abilities be played
                             final CardZoneTable triggerList = new CardZoneTable();
                             triggerList.put(originZone.getZoneType(), currentZone.getZoneType(), saHost);
-                            triggerList.triggerChangesZoneAll(game);
+                            triggerList.triggerChangesZoneAll(game, null);
                         }
 
                     }
@@ -1262,7 +1261,7 @@ public class PhaseHandler implements java.io.Serializable {
 
     /**
      * returns the continuous extra turn count
-     * @param PLayer p
+     * @param p
      * @return int
      */
     public int getExtraTurnForPlayer(final Player p) {

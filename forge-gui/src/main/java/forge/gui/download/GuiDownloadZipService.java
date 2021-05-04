@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
@@ -171,7 +172,13 @@ public class GuiDownloadZipService extends GuiDownloadService {
                 }
             }
 
-            final ZipFile zipFile = new ZipFile(zipFilename);
+            final Charset charset = Charset.forName("IBM437");
+            ZipFile zipFile;
+            try {
+                zipFile = new ZipFile(zipFilename, charset);
+            } catch (Throwable e) { //some older Android versions need the old method
+                zipFile = new ZipFile(zipFilename);
+            }
             final Enumeration<? extends ZipEntry> entries = zipFile.entries();
 
             progressBar.reset();

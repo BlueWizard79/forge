@@ -998,6 +998,7 @@ public class PlayerControllerAi extends PlayerController {
         emptyAbility.setActivatingPlayer(player);
         emptyAbility.setTriggeringObjects(sa.getTriggeringObjects());
         emptyAbility.setSVars(sa.getSVars());
+        emptyAbility.setXManaCostPaid(sa.getRootAbility().getXManaCostPaid());
         if (ComputerUtilCost.willPayUnlessCost(sa, player, cost, alreadyPaid, allPayers) && ComputerUtilCost.canPayCost(emptyAbility, player)) {
             ComputerUtil.playNoStack(player, emptyAbility, getGame()); // AI needs something to resolve to pay that cost
             return true;
@@ -1029,7 +1030,7 @@ public class PlayerControllerAi extends PlayerController {
                     */
                     if (sa.isMayChooseNewTargets() && !sa.setupTargets()) {
                         if (sa.isSpell()) {
-                            sa.getHostCard().ceaseToExist();
+                            player.getGame().getAction().ceaseToExist(sa.getHostCard(), false);
                         }
                         continue;
                     }

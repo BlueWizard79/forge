@@ -1,7 +1,7 @@
 Name:Flamescroll Celebrant
 ManaCost:1 R
 Types:Creature Human Cleric
-PT:2/2
+PT:2/1
 T:Mode$ AbilityCast | ValidActivatingPlayer$ Opponent | TriggerZones$ Battlefield | Execute$ TrigDmg | TriggerDescription$ Whenever an opponent activates an ability that isn't a mana ability, CARDNAME deals 1 damage to that player.
 SVar:TrigDmg:DB$ DealDamage | NumDmg$ 1 | Defined$ TriggeredActivator
 A:AB$ Pump | Cost$ 1 R | Defined$ Self | NumAtt$ +2 | SpellDescription$ CARDNAME gets +2/+0 until end of turn.
@@ -17,4 +17,4 @@ A:SP$ Effect | Cost$ W | Name$ Silence Effect | StaticAbilities$ STCantBeCast,ST
 SVar:DBChange:DB$ ChangeZone | Origin$ Stack | Destination$ Exile | StackDescription$ None
 SVar:STCantBeCast:Mode$ CantBeCast | EffectZone$ Command | ValidCard$ Card | Caster$ Opponent | Description$ Your opponents can't cast spells.
 SVar:STCantBeActivated:Mode$ CantBeActivated | Activator$ Opponent | EffectZone$ Command | ValidCard$ Planeswalker | Loyalty$ True | Description$ Your opponents can't activate planeswalkers' loyalty abilities.
-Oracle:You opponents can’t cast spells or activate planeswalkers’ loyalty abilities this turn.\nExile Revel in Silence.
+Oracle:Your opponents can't cast spells or activate planeswalkers' loyalty abilities this turn.\nExile Revel in Silence.

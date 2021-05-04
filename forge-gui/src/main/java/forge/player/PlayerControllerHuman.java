@@ -265,7 +265,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     public SpellAbility getAbilityToPlay(final Card hostCard, final List<SpellAbility> abilities,
             final ITriggerEvent triggerEvent) {
         // make sure another human player can't choose opponents cards just because he might see them
-        if (triggerEvent != null && !hostCard.isInZone(ZoneType.Battlefield) && !hostCard.getOwner().equals(player) && !hostCard.getController().equals(player) && hostCard.mayPlay(player).size() == 0) {
+        if (triggerEvent != null && !hostCard.isInZone(ZoneType.Battlefield) && !hostCard.getOwner().equals(player) &&
+                !hostCard.getController().equals(player) && hostCard.mayPlay(player).size() == 0 &&
+                // If player cast Shaman's Trance, they can play spells from any Graveyard (if other effects allow it to be cast)
+                (!player.hasKeyword("Shaman's Trance") || !hostCard.isInZone(ZoneType.Graveyard))) {
             return null;
         }
         spellViewCache = SpellAbilityView.getMap(abilities);
@@ -395,9 +398,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 if (cost.hasManaCost() && !cost.getCostMana().canXbe0()) {
                     canChooseZero = false;
                 }
-            }
-            if (ability.getHostCard().hasKeyword("Spend only colored mana on X. No more than one mana of each color may be spent this way.")) {
-                max = 5;
             }
         }
         final int min = canChooseZero ? 0 : 1;
@@ -997,6 +997,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public CardCollectionView orderMoveToZoneList(final CardCollectionView cards, final ZoneType destinationZone, final SpellAbility source) {
+        boolean bottomOfLibrary = false;
         if (source == null || source.getApi() != ApiType.ReorderZone) {
             if (destinationZone == ZoneType.Graveyard) {
                 switch (FModel.getPreferences().getPref(FPref.UI_ALLOW_ORDER_GRAVEYARD_WHEN_NEEDED)) {
@@ -1019,13 +1020,18 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             }
         }
 
+        if (source != null) {
+            if (source.hasParam("LibraryPosition")) {
+                bottomOfLibrary = Integer.parseInt(source.getParam("LibraryPosition")) < 0;
+            }
+        }
         tempShowCards(cards);
         GameEntityViewMap<Card, CardView> gameCacheMove = GameEntityView.getMap(cards);
         List<CardView> choices = gameCacheMove.getTrackableKeys();
 
         switch (destinationZone) {
         case Library:
-            choices = getGui().order(localizer.getMessage("lblChooseOrderCardsPutIntoLibrary"), localizer.getMessage("lblClosestToTop"), choices, null);
+            choices = getGui().order(localizer.getMessage("lblChooseOrderCardsPutIntoLibrary"), localizer.getMessage(bottomOfLibrary ? "lblClosestToBottom" : "lblClosestToTop"), choices, null);
             break;
         case Battlefield:
             choices = getGui().order(localizer.getMessage("lblChooseOrderCardsPutOntoBattlefield"), localizer.getMessage("lblPutFirst"), choices, null);
@@ -1134,7 +1140,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         final TargetChoices oldTarget = sa.getTargets();
         final TargetSelection select = new TargetSelection(this, sa);
         sa.clearTargets();
-        if (select.chooseTargets(oldTarget.size(), Lists.newArrayList(oldTarget.getDividedValues()), filter, optional)) {
+        if (select.chooseTargets(oldTarget.size(), Lists.newArrayList(oldTarget.getDividedValues()), filter, optional, false)) {
             return sa.getTargets();
         } else {
             sa.setTargets(oldTarget);
@@ -1900,7 +1906,28 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     @Override
     public boolean chooseTargetsFor(final SpellAbility currentAbility) {
         final TargetSelection select = new TargetSelection(this, currentAbility);
-        return select.chooseTargets(null, null, null, false);
+        boolean canFilterMustTarget = true;
+
+        // Can't filter MustTarget if any parent ability is also targeting
+        SpellAbility checkSA = currentAbility.getParent();
+        while (checkSA != null) {
+            if (checkSA.usesTargeting()) {
+                canFilterMustTarget = false;
+                break;
+            }
+            checkSA = checkSA.getParent();
+        }
+        // Can't filter MustTarget is any SubAbility is also targeting
+        checkSA = currentAbility.getSubAbility();
+        while (checkSA != null) {
+            if (checkSA.usesTargeting()) {
+                canFilterMustTarget = false;
+                break;
+            }
+            checkSA = checkSA.getSubAbility();
+        }
+
+        return select.chooseTargets(null, null, null, false, canFilterMustTarget);
     }
 
     @Override
@@ -2819,8 +2846,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 if (c == null) {
                     continue;
                 }
-                c.getZone().remove(c);
-                c.ceaseToExist();
+                c.getGame().getAction().ceaseToExist(c, true);
 
                 StringBuilder sb = new StringBuilder();
                 sb.append(p).append(" removes ").append(c).append(" from game due to Dev Cheats.");

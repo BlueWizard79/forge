@@ -302,6 +302,7 @@ public class GameFormat implements Comparable<GameFormat> {
         {
             coreFormats.add("Standard.txt");
             coreFormats.add("Pioneer.txt");
+            coreFormats.add("Historic.txt");
             coreFormats.add("Modern.txt");
             coreFormats.add("Legacy.txt");
             coreFormats.add("Vintage.txt");
@@ -482,6 +483,10 @@ public class GameFormat implements Comparable<GameFormat> {
 
         public GameFormat getPioneer() {
             return this.map.get("Pioneer");
+        }
+
+        public GameFormat getHistoric() {
+            return this.map.get("Historic");
         }
 
         public GameFormat getModern() {

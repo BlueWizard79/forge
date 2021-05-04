@@ -159,15 +159,17 @@ public class ChooseGenericEffectAi extends SpellAbilityAi {
             }
             return others;
         } else if ("Counters".equals(logic)) {
+            // TODO: this code will need generalization if this logic is used for cards other
+            // than Elspeth Conquers Death with different choice parameters
             SpellAbility p1p1 = null, loyalty = null;
             for (final SpellAbility sp : spells) {
-                if (sp.getDescription().equals("P1P1")) {
+                if (("P1P1").equals(sp.getParam("CounterType"))) {
                     p1p1 = sp;
                 } else {
                     loyalty = sp;
                 }
             }
-            if (sa.getTargetCard().getType().isPlaneswalker()) {
+            if (sa.getParent().getTargetCard() != null && sa.getParent().getTargetCard().getType().isPlaneswalker()) {
                 return loyalty;
             } else {
                 return p1p1;

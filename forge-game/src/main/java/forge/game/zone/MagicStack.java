@@ -586,7 +586,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         }
 
         if (source.isCopiedSpell() && source.isInZone(ZoneType.Stack)) {
-            source.ceaseToExist();
+            game.getAction().ceaseToExist(source, true);
             return;
         }
 
@@ -716,6 +716,18 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         for (SpellAbilityStackInstance si : stack) {
             if (si.getActivatingPlayer().equals(p)) {
                 remove(si);
+            }
+        }
+        for (SpellAbility sa : Lists.newArrayList(simultaneousStackEntryList)) {
+            Player activator = sa.getActivatingPlayer();
+            if (activator == null) {
+                if (sa.getHostCard().getController().equals(p)) {
+                    simultaneousStackEntryList.remove(sa);
+                }
+            } else {
+                if (activator.equals(p)) {
+                    simultaneousStackEntryList.remove(sa);
+                }
             }
         }
     }

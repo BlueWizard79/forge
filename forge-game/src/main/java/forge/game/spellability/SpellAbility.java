@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -45,6 +46,7 @@ import forge.game.Game;
 import forge.game.GameActionUtil;
 import forge.game.GameEntity;
 import forge.game.GameObject;
+import forge.game.IHasSVars;
 import forge.game.IIdentifiable;
 import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityKey;
@@ -59,7 +61,6 @@ import forge.game.card.CardPredicates;
 import forge.game.card.CardZoneTable;
 import forge.game.cost.Cost;
 import forge.game.cost.CostPart;
-import forge.game.cost.CostRemoveCounter;
 import forge.game.event.GameEventCardStatsChanged;
 import forge.game.keyword.Keyword;
 import forge.game.mana.Mana;
@@ -69,6 +70,7 @@ import forge.game.player.PlayerCollection;
 import forge.game.replacement.ReplacementEffect;
 import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityCastWithFlash;
+import forge.game.staticability.StaticAbilityMustTarget;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.trigger.WrappedAbility;
@@ -77,6 +79,7 @@ import forge.util.Aggregates;
 import forge.util.CardTranslation;
 import forge.util.Expressions;
 import forge.util.Lang;
+import forge.util.Localizer;
 import forge.util.TextUtil;
 
 //only SpellAbility can go on the stack
@@ -1469,6 +1472,10 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         return null;
     }
 
+    protected IHasSVars getSVarFallback() {
+        return ObjectUtils.firstNonNull(this.getParent(), super.getSVarFallback());
+    }
+
     public boolean isUndoable() {
         return undoable && payCosts.isUndoable() && getHostCard().isInPlay();
     }
@@ -1662,20 +1669,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (!isMinTargetChosen()) {
             return false;
         }
-        int maxTargets = getMaxTargets();
 
-        if (maxTargets == 0 && getPayCosts().hasSpecificCostType(CostRemoveCounter.class)
-                && hasSVar(getParam("TargetMax"))
-                && getSVar(getParam("TargetMax")).startsWith("Count$CardCounters")
-                && getHostCard() != null && getHostCard().hasSVar("CostCountersRemoved")) {
-            // TODO: Current AI implementation removes the counters during payment before the
-            // ability is added to stack, resulting in maxTargets=0 at this point. We are
-            // assuming here that the AI logic specified a legal number, and that number ended
-            // up being in CostCountersRemoved that is created on the card during payment.
-            maxTargets = Integer.parseInt(getHostCard().getSVar("CostCountersRemoved"));
-        }
-
-        return maxTargets >= getTargets().size();
+        return getMaxTargets() >= getTargets().size();
     }
     /**
      * <p>
@@ -1962,6 +1957,14 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             }
             currentAbility = subAbility;
         } while (currentAbility != null);
+
+        // Check if meet MustTarget restriction
+        if (!StaticAbilityMustTarget.meetsMustTargetRestriction(this)) {
+            String message = Localizer.getInstance().getMessage("lblInvalidTargetSpecification");
+            getActivatingPlayer().getController().notifyOfValue(null, null, message);
+            return false;
+        }
+
         return true;
     }
     public final void clearTargets() {
@@ -1999,6 +2002,9 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             if (!(root instanceof AbilityStatic)) {
                 return false;
             }
+        }
+        else if (incR[0].equals("SpellAbility")) {
+            // Match anything
         }
         else { //not a spell/ability type
             return false;
@@ -2351,7 +2357,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
     public void rollback() {
         for (Card c : rollbackEffects) {
-            c.ceaseToExist();
+            c.getGame().getAction().ceaseToExist(c, true);
         }
         rollbackEffects.clear();
     }

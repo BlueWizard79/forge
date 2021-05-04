@@ -46,7 +46,7 @@ import forge.util.Localizer;
 import forge.util.Utils;
 
 public class Forge implements ApplicationListener {
-    public static final String CURRENT_VERSION = "1.6.39.001";
+    public static final String CURRENT_VERSION = "1.6.40.001";
 
     private static final ApplicationListener app = new Forge();
     private static Clipboard clipboard;
@@ -88,6 +88,7 @@ public class Forge implements ApplicationListener {
         if (GuiBase.getInterface() == null) {
             clipboard = clipboard0;
             deviceAdapter = deviceAdapter0;
+            GuiBase.setUsingAppDirectory(assetDir0.contains("forge.app")); //obb directory on android uses the package name as entrypoint
             GuiBase.setInterface(new GuiMobile(assetDir0));
             GuiBase.enablePropertyConfig(value);
             isPortraitMode = androidOrientation;
@@ -148,10 +149,11 @@ public class Forge implements ApplicationListener {
 
         if (autoCache) {
             //increase cacheSize for devices with RAM more than 5GB, default is 400. Some phones have more than 10GB RAM (Mi 10, OnePlus 8, S20, etc..)
-            if (totalDeviceRAM>5000) //devices with more than 10GB RAM will have 1000 Cache size, 700 Cache size for morethan 5GB RAM
-                cacheSize = totalDeviceRAM>10000 ? 1000: 700;
+            if (totalDeviceRAM>5000) //devices with more than 10GB RAM will have 800 Cache size, 600 Cache size for morethan 5GB RAM
+                cacheSize = totalDeviceRAM>10000 ? 800: 600;
         }
-
+        //init cache
+        ImageCache.initCache(cacheSize);
         final Localizer localizer = Localizer.getInstance();
 
         //load model on background thread (using progress bar to report progress)
@@ -470,7 +472,9 @@ public class Forge implements ApplicationListener {
         }
         catch (Exception ex) {
             graphics.end();
-            BugReporter.reportException(ex);
+            //check if sentry is enabled, if not it will call the gui interface but here we end the graphics so we only send it via sentry..
+            if (BugReporter.isSentryEnabled())
+                BugReporter.reportException(ex);
         } finally {
             if(dispose)
                 ImageCache.disposeTexture();
@@ -522,7 +526,9 @@ public class Forge implements ApplicationListener {
         }
         catch (Exception ex) {
             graphics.end();
-            BugReporter.reportException(ex);
+            //check if sentry is enabled, if not it will call the gui interface but here we end the graphics so we only send it via sentry..
+            if (BugReporter.isSentryEnabled())
+                BugReporter.reportException(ex);
         }
         if (showFPS)
             frameRate.render();
@@ -542,7 +548,9 @@ public class Forge implements ApplicationListener {
         }
         catch (Exception ex) {
             graphics.end();
-            BugReporter.reportException(ex);
+            //check if sentry is enabled, if not it will call the gui interface but here we end the graphics so we only send it via sentry..
+            if (BugReporter.isSentryEnabled())
+                BugReporter.reportException(ex);
         }
     }
 

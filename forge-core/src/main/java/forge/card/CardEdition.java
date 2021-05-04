@@ -19,7 +19,6 @@ package forge.card;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -256,7 +255,7 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
             date = date + "-01";
         try {
             return formatter.parse(date);
-        } catch (ParseException e) {
+        } catch (Exception e) {
             return new Date();
         }
     }

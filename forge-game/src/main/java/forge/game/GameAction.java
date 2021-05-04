@@ -852,7 +852,24 @@ public class GameAction {
     }
 
     public final Card exile(final Card c, SpellAbility cause) {
-        return exile(c, cause, null);
+        if (c == null) {
+            return null;
+        }
+        return exile(new CardCollection(c), cause).get(0);
+    }
+    public final CardCollection exile(final CardCollection cards, SpellAbility cause) {
+        CardZoneTable table = new CardZoneTable();
+        CardCollection result = new CardCollection();
+        for (Card card : cards) {
+            if (cause != null) {
+                table.put(card.getZone().getZoneType(), ZoneType.Exile, card);
+            }
+            result.add(exile(card, cause, null));
+        }
+        if (cause != null) {
+            table.triggerChangesZoneAll(game, cause);
+        }
+        return result;
     }
     public final Card exile(final Card c, SpellAbility cause, Map<AbilityKey, Object> params) {
         if (game.isCardExiled(c)) {
@@ -899,6 +916,36 @@ public class GameAction {
             case SchemeDeck:    return moveToVariantDeck(c, ZoneType.SchemeDeck, libPosition, cause, params);
             default: // sideboard will also get there
                 return moveTo(c.getOwner().getZone(name), c, cause);
+        }
+    }
+
+    public void ceaseToExist(Card c, boolean skipTrig) {
+        c.getZone().remove(c);
+
+        // CR 603.6c other players LTB triggers should work
+        if (!skipTrig) {
+            game.addChangeZoneLKIInfo(c);
+            CardCollectionView lastBattlefield = game.getLastStateBattlefield();
+            int idx = lastBattlefield.indexOf(c);
+            Card lki = null;
+            if (idx != -1) {
+                lki = lastBattlefield.get(idx);
+            }
+            if (lki == null) {
+                lki = CardUtil.getLKICopy(c);
+            }
+            if (game.getCombat() != null) {
+                game.getCombat().removeFromCombat(c);
+                game.getCombat().saveLKI(lki);
+            }
+            // again, make sure no triggers run from cards leaving controlled by loser
+            if (!lki.getController().equals(lki.getOwner())) {
+                game.getTriggerHandler().registerActiveLTBTrigger(lki);
+            }
+            final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(c);
+            runParams.put(AbilityKey.CardLKI, lki);
+            runParams.put(AbilityKey.Origin, c.getZone().getZoneType().name());
+            game.getTriggerHandler().runTrigger(TriggerType.ChangesZone, runParams, false);
         }
     }
 
@@ -1260,7 +1307,7 @@ public class GameAction {
             if (game.getCombat() != null) {
                 game.getCombat().removeAbsentCombatants();
             }
-            table.triggerChangesZoneAll(game);
+            table.triggerChangesZoneAll(game, null);
             if (!checkAgain) {
                 break; // do not continue the loop
             }
@@ -1636,7 +1683,9 @@ public class GameAction {
         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(c);
         runParams.put(AbilityKey.Causer, activator);
         game.getTriggerHandler().runTrigger(TriggerType.Destroyed, runParams, false);
-
+        // in case the destroyed card has such a trigger
+        game.getTriggerHandler().registerActiveLTBTrigger(c);
+        
         final Card sacrificed = sacrificeDestroy(c, sa, table);
         return sacrificed != null;
     }

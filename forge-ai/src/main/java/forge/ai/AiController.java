@@ -34,6 +34,7 @@ import forge.ai.ability.ChangeZoneAi;
 import forge.ai.ability.ExploreAi;
 import forge.ai.ability.LearnAi;
 import forge.ai.simulation.SpellAbilityPicker;
+import forge.card.CardStateName;
 import forge.card.MagicColor;
 import forge.card.mana.ManaCost;
 import forge.deck.CardPool;
@@ -89,6 +90,7 @@ import forge.game.spellability.SpellAbilityCondition;
 import forge.game.spellability.SpellAbilityPredicates;
 import forge.game.spellability.SpellPermanent;
 import forge.game.staticability.StaticAbility;
+import forge.game.staticability.StaticAbilityMustTarget;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.trigger.WrappedAbility;
@@ -431,17 +433,22 @@ public class AiController {
                     }
                 }
 
-                // don't play the land if it has cycling and enough lands are available
-                final FCollectionView<SpellAbility> spellAbilities = c.getSpellAbilities();
-
                 final CardCollectionView hand = player.getCardsIn(ZoneType.Hand);
                 CardCollection lands = new CardCollection(battlefield);
                 lands.addAll(hand);
                 lands = CardLists.filter(lands, CardPredicates.Presets.LANDS);
                 int maxCmcInHand = Aggregates.max(hand, CardPredicates.Accessors.fnGetCmc);
-                for (final SpellAbility sa : spellAbilities) {
-                    if (sa.isCycling()) {
-                        if (lands.size() >= Math.max(maxCmcInHand, 6)) {
+
+                if (lands.size() >= Math.max(maxCmcInHand, 6)) {
+                    // don't play MDFC land if other side is spell and enough lands are available
+                    if (!c.isLand() || (c.isModal() && !c.getState(CardStateName.Modal).getType().isLand())) {
+                        return false;
+                    }
+
+                    // don't play the land if it has cycling and enough lands are available
+                    final FCollectionView<SpellAbility> spellAbilities = c.getSpellAbilities();
+                    for (final SpellAbility sa : spellAbilities) {
+                        if (sa.isCycling()) {
                             return false;
                         }
                     }
@@ -827,8 +834,11 @@ public class AiController {
             }
             return canPlayFromEffectAI((SpellPermanent)sa, false, true);
         }
-        if (sa.usesTargeting() && !sa.isTargetNumberValid()) {
-            if (!sa.getTargetRestrictions().hasCandidates(sa, true)) {
+        if (sa.usesTargeting()) {
+            if (!sa.isTargetNumberValid() && !sa.getTargetRestrictions().hasCandidates(sa, true)) {
+                return AiPlayDecision.TargetingFailed;
+            }
+            if (!StaticAbilityMustTarget.meetsMustTargetRestriction(sa)) {
                 return AiPlayDecision.TargetingFailed;
             }
         }
@@ -1450,6 +1460,13 @@ public class AiController {
                     if (!game.getPhaseHandler().is(PhaseType.MAIN1) || !isSafeToHoldLandDropForMain2(land)) {
                         final List<SpellAbility> abilities = Lists.newArrayList();
 
+                        // TODO extend this logic to evaluate MDFC with both sides land
+                        // this can only happen if its a MDFC land
+                        if (!land.isLand()) {
+                            land.setState(CardStateName.Modal, true);
+                            land.setBackSide(true);
+                        }
+
                         LandAbility la = new LandAbility(land, player, null);
                         la.setCardState(land.getCurrentState());
                         if (la.canPlay()) {
@@ -1867,6 +1884,8 @@ public class AiController {
             return MyRandom.getRandom().nextInt(3);
         } else if (source.hasSVar("EnergyToPay")) {
             return AbilityUtils.calculateAmount(source, source.getSVar("EnergyToPay"), sa);
+        } else if ("Vermin".equals(logic)) {
+            return MyRandom.getRandom().nextInt(Math.max(player.getLife() - 5, 0));
         }
         return max;
     }

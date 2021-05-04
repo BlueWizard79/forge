@@ -49,7 +49,6 @@ import com.google.common.collect.Table;
 import com.google.common.collect.TreeBasedTable;
 
 import forge.GameCommand;
-import forge.ImageKeys;
 import forge.StaticData;
 import forge.card.CardChangedType;
 import forge.card.CardDb.SetPreference;
@@ -433,6 +432,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return getState(state, false);
     }
     public CardState getState(final CardStateName state, boolean skipTextChange) {
+        if (state == CardStateName.FaceDown) {
+            return getFaceDownState();
+        }
         if (!skipTextChange) {
             CardCloneStates txtStates = getLastTextChangeState();
             if (txtStates != null) {
@@ -460,10 +462,17 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public CardState getOriginalState(final CardStateName state) {
-        if (!states.containsKey(state) && state == CardStateName.FaceDown) {
-            states.put(CardStateName.FaceDown, CardUtil.getFaceDownCharacteristic(this));
+        if (state == CardStateName.FaceDown) {
+            return getFaceDownState();
         }
         return states.get(state);
+    }
+
+    public CardState getFaceDownState() {
+        if (!states.containsKey(CardStateName.FaceDown)) {
+            states.put(CardStateName.FaceDown, CardUtil.getFaceDownCharacteristic(this));
+        }
+        return states.get(CardStateName.FaceDown);
     }
 
     public void setOriginalStateAsFaceDown() {
@@ -476,26 +485,25 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return setState(state, updateView, false);
     }
     public boolean setState(final CardStateName state, boolean updateView, boolean forceUpdate) {
-        CardCloneStates textChangeStates = getLastTextChangeState();
+        // faceDown has higher priority over clone states
+        // while text change states doesn't apply while the card is faceDown
+        if (state != CardStateName.FaceDown) {
+            CardCloneStates textChangeStates = getLastTextChangeState();
 
-        if (textChangeStates != null) {
-            if (!textChangeStates.containsKey(state)) {
-                throw new RuntimeException(getName() + " tried to switch to non-existant text change state \"" + state + "\"!");
-                //return false; // Nonexistant state.
-            }
-        } else {
-            CardCloneStates cloneStates = getLastClonedState();
-            if (cloneStates != null) {
-                if (!cloneStates.containsKey(state)) {
-                    throw new RuntimeException(getName() + " tried to switch to non-existant cloned state \"" + state + "\"!");
+            if (textChangeStates != null) {
+                if (!textChangeStates.containsKey(state)) {
+                    throw new RuntimeException(getName() + " tried to switch to non-existant text change state \"" + state + "\"!");
                     //return false; // Nonexistant state.
                 }
             } else {
-                if (!states.containsKey(state)) {
-                    if (state == CardStateName.FaceDown) {
-                        // The face-down state is created lazily only when needed.
-                        states.put(CardStateName.FaceDown, CardUtil.getFaceDownCharacteristic(this));
-                    } else {
+                CardCloneStates cloneStates = getLastClonedState();
+                if (cloneStates != null) {
+                    if (!cloneStates.containsKey(state)) {
+                        throw new RuntimeException(getName() + " tried to switch to non-existant cloned state \"" + state + "\"!");
+                        //return false; // Nonexistant state.
+                    }
+                } else {
+                    if (!states.containsKey(state)) {
                         System.out.println(getName() + " tried to switch to non-existant state \"" + state + "\"!");
                         return false; // Nonexistant state.
                     }
@@ -554,20 +562,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         states.putAll(map);
     }
 
-    // was only used for Clone Effects
-    @Deprecated
-    public void switchStates(final CardStateName from, final CardStateName to, boolean updateView) {
-        final CardState tmp = states.get(from);
-        states.put(from, states.get(to));
-        states.put(to, tmp);
-        if (currentStateName == from) {
-            setState(to, false);
-        }
-        if (updateView) {
-            view.updateState(this);
-        }
-    }
-
     public final void addAlternateState(final CardStateName state, final boolean updateView) {
         states.put(state, new CardState(this, state));
         if (updateView) {
@@ -619,9 +613,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 return false;
             }
 
-            if (hasMergedCard()) {
-                removeMutatedStates();
-            }
             CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
             boolean retResult = false;
             for (final Card c : cards) {
@@ -633,7 +624,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 boolean result = c.changeToState(c.backside ? CardStateName.Transformed : CardStateName.Original);
                 retResult = retResult || result;
             }
-            if (hasMergedCard()) {
+            if (retResult && hasMergedCard()) {
+                removeMutatedStates();
                 rebuildMutatedStates(cause);
             }
 
@@ -654,9 +646,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 return false;
             }
 
-            if (hasMergedCard()) {
-                removeMutatedStates();
-            }
             CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
             boolean retResult = false;
             for (final Card c : cards) {
@@ -668,6 +657,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 retResult = retResult || result;
             }
             if (retResult && hasMergedCard()) {
+                removeMutatedStates();
                 rebuildMutatedStates(cause);
                 game.getTriggerHandler().clearActiveTriggers(this, null);
                 game.getTriggerHandler().registerActiveTrigger(this, false);
@@ -716,9 +706,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public boolean turnFaceDown(boolean override) {
-        if (hasMergedCard()) {
-            removeMutatedStates();
-        }
         CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
         boolean retResult = false;
         for (final Card c : cards) {
@@ -730,7 +717,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 }
             }
         }
-        if (hasMergedCard()) {
+        if (retResult && hasMergedCard()) {
+            removeMutatedStates();
             rebuildMutatedStates(null);
             game.getTriggerHandler().clearActiveTriggers(this, null);
             game.getTriggerHandler().registerActiveTrigger(this, false);
@@ -756,9 +744,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 return false;
             }
 
-            if (hasMergedCard()) {
-                removeMutatedStates();
-            }
             CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
             boolean retResult = false;
             for (final Card c : cards) {
@@ -778,7 +763,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 }
                 retResult = retResult || result;
             }
-            if (hasMergedCard()) {
+            if (retResult && hasMergedCard()) {
+                removeMutatedStates();
                 rebuildMutatedStates(cause);
                 game.getTriggerHandler().clearActiveTriggers(this, null);
                 game.getTriggerHandler().registerActiveTrigger(this, false);
@@ -1170,7 +1156,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
     }
     public final void rebuildMutatedStates(final CardTraitBase sa) {
-        if (getCurrentStateName() != CardStateName.FaceDown) {
+        if (!isFaceDown()) {
             final CardCloneStates mutatedStates = CardFactory.getMutatedCloneStates(this, sa);
             addCloneState(mutatedStates, getMutatedTimestamp());
         }
@@ -1603,8 +1589,14 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         currentState.setSVar(var, str);
     }
 
+    @Override
     public final Map<String, String> getSVars() {
         return currentState.getSVars();
+    }
+
+    @Override
+    public Map<String, String> getDirectSVars() {
+        return ImmutableMap.of();
     }
 
     public final void setSVars(final Map<String, String> newSVars) {
@@ -4537,7 +4529,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public final boolean isShrine()           { return getType().hasSubtype("Shrine"); }
 
     public final boolean isAttachment() { return isAura() || isEquipment() || isFortification(); }
-    public final boolean isHistoric()   {return getType().isLegendary() || isArtifact() || getType().hasSubtype("Saga");}
+    public final boolean isHistoric()   { return getType().isLegendary() || isArtifact() || getType().hasSubtype("Saga"); }
 
     public final boolean isScheme()     { return getType().isScheme(); }
     public final boolean isPhenomenon() { return getType().isPhenomenon(); }
@@ -4894,6 +4886,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public final boolean sharesColorWith(final Card c1) {
+        if (isColorless() || c1.isColorless()) {
+            return false;
+        }
         boolean shares;
         shares = (isBlack() && c1.isBlack());
         shares |= (isBlue() && c1.isBlue());
@@ -5596,10 +5591,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final void setManifested(final boolean manifested) {
         this.manifested = manifested;
-        final String image = manifested ? ImageKeys.MANIFEST_IMAGE : ImageKeys.MORPH_IMAGE;
-        // Note: This should only be called after state has been set to CardStateName.FaceDown,
-        // so the below call should be valid since the state should have been created already.
-        getState(CardStateName.FaceDown).setImageKey(ImageKeys.getTokenKey(image));
     }
 
     public final boolean isForetold() {
@@ -5616,7 +5607,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     public final void setForetold(final boolean foretold) {
         this.foretold = foretold;
-        getState(CardStateName.FaceDown).setImageKey(ImageKeys.getTokenKey(ImageKeys.FORETELL_IMAGE));
     }
 
     public boolean isForetoldByEffect() {
@@ -6773,13 +6763,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         for (Entry<Long, CardColor> entry : changedCardColors.entrySet()) {
             this.changedCardColors.put(entry.getKey(), entry.getValue());
         }
-    }
-
-    public void ceaseToExist() {
-        getGame().getTriggerHandler().suppressMode(TriggerType.ChangesZone);
-        getZone().remove(this);
-        setZone(null);
-        getGame().getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
     }
 
     public void forceTurnFaceUp() {

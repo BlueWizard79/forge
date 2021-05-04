@@ -6,7 +6,7 @@
         <packaging.type>jar</packaging.type>
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
-        <alpha-version>1.6.39.001</alpha-version>
+        <alpha-version>1.6.40.001</alpha-version>
     </properties>
 
     <parent>
@@ -68,7 +68,7 @@
         <dependency>
             <groupId>com.badlogicgames.gdx</groupId>
             <artifactId>gdx-backend-robovm</artifactId>
-            <version>1.9.13</version>
+            <version>1.10.0</version>
         </dependency>
     </dependencies>
 </project>

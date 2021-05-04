@@ -133,7 +133,7 @@ import forge.util.collect.FCollectionView;
 public class Player extends GameEntity implements Comparable<Player> {
     public static final List<ZoneType> ALL_ZONES = Collections.unmodifiableList(Arrays.asList(ZoneType.Battlefield,
             ZoneType.Library, ZoneType.Graveyard, ZoneType.Hand, ZoneType.Exile, ZoneType.Command, ZoneType.Ante,
-            ZoneType.Sideboard, ZoneType.PlanarDeck, ZoneType.SchemeDeck, ZoneType.Merged, ZoneType.Subgame));
+            ZoneType.Sideboard, ZoneType.PlanarDeck, ZoneType.SchemeDeck, ZoneType.Merged, ZoneType.Subgame, ZoneType.None));
 
     private final Map<Card, Integer> commanderDamage = Maps.newHashMap();
 
@@ -1831,7 +1831,9 @@ public class Player extends GameEntity implements Comparable<Player> {
         for (Card m : milledView) {
             final ZoneType origin = m.getZone().getZoneType();
             final Card d = game.getAction().moveTo(destination, m, sa);
-            table.put(origin, d.getZone().getZoneType(), d);
+            if (d.getZone().is(destination)) {
+                table.put(origin, d.getZone().getZoneType(), d);
+            }
         }
 
         return milled;
@@ -2599,6 +2601,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         resetPreventNextDamageWithEffect();
         resetNumDrawnThisTurn();
         resetNumDiscardedThisTurn();
+        resetNumForetoldThisTurn();
         resetNumTokenCreatedThisTurn();
         setNumCardsInHandStartedThisTurnWith(getCardsIn(ZoneType.Hand).size());
         clearCreaturesAttackedThisTurn();

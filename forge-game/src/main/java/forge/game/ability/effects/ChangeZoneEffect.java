@@ -15,6 +15,7 @@ import com.google.common.collect.Maps;
 
 import forge.GameCommand;
 import forge.card.CardStateName;
+import forge.card.CardType;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameEntityCounterTable;
@@ -27,6 +28,7 @@ import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
+import forge.game.card.CardState;
 import forge.game.card.CardUtil;
 import forge.game.card.CardView;
 import forge.game.card.CardZoneTable;
@@ -446,8 +448,6 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
         final Game game = player.getGame();
         final CardCollection commandCards = new CardCollection();
 
-        SpellAbility cause = AbilityUtils.getCause(sa);
-
         ZoneType destination = ZoneType.smartValueOf(sa.getParam("Destination"));
         final List<ZoneType> origin = Lists.newArrayList();
         if (sa.hasParam("Origin")) {
@@ -551,7 +551,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
                 }
 
-                movedCard = game.getAction().moveToLibrary(gameCard, libraryPosition, cause);
+                movedCard = game.getAction().moveToLibrary(gameCard, libraryPosition, sa);
 
             } else {
                 if (destination.equals(ZoneType.Battlefield)) {
@@ -651,7 +651,13 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         }
                     }
 
-                    movedCard = game.getAction().moveTo(gameCard.getController().getZone(destination), gameCard, cause, moveParams);
+                    // need to be facedown before it hits the battlefield in case of Replacement Effects or Trigger
+                    if (sa.hasParam("FaceDown")) {
+                        gameCard.turnFaceDown(true);
+                        setFaceDownState(gameCard, sa);
+                    }
+
+                    movedCard = game.getAction().moveTo(gameCard.getController().getZone(destination), gameCard, sa, moveParams);
                     if (sa.hasParam("Unearth")) {
                         movedCard.setUnearthed(true);
                         movedCard.addChangedCardKeywords(Lists.newArrayList("Haste"), null, false, false,
@@ -661,9 +667,6 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
                     if (sa.hasParam("LeaveBattlefield")) {
                         addLeaveBattlefieldReplacement(movedCard, sa, sa.getParam("LeaveBattlefield"));
-                    }
-                    if (sa.hasParam("FaceDown")) {
-                        movedCard.turnFaceDown(true);
                     }
                     if (addToCombat(movedCard, movedCard.getController(), sa, "Attacking", "Blocking")) {
                         combatChanged = true;
@@ -694,7 +697,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         gameCard.setExiledWith(host);
                         gameCard.setExiledBy(host.getController());
                     }
-                    movedCard = game.getAction().moveTo(destination, gameCard, cause);
+                    movedCard = game.getAction().moveTo(destination, gameCard, sa);
                     if (ZoneType.Hand.equals(destination) && ZoneType.Command.equals(originZone.getZoneType())) {
                         StringBuilder sb = new StringBuilder();
                         sb.append(movedCard.getName()).append(" has moved from Command Zone to ").append(player).append("'s hand.");
@@ -806,7 +809,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             game.getAction().reveal(commandCards, player, true, "Revealed cards in ");
         }
 
-        triggerList.triggerChangesZoneAll(game);
+        triggerList.triggerChangesZoneAll(game, sa);
         counterTable.triggerCountersPutAll(game);
 
 
@@ -1176,15 +1179,6 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
         final boolean forget = sa.hasParam("ForgetChanged");
         final boolean champion = sa.hasParam("Champion");
         final boolean imprint = sa.hasParam("Imprint");
-        
-        final SpellAbility root = sa.getRootAbility();
-        SpellAbility cause = sa;
-        if (root.isReplacementAbility()) {
-            SpellAbility replacingObject = (SpellAbility) root.getReplacingObject(AbilityKey.Cause);
-            if (replacingObject != null) {
-                cause = replacingObject;
-            }
-        }
 
         boolean combatChanged = false;
         final CardZoneTable triggerList = new CardZoneTable();
@@ -1206,7 +1200,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 Map<AbilityKey, Object> moveParams = Maps.newEnumMap(AbilityKey.class);
                 moveParams.put(AbilityKey.FoundSearchingLibrary,  searchedLibrary);
                 if (destination.equals(ZoneType.Library)) {
-                    movedCard = game.getAction().moveToLibrary(c, libraryPos, cause, moveParams);
+                    movedCard = game.getAction().moveToLibrary(c, libraryPos, sa, moveParams);
                 }
                 else if (destination.equals(ZoneType.Battlefield)) {
                     if (sa.hasParam("Tapped")) {
@@ -1295,36 +1289,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     // need to be facedown before it hits the battlefield in case of Replacement Effects or Trigger
                     if (sa.hasParam("FaceDown")) {
                         c.turnFaceDown(true);
-
-                        // set New Pt doesn't work because this values need to be copyable for clone effects
-                        if (sa.hasParam("FaceDownPower")) {
-                            c.setBasePower(AbilityUtils.calculateAmount(
-                                    source, sa.getParam("FaceDownPower"), sa));
-                        }
-                        if (sa.hasParam("FaceDownToughness")) {
-                            c.setBaseToughness(AbilityUtils.calculateAmount(
-                                    source, sa.getParam("FaceDownToughness"), sa));
-                        }
-
-                        if (sa.hasParam("FaceDownAddType")) {
-                            c.addType(Arrays.asList(sa.getParam("FaceDownAddType").split(" & ")));
-                        }
-
-                        if (sa.hasParam("FaceDownPower") || sa.hasParam("FaceDownToughness")
-                                || sa.hasParam("FaceDownAddType")) {
-                            final GameCommand unanimate = new GameCommand() {
-                                private static final long serialVersionUID = 8853789549297846163L;
-
-                                @Override
-                                public void run() {
-                                    c.clearStates(CardStateName.FaceDown, true);
-                                }
-                            };
-
-                            c.addFaceupCommand(unanimate);
-                        }
+                        setFaceDownState(c, sa);
                     }
-                    movedCard = game.getAction().moveToPlay(c, c.getController(), cause, moveParams);
+                    movedCard = game.getAction().moveToPlay(c, c.getController(), sa, moveParams);
                     if (sa.hasParam("Tapped")) {
                         movedCard.setTapped(true);
                     } else if (sa.hasParam("Untapped")) {
@@ -1355,7 +1322,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
                 }
                 else {
-                    movedCard = game.getAction().moveTo(destination, c, 0, cause, moveParams);
+                    movedCard = game.getAction().moveTo(destination, c, 0, sa, moveParams);
                 }
 
                 movedCards.add(movedCard);
@@ -1433,7 +1400,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             game.updateCombatForView();
             game.fireEvent(new GameEventCombatChanged());
         }
-        triggerList.triggerChangesZoneAll(game);
+        triggerList.triggerChangesZoneAll(game, sa);
 
         if (sa.hasParam("UntilHostLeavesPlay")) {
             source.addLeavesPlayCommand(untilHostLeavesPlayCommand(triggerList, source));
@@ -1458,6 +1425,39 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 && !sa.hasParam("AtRandom")
                 && (!sa.hasParam("Defined") || sa.hasParam("ChooseFromDefined"))
                 && sa.getParam("WithTotalCMC") == null;
+    }
+
+    private static void setFaceDownState(Card c, SpellAbility sa) {
+        final Card source = sa.getHostCard();
+        CardState faceDown = c.getFaceDownState();
+
+        // set New Pt doesn't work because this values need to be copyable for clone effects
+        if (sa.hasParam("FaceDownPower")) {
+            faceDown.setBasePower(AbilityUtils.calculateAmount(
+                    source, sa.getParam("FaceDownPower"), sa));
+        }
+        if (sa.hasParam("FaceDownToughness")) {
+            faceDown.setBaseToughness(AbilityUtils.calculateAmount(
+                    source, sa.getParam("FaceDownToughness"), sa));
+        }
+
+        if (sa.hasParam("FaceDownSetType")) {
+            faceDown.setType(new CardType(Arrays.asList(sa.getParam("FaceDownSetType").split(" & ")), false));
+        }
+
+        if (sa.hasParam("FaceDownPower") || sa.hasParam("FaceDownToughness")
+                || sa.hasParam("FaceDownSetType")) {
+            final GameCommand unanimate = new GameCommand() {
+                private static final long serialVersionUID = 8853789549297846163L;
+
+                @Override
+                public void run() {
+                    c.clearStates(CardStateName.FaceDown, true);
+                }
+            };
+
+            c.addFaceupCommand(unanimate);
+        }
     }
 
     /**

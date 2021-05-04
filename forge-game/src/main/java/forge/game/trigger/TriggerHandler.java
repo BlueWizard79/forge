@@ -59,9 +59,6 @@ public class TriggerHandler {
         game = gameState;
     }
 
-    public final void cleanUpTemporaryTriggers() {
-    }
-
     public final boolean hasDelayedTriggers() {
         return !delayedTriggers.isEmpty();
     }
@@ -121,7 +118,7 @@ public class TriggerHandler {
     }
 
     public static Trigger parseTrigger(final String trigParse, final Card host, final boolean intrinsic) {
-        return parseTrigger(trigParse, host, intrinsic, host);
+        return parseTrigger(trigParse, host, intrinsic, host.getCurrentState());
     }
 
     public static Trigger parseTrigger(final String trigParse, final Card host, final boolean intrinsic, final IHasSVars sVarHolder) {
@@ -237,6 +234,7 @@ public class TriggerHandler {
             if (
                     TriggerType.Exploited.equals(t.getMode()) ||
                     TriggerType.Sacrificed.equals(t.getMode()) ||
+                    TriggerType.Destroyed.equals(t.getMode()) ||
                     (TriggerType.ChangesZone.equals(t.getMode()) && "Battlefield".equals(t.getParam("Origin")))) {
                 registerOneTrigger(t);
             }
@@ -319,7 +317,9 @@ public class TriggerHandler {
                 checkStatics |= type.equals("Battlefield");
             } else {
                 final ZoneType zone = (ZoneType) runParams.get(AbilityKey.Destination);
-                checkStatics |= zone.equals(ZoneType.Battlefield);
+                if (zone != null) {
+                    checkStatics |= zone.equals(ZoneType.Battlefield);
+                }
             }
         }
 
@@ -628,5 +628,17 @@ public class TriggerHandler {
             }
         }
         return trigger;
+    }
+
+    public void onPlayerLost(Player p) {
+        List<Trigger> lost = new ArrayList<>(delayedTriggers);
+        for (Trigger t : lost) {
+            // CR 800.4d trigger controller lost game
+            if (t.getHostCard().getOwner().equals(p)) {
+                delayedTriggers.remove(t);
+            }
+        }
+        // run all ChangesZone
+        runWaitingTriggers();
     }
 }

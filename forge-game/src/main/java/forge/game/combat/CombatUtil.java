@@ -240,6 +240,17 @@ public class CombatUtil {
             }
         }
 
+        // Quasi-goad logic for "Kardur, Doomscourge" etc. that isn't goad but behaves the same
+        if (defender != null && defender.hasKeyword("Creatures your opponents control attack a player other than you if able.")) {
+            for (GameEntity ge : getAllPossibleDefenders(attacker.getController())) {
+                if (!defender.equals(ge) && ge instanceof Player) {
+                    if (canAttack(attacker, ge)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
         // Keywords
         final boolean canAttackWithDefender = attacker.hasKeyword("CARDNAME can attack as though it didn't have defender.");
         for (final KeywordInterface keyword : attacker.getKeywords()) {
@@ -829,6 +840,8 @@ public class CombatUtil {
             if (attacker.hasStartOfKeyword("All creatures able to block CARDNAME do so.")
                     || (attacker.hasStartOfKeyword("CARDNAME must be blocked if able.")
                             && combat.getBlockers(attacker).isEmpty())
+                    || (attacker.hasStartOfKeyword("CARDNAME must be blocked by exactly one creature if able.")
+                            && combat.getBlockers(attacker).size() != 1)
                     || (attacker.hasStartOfKeyword("CARDNAME must be blocked by two or more creatures if able.")
                             && combat.getBlockers(attacker).size() < 2)) {
                 attackersWithLure.add(attacker);
@@ -979,6 +992,7 @@ public class CombatUtil {
         // attacker with lure, the blocker can't block the former
         if (!attacker.hasKeyword("All creatures able to block CARDNAME do so.")
                 && !(attacker.hasKeyword("CARDNAME must be blocked if able.") && combat.getBlockers(attacker).isEmpty())
+                && !(attacker.hasKeyword("CARDNAME must be blocked by exactly one creature if able.") && combat.getBlockers(attacker).size() != 1)
                 && !(attacker.hasKeyword("CARDNAME must be blocked by two or more creatures if able.") && combat.getBlockers(attacker).size() < 2)
                 && !(blocker.getMustBlockCards() != null && blocker.getMustBlockCards().contains(attacker))
                 && !mustBeBlockedBy

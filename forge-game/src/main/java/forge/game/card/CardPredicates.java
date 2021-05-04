@@ -22,6 +22,7 @@ import java.util.Comparator;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 
+import forge.card.CardStateName;
 import forge.game.CardTraitBase;
 import forge.game.combat.CombatUtil;
 import forge.game.keyword.Keyword;
@@ -64,6 +65,15 @@ public final class CardPredicates {
             @Override
             public boolean apply(final Card c) {
                 return p.equals(c.getOwner());
+            }
+        };
+    }
+
+    public static final Predicate<Card> ownerLives() {
+        return new Predicate<Card>() {
+            @Override
+            public boolean apply(final Card c) {
+                return !c.getOwner().hasLost();
             }
         };
     }
@@ -644,7 +654,7 @@ public final class CardPredicates {
         public static final Predicate<Card> LANDS = new Predicate<Card>() {
             @Override
             public boolean apply(Card c) {
-                return c.isLand();
+                return c.isLand() || (!c.isInZone(ZoneType.Battlefield) && c.isModal() && c.getState(CardStateName.Modal).getType().isLand());
             }
         };
         /**

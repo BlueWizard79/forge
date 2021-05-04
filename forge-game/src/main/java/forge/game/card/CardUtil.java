@@ -322,15 +322,16 @@ public final class CardUtil {
     }
 
     public static CardCollection getRadiance(final SpellAbility sa) {
-        if (!sa.usesTargeting() || !sa.hasParam("Radiance")) {
+        SpellAbility targetSA = sa.getSATargetingCard();
+        if (targetSA == null || !targetSA.usesTargeting() || !targetSA.hasParam("Radiance")) {
             return new CardCollection();
         }
 
-        final Card source = sa.getHostCard();
+        final Card source = targetSA.getHostCard();
         final Game game = source.getGame();
         final CardCollection res = new CardCollection();
-        final String[] valid = sa.getParam("ValidTgts").split(",");
-        final CardCollectionView tgts = sa.getTargets().getTargetCards();
+        final String[] valid = targetSA.getParam("ValidTgts").split(",");
+        final CardCollectionView tgts = targetSA.getTargets().getTargetCards();
 
         byte combinedColor = 0;
         for (Card tgt : tgts) {
@@ -346,7 +347,7 @@ public final class CardUtil {
                 continue;
             }
             for(final Card c : game.getColoredCardsInPlay(MagicColor.toLongString(color))) {
-                if (!res.contains(c) && !tgts.contains(c) && c.isValid(valid, source.getController(), source, sa)) {
+                if (!res.contains(c) && !tgts.contains(c) && c.isValid(valid, source.getController(), source, targetSA)) {
                     res.add(c);
                 }
             }
@@ -380,10 +381,7 @@ public final class CardUtil {
 
         //show hidden if exiled facedown
         if (state == CardStateName.FaceDown) {
-            if (c.isInZone(ZoneType.Exile))
-                ret.setImageKey(ImageKeys.getTokenKey(c.isForetold() ? ImageKeys.FORETELL_IMAGE : ImageKeys.HIDDEN_CARD));
-            else
-                ret.setImageKey(ImageKeys.getTokenKey(c.isManifested() ? ImageKeys.MANIFEST_IMAGE : ImageKeys.MORPH_IMAGE));
+            ret.setImageKey(ImageKeys.getTokenKey(ImageKeys.HIDDEN_CARD));
         } else {
             ret.setImageKey(c.getImageKey());
         }
@@ -428,8 +426,8 @@ public final class CardUtil {
                 if (sa.getActivatingPlayer() == null) {
                     sa.setActivatingPlayer(sa.getHostCard().getController());
                 }
-                final Game game = sa.getActivatingPlayer().getGame();
-                cards = CardLists.getValidCards(game.getCardsIn(ZoneType.Battlefield), validCard, abMana.getActivatingPlayer(), card, sa);
+                final Player activator = sa.getActivatingPlayer();
+                cards = CardLists.getValidCards(activator.getGame().getCardsIn(ZoneType.Battlefield), validCard, activator, card, sa);
             }
 
             // remove anything cards that is already in parents
@@ -499,7 +497,7 @@ public final class CardUtil {
                     break;
                 }
 
-                colors = CardUtil.getReflectableManaColors(ab, sa, colors, parents);
+                colors = CardUtil.getReflectableManaColors(sa, ab, colors, parents);
             }
         }
         return colors;
