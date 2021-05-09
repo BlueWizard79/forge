@@ -197,7 +197,7 @@ public class PlayerControllerForTests extends PlayerController {
     }
 
     @Override
-    public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message) {
+    public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
         return true;
     }
 
@@ -310,7 +310,7 @@ public class PlayerControllerForTests extends PlayerController {
     }
 
     @Override
-    public boolean confirmReplacementEffect(ReplacementEffect replacementEffect, SpellAbility effectSA, String question) {
+    public boolean confirmReplacementEffect(ReplacementEffect replacementEffect, SpellAbility effectSA, GameEntity affected, String question) {
         return true;
     }
 

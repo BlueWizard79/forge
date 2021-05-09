@@ -29,11 +29,13 @@ import com.google.common.collect.Sets;
 
 import forge.game.CardTraitBase;
 import forge.game.Game;
+import forge.game.GameEntity;
 import forge.game.GameLogEntryType;
 import forge.game.IHasSVars;
 import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
+import forge.game.ability.ApiType;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardState;
@@ -340,7 +342,8 @@ public class ReplacementHandler {
             final String question = replacementEffect instanceof ReplaceDiscard
                 ? Localizer.getInstance().getMessage("lblApplyCardReplacementEffectToCardConfirm", CardTranslation.getTranslatedName(cardForUi.getName()), runParams.get(AbilityKey.Card).toString(), effectDesc)
                 : Localizer.getInstance().getMessage("lblApplyReplacementEffectOfCardConfirm", CardTranslation.getTranslatedName(cardForUi.getName()), effectDesc);
-            boolean confirmed = optDecider.getController().confirmReplacementEffect(replacementEffect, effectSA, question);
+            GameEntity affected = (GameEntity) runParams.get(AbilityKey.Affected);
+            boolean confirmed = optDecider.getController().confirmReplacementEffect(replacementEffect, effectSA, affected, question);
             if (!confirmed) {
                 return ReplacementResult.NotReplaced;
             }
@@ -435,5 +438,48 @@ public class ReplacementHandler {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Helper function to get total prevention shield amount (limited to "prevent next N damage effects")
+     * @param o Affected game entity object
+     * @return total shield amount
+     */
+    public int getTotalPreventionShieldAmount(GameEntity o) {
+        final List<ReplacementEffect> list = Lists.newArrayList();
+        game.forEachCardInGame(new Visitor<Card>() {
+            @Override
+            public boolean visit(Card c) {
+                for (final ReplacementEffect re : c.getReplacementEffects()) {
+                    if (re.getMode() == ReplacementType.DamageDone
+                            && re.getLayer() == ReplacementLayer.Other
+                            && re.hasParam("PreventionEffect")
+                            && re.zonesCheck(game.getZoneOf(c))
+                            && re.getOverridingAbility() != null
+                            && re.getOverridingAbility().getApi() == ApiType.ReplaceDamage) {
+                        list.add(re);
+                    }
+                }
+                return true;
+            }
+
+        });
+
+        int totalAmount = 0;
+        for (ReplacementEffect re : list) {
+            SpellAbility sa = re.getOverridingAbility();
+            if (sa.hasParam("Amount")) {
+                String varValue = sa.getParam("Amount");
+                if (StringUtils.isNumeric(varValue)) {
+                    totalAmount += Integer.parseInt(varValue);
+                } else {
+                    varValue = sa.getSVar(varValue);
+                    if (varValue.startsWith("Number$")) {
+                        totalAmount += Integer.parseInt(varValue.substring(7));
+                    }
+                }
+            }
+        }
+        return totalAmount;
     }
 }

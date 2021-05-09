@@ -3010,7 +3010,7 @@ public class CardFactoryUtil {
 
             final String effect = "DB$ ChangeZone | ValidTgts$ Player | TgtPrompt$ Select target player" +
                     " | Origin$ Library | Destination$ Hand | ChangeType$ Card.named" + k[1] +
-                    " | ChangeNum$ 1 | Hidden$ True | Chooser$ Targeted | Optional$ Targeted | AILogic$ Always";
+                    " | ChangeNum$ 1 | Hidden$ True | Chooser$ Targeted | Optional$ Targeted";
 
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
             trigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
@@ -3422,7 +3422,24 @@ public class CardFactoryUtil {
         Card host = card.getCard();
 
         String keyword = inst.getOriginal();
-        if (keyword.equals("Aftermath") && card.getStateName().equals(CardStateName.RightSplit)) {
+        if (keyword.startsWith("Absorb")) {
+            final String[] k = keyword.split(":");
+            final String n = k[1];
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Event$ DamageDone | ActiveZones$ Battlefield | ValidTarget$ Card.Self");
+            sb.append(" | PreventionEffect$ True | Secondary$ True | Description$ Absorb ").append(n);
+            sb.append(" (").append(inst.getReminderText()).append(")");
+            String repeffstr = sb.toString();
+
+            String abString = "DB$ ReplaceDamage | Amount$ " + n;
+            SpellAbility replaceDamage = AbilityFactory.getAbility(abString, card);
+            replaceDamage.setIntrinsic(intrinsic);
+
+            ReplacementEffect re = ReplacementHandler.parseReplacement(repeffstr, host, intrinsic, card);
+            re.setOverridingAbility(replaceDamage);
+            inst.addReplacement(re);
+        } else if (keyword.equals("Aftermath") && card.getStateName().equals(CardStateName.RightSplit)) {
             StringBuilder sb = new StringBuilder();
             sb.append("Event$ Moved | ValidCard$ Card.Self | Origin$ Stack | ExcludeDestination$ Exile ");
             sb.append("| ValidStackSa$ Spell.Aftermath | Description$ Aftermath");
@@ -4748,16 +4765,7 @@ public class CardFactoryUtil {
         String effect = null;
         Map<String, String> svars = Maps.newHashMap();
 
-        if (keyword.startsWith("Absorb")) {
-            final String[] k = keyword.split(":");
-            final String n = k[1];
-
-            StringBuilder sb = new StringBuilder();
-            sb.append("Mode$ PreventDamage | Target$ Card.Self | Amount$ ");
-            sb.append(n).append("| Secondary$ True | Description$ Absorb ").append(n);
-            sb.append(" (").append(inst.getReminderText()).append(")");
-            effect = sb.toString();
-        } else if (keyword.startsWith("Affinity")) {
+        if (keyword.startsWith("Affinity")) {
             final String[] k = keyword.split(":");
             final String t = k[1];
 
