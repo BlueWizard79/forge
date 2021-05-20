@@ -24,6 +24,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import forge.game.ability.AbilityKey;
+import forge.game.ability.AbilityUtils;
+import forge.game.ability.ApiType;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
@@ -35,11 +37,11 @@ import forge.game.card.CounterType;
 import forge.game.event.GameEventCardAttachment;
 import forge.game.keyword.Keyword;
 import forge.game.player.Player;
+import forge.game.replacement.ReplacementEffect;
 import forge.game.replacement.ReplacementType;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.TargetRestrictions;
 import forge.game.staticability.StaticAbility;
-import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
 
 public abstract class GameEntity extends GameObject implements IIdentifiable {
@@ -65,53 +67,11 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
         getView().updateName(this);
     }
 
-    public final int addDamage(final int damage, final Card source, boolean isCombat, boolean noPrevention,
+    //                                          final Iterable<Card> source
+    public void replaceDamage(final int damage, final Card source, final boolean isCombat,
             final CardDamageMap damageMap, final CardDamageMap preventMap, GameEntityCounterTable counterTable, final SpellAbility cause) {
-        if (noPrevention) {
-            return addDamageWithoutPrevention(damage, source, damageMap, preventMap, counterTable, cause);
-        } else if (isCombat) {
-            return addCombatDamage(damage, source, damageMap, preventMap, counterTable);
-        } else {
-            return addDamage(damage, source, damageMap, preventMap, counterTable, cause);
-        }
-    }
+        boolean prevention = source.canDamagePrevented(isCombat) && (cause == null || !cause.hasParam("NoPrevention"));
 
-    public int addDamage(final int damage, final Card source, final CardDamageMap damageMap,
-            final CardDamageMap preventMap, GameEntityCounterTable counterTable, final SpellAbility cause) {
-        int damageToDo = damage;
-
-        damageToDo = replaceDamage(damageToDo, source, false, true, damageMap, preventMap, counterTable, cause);
-        damageToDo = preventDamage(damageToDo, source, false, preventMap, cause);
-
-        return addDamageAfterPrevention(damageToDo, source, false, damageMap, counterTable);
-    }
-
-    public final int addCombatDamage(final int damage, final Card source, final CardDamageMap damageMap,
-            final CardDamageMap preventMap, GameEntityCounterTable counterTable) {
-        int damageToDo = damage;
-
-        damageToDo = replaceDamage(damageToDo, source, true, true, damageMap, preventMap, counterTable, null);
-        damageToDo = preventDamage(damageToDo, source, true, preventMap, null);
-
-        if (damageToDo > 0) {
-            source.getDamageHistory().registerCombatDamage(this);
-        }
-        // damage prevention is already checked
-        return addCombatDamageBase(damageToDo, source, damageMap, counterTable);
-    }
-
-    protected int addCombatDamageBase(final int damage, final Card source, CardDamageMap damageMap, GameEntityCounterTable counterTable) {
-        return addDamageAfterPrevention(damage, source, true, damageMap, counterTable);
-    }
-
-    public int addDamageWithoutPrevention(final int damage, final Card source, final CardDamageMap damageMap,
-            final CardDamageMap preventMap, GameEntityCounterTable counterTable, final SpellAbility cause) {
-        int damageToDo = replaceDamage(damage, source, false, false, damageMap, preventMap, counterTable, cause);
-        return addDamageAfterPrevention(damageToDo, source, false, damageMap, counterTable);
-    }
-
-    public int replaceDamage(final int damage, final Card source, final boolean isCombat, final boolean prevention,
-            final CardDamageMap damageMap, final CardDamageMap preventMap, GameEntityCounterTable counterTable, final SpellAbility cause) {
         // Replacement effects
         final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(this);
         repParams.put(AbilityKey.DamageSource, source);
@@ -127,85 +87,75 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
 
         switch (getGame().getReplacementHandler().run(ReplacementType.DamageDone, repParams)) {
         case NotReplaced:
-            return damage;
+            break;
         case Updated:
             int newDamage = (int) repParams.get(AbilityKey.DamageAmount);
             GameEntity newTarget = (GameEntity) repParams.get(AbilityKey.Affected);
             // check if this is still the affected card or player
             if (this.equals(newTarget)) {
-                return newDamage;
+                damageMap.put(source, this, newDamage - damage);
             } else {
-                if (prevention) {
-                    newDamage = newTarget.preventDamage(newDamage, source, isCombat, preventMap, cause);
-                }
-                newTarget.addDamageAfterPrevention(newDamage, source, isCombat, damageMap, counterTable);
+                damageMap.remove(source, this);
+                damageMap.put(source, newTarget, newDamage);
             }
+            break;
         default:
-            return 0;
+            damageMap.remove(source, this);
         }
     }
 
     // This function handles damage after replacement and prevention effects are applied
-    public abstract int addDamageAfterPrevention(final int damage, final Card source, final boolean isCombat, CardDamageMap damageMap, GameEntityCounterTable counterTable);
+    public abstract int addDamageAfterPrevention(final int damage, final Card source, final boolean isCombat, GameEntityCounterTable counterTable);
 
     // This should be also usable by the AI to forecast an effect (so it must
     // not change the game state)
-    public abstract int staticDamagePrevention(final int damage, final Card source, final boolean isCombat, final boolean isTest);
-
-    // This should be also usable by the AI to forecast an effect (so it must
-    // not change the game state)
-    public abstract int staticReplaceDamage(final int damage, final Card source, final boolean isCombat);
-
-    public final int preventDamage(
-            final int damage, final Card source, final boolean isCombat, CardDamageMap preventMap,
-            final SpellAbility cause) {
+    public int staticDamagePrevention(final int damage, final int possiblePrevention, final Card source, final boolean isCombat) {
+        if (damage <= 0) {
+            return 0;
+        }
         if (!source.canDamagePrevented(isCombat)) {
             return damage;
         }
 
-        int restDamage = damage;
-
-        // first try to replace the damage
-        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(this);
-        repParams.put(AbilityKey.DamageSource, source);
-        repParams.put(AbilityKey.DamageAmount, damage);
-        repParams.put(AbilityKey.IsCombat, isCombat);
-        repParams.put(AbilityKey.Prevention, true);
-        repParams.put(AbilityKey.PreventMap, preventMap);
-        if (cause != null) {
-            repParams.put(AbilityKey.Cause, cause);
+        if (isCombat && getGame().getReplacementHandler().isPreventCombatDamageThisTurn()) {
+            return 0;
         }
 
-        switch (getGame().getReplacementHandler().run(ReplacementType.DamageDone, repParams)) {
-        case NotReplaced:
-            restDamage = damage;
-            break;
-        case Updated:
-            restDamage = (int) repParams.get(AbilityKey.DamageAmount);
-            break;
-        default:
-            restDamage = 0;
+        for (final Card ca : getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
+            for (final ReplacementEffect re : ca.getReplacementEffects()) {
+                if (!re.getMode().equals(ReplacementType.DamageDone) ||
+                        (!re.hasParam("PreventionEffect") && !re.hasParam("Prevent"))) {
+                    continue;
+                }
+                if (!re.matchesValidParam("ValidSource", source)) {
+                    continue;
+                }
+                if (!re.matchesValidParam("ValidTarget", this)) {
+                    continue;
+                }
+                if (re.hasParam("IsCombat")) {
+                    if (re.getParam("IsCombat").equals("True") != isCombat) {
+                        continue;
+                    }
+                }
+                if (re.hasParam("Prevent")) {
+                    return 0;
+                } else if (re.getOverridingAbility() != null) {
+                    SpellAbility repSA = re.getOverridingAbility();
+                    if (repSA.getApi() == ApiType.ReplaceDamage) {
+                        return Math.max(0, damage - AbilityUtils.calculateAmount(ca, repSA.getParam("Amount"), repSA));
+                    }
+                }
+                return 0;
+            }
         }
 
-        // then apply static Damage Prevention effects
-        restDamage = staticDamagePrevention(restDamage, source, isCombat, false);
-
-        // if damage is greater than restDamage, damage was prevented
-        if (damage > restDamage) {
-            int prevent = damage - restDamage;
-            preventMap.put(source, this, damage - restDamage);
-
-            final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
-            runParams.put(AbilityKey.DamageTarget, this);
-            runParams.put(AbilityKey.DamageAmount, prevent);
-            runParams.put(AbilityKey.DamageSource, source);
-            runParams.put(AbilityKey.IsCombatDamage, isCombat);
-
-            getGame().getTriggerHandler().runTrigger(TriggerType.DamagePrevented, runParams, false);
-        }
-
-        return restDamage;
+        return Math.max(0, damage - possiblePrevention);
     }
+
+    // This should be also usable by the AI to forecast an effect (so it must
+    // not change the game state)
+    public abstract int staticReplaceDamage(final int damage, final Card source, final boolean isCombat);
 
     public int getPreventNextDamageTotalShields() {
         return getGame().getReplacementHandler().getTotalPreventionShieldAmount(this);

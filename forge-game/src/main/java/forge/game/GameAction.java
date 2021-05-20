@@ -47,6 +47,7 @@ import forge.game.ability.effects.AttachEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
+import forge.game.card.CardDamageMap;
 import forge.game.card.CardFactory;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
@@ -61,6 +62,7 @@ import forge.game.event.GameEventCardTapped;
 import forge.game.event.GameEventFlipCoin;
 import forge.game.event.GameEventGameStarted;
 import forge.game.event.GameEventScry;
+import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.mulligan.MulliganService;
 import forge.game.player.GameLossReason;
@@ -342,6 +344,7 @@ public class GameAction {
                         c.updateStateForView();
                     }
                 }
+
                 return c;
             }
         }
@@ -371,7 +374,7 @@ public class GameAction {
                 if (saTargeting != null) {
                     saTargeting.getTargets().replaceTargetCard(c, cards);
                 }
-                // Replace host rememberd cards
+                // Replace host remembered cards
                 // But not replace RememberLKI, since it wants to refer to the last known info.
                 Card hostCard = cause.getHostCard();
                 if (!cause.hasParam("RememberLKI") && hostCard.isRemembered(c)) {
@@ -1355,8 +1358,7 @@ public class GameAction {
         if (c.getCounters(CounterEnumType.LORE) < c.getFinalChapterNr()) {
             return false;
         }
-        if (!game.getStack().hasSimultaneousStackEntries() &&
-                !game.getStack().hasSourceOnStack(c, SpellAbilityPredicates.isChapter())) {
+        if (!game.getStack().hasSourceOnStack(c, SpellAbilityPredicates.isChapter())) {
             sacrifice(c, null, table);
             checkAgain = true;
         }
@@ -1700,7 +1702,7 @@ public class GameAction {
         }
 
         final Card newCard = moveToGraveyard(c, cause, null);
-        if (table != null) {
+        if (table != null && newCard != null && newCard.getZone() != null) {
             table.put(ZoneType.Battlefield, newCard.getZone().getZoneType(), newCard);
         }
 
@@ -2125,5 +2127,52 @@ public class GameAction {
                 game.getTriggerHandler().runTrigger(TriggerType.Scry, runParams, false);
             }
         }
+    }
+
+    public void dealDamage(final boolean isCombat, final CardDamageMap damageMap, final CardDamageMap preventMap,
+            final GameEntityCounterTable counterTable, final SpellAbility cause) {
+        CardDamageMap replaceDamageMap = new CardDamageMap(damageMap);
+        // Run replacement effect for each entity dealt damage
+        // TODO: List all possible replacement effects and run them in APNAP order.
+        // TODO: To handle "Prevented this way" and abilities like "Phantom Nomad", should buffer the replaced SA
+        //       and only run them after all prevention and redirection effects are processed.
+        for (Map.Entry<GameEntity, Map<Card, Integer>> et : damageMap.columnMap().entrySet()) {
+            final GameEntity ge = et.getKey();
+            if (isCombat && ge instanceof Card) {
+                ((Card) ge).clearAssignedDamage();
+            }
+            for (Map.Entry<Card, Integer> e : et.getValue().entrySet()) {
+                if (e.getValue() > 0) {
+                    ge.replaceDamage(e.getValue(), e.getKey(), isCombat, replaceDamageMap, preventMap, counterTable, cause);
+                }
+            }
+        }
+
+        // Actually deal damage according to replaced damage map
+        for (Map.Entry<Card, Map<GameEntity, Integer>> et : replaceDamageMap.rowMap().entrySet()) {
+            final Card sourceLKI = et.getKey();
+            int sum = 0;
+            for (Map.Entry<GameEntity, Integer> e : et.getValue().entrySet()) {
+                if (e.getValue() <= 0) {
+                    continue;
+                }
+                sum += e.getValue();
+                e.getKey().addDamageAfterPrevention(e.getValue(), sourceLKI, isCombat, counterTable);
+            }
+
+            if (sourceLKI.hasKeyword(Keyword.LIFELINK)) {
+                sourceLKI.getController().gainLife(sum, sourceLKI, cause);
+            }
+        }
+
+        preventMap.triggerPreventDamage(isCombat);
+        preventMap.clear();
+
+        replaceDamageMap.triggerDamageDoneOnce(isCombat, game);
+        damageMap.clear();
+        replaceDamageMap.clear();
+
+        counterTable.triggerCountersPutAll(game);
+        counterTable.clear();
     }
 }

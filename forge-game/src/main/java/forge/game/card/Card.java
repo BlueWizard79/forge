@@ -222,6 +222,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private boolean tapped = false;
     private boolean sickness = true; // summoning sickness
     private boolean token = false;
+    private boolean tokenCard = false;
     private Card copiedPermanent = null;
     private boolean copiedSpell = false;
 
@@ -2017,7 +2018,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                     sbLong.append(keyword).append("\r\n");
                 } else if (keyword.startsWith("Strive") || keyword.startsWith("Escalate")
                         || keyword.startsWith("ETBReplacement")
-                        || keyword.startsWith("CantBeBlockedBy ")
                         || keyword.startsWith("Affinity")
                         || keyword.equals("CARDNAME enters the battlefield tapped.")
                         || keyword.startsWith("UpkeepCost")) {
@@ -2104,14 +2104,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 } else if (keyword.startsWith("CantBeBlockedByAmount")) {
                     sbLong.append(getName()).append(" can't be blocked ");
                     sbLong.append(getTextForKwCantBeBlockedByAmount(keyword));
-                } else if (keyword.startsWith("CantBlock")) {
-                    sbLong.append(getName()).append(" can't block ");
-                    if (keyword.contains("CardUID")) {
-                        sbLong.append("CardID (").append(Integer.valueOf(keyword.split("CantBlockCardUID_")[1])).append(")");
-                    } else {
-                        final String[] k = keyword.split(":");
-                        sbLong.append(k.length > 1 ? k[1] + ".\r\n" : "");
-                    }
                 } else if (keyword.equals("Unblockable")) {
                     sbLong.append(getName()).append(" can't be blocked.\r\n");
                 } else if (keyword.equals("AllNonLegendaryCreatureNames")) {
@@ -2732,7 +2724,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return false;
         }
         for (SpellAbility sa : getSpellAbilities()) {
-            if (!(sa instanceof SpellPermanent)) {
+            if (!(sa instanceof SpellPermanent) && !sa.isMorphUp()) {
                 return false;
             }
         }
@@ -2919,6 +2911,18 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final void updateTokenView() {
         view.updateToken(this);
+    }
+
+    public final boolean isTokenCard() {
+        if (isInZone(ZoneType.Battlefield) && hasMergedCard()) {
+            return getTopMergedCard().tokenCard;
+        }
+        return tokenCard;
+    }
+    public final void setTokenCard(boolean tokenC) {
+        if (tokenCard = tokenC) { return; }
+        tokenCard = tokenC;
+        view.updateTokenCard(this);
     }
 
     public final Card getCopiedPermanent() {
@@ -5132,24 +5136,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return total;
     }
 
-    public final void addCombatDamage(final Map<Card, Integer> map, final CardDamageMap damageMap, final CardDamageMap preventMap, GameEntityCounterTable counterTable) {
-        for (final Entry<Card, Integer> entry : map.entrySet()) {
-            addCombatDamage(entry.getValue(), entry.getKey(), damageMap, preventMap, counterTable);
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see forge.game.GameEntity#addCombatDamageBase(int, forge.game.card.Card, forge.game.card.CardDamageMap, forge.game.GameEntityCounterTable)
-     */
-    @Override
-    protected int addCombatDamageBase(final int damage, final Card source, CardDamageMap damageMap, GameEntityCounterTable counterTable) {
-        if (isInPlay()) {
-            return super.addCombatDamageBase(damage, source, damageMap, counterTable);
-        }
-        return 0;
-    }
-
     public final boolean canDamagePrevented(final boolean isCombat) {
         CardCollection list = new CardCollection(getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES));
         list.add(this);
@@ -5162,67 +5148,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
 
         return true;
-    }
-
-    // This is used by the AI to forecast an effect (so it must not change the game state)
-    public final int staticDamagePrevention(final int damage, final int possiblePrevention, final Card source, final boolean isCombat) {
-        if (!source.canDamagePrevented(isCombat)) {
-            return damage;
-        }
-
-        for (final Card ca : getGame().getCardsIn(ZoneType.Battlefield)) {
-            for (final ReplacementEffect re : ca.getReplacementEffects()) {
-                Map<String, String> params = re.getMapParams();
-                if (!re.getMode().equals(ReplacementType.DamageDone) || !params.containsKey("PreventionEffect")) {
-                    continue;
-                }
-                if (params.containsKey("ValidSource")
-                        && !source.isValid(params.get("ValidSource"), ca.getController(), ca, null)) {
-                    continue;
-                }
-                if (params.containsKey("ValidTarget")
-                        && !isValid(params.get("ValidTarget"), ca.getController(), ca, null)) {
-                    continue;
-                }
-                if (params.containsKey("IsCombat")) {
-                    if (params.get("IsCombat").equals("True")) {
-                        if (!isCombat) {
-                            continue;
-                        }
-                    } else {
-                        if (isCombat) {
-                            continue;
-                        }
-                    }
-                }
-                return 0;
-            }
-        }
-        return staticDamagePrevention(damage - possiblePrevention, source, isCombat, true);
-    }
-
-    // This should be also usable by the AI to forecast an effect (so it must not change the game state)
-    @Override
-    public final int staticDamagePrevention(final int damageIn, final Card source, final boolean isCombat, final boolean isTest) {
-        if (damageIn <= 0) {
-            return 0;
-        }
-
-        if (!source.canDamagePrevented(isCombat)) {
-            return damageIn;
-        }
-
-        if (isCombat && getGame().getPhaseHandler().isPreventCombatDamageThisTurn()) {
-            return 0;
-        }
-
-        int restDamage = damageIn;
-
-        if (hasProtectionFromDamage(source)) {
-            return 0;
-        }
-
-        return restDamage > 0 ? restDamage : 0;
     }
 
     // This is used by the AI to forecast an effect (so it must not change the game state)
@@ -5303,19 +5228,12 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return restDamage;
     }
 
-    public final void addDamage(final Map<Card, Integer> sourcesMap, CardDamageMap damageMap, GameEntityCounterTable counterTable) {
-        for (final Entry<Card, Integer> entry : sourcesMap.entrySet()) {
-            // damage prevention is already checked!
-            addDamageAfterPrevention(entry.getValue(), entry.getKey(), true, damageMap, counterTable);
-        }
-    }
-
     /**
      * This function handles damage after replacement and prevention effects are
      * applied.
      */
     @Override
-    public final int addDamageAfterPrevention(final int damageIn, final Card source, final boolean isCombat, CardDamageMap damageMap, GameEntityCounterTable counterTable) {
+    public final int addDamageAfterPrevention(final int damageIn, final Card source, final boolean isCombat, GameEntityCounterTable counterTable) {
 
         if (damageIn <= 0) {
             return 0; // Rule 119.8
@@ -5386,8 +5304,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             // Play the Damage sound
             game.fireEvent(new GameEventCardDamaged(this, source, damageIn, damageType));
         }
-
-        damageMap.put(source, this, damageIn);
 
         if (excess > 0) {
             // Run triggers
@@ -5694,10 +5610,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     public boolean hasProtectionFrom(final Card source) {
         return hasProtectionFrom(source, false, false);
-    }
-
-    public boolean hasProtectionFromDamage(final Card source) {
-        return hasProtectionFrom(source, false, true);
     }
 
     @Override

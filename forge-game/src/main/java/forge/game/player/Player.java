@@ -68,7 +68,6 @@ import forge.game.ability.effects.DetachedCardEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
-import forge.game.card.CardDamageMap;
 import forge.game.card.CardFactoryUtil;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
@@ -590,7 +589,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean canPayLife(final int lifePayment) {
-        if (life < lifePayment) {
+        if (lifePayment > 0 && life < lifePayment) {
             return false;
         }
         return (lifePayment <= 0) || !hasKeyword("Your life total can't change.");
@@ -636,7 +635,7 @@ public class Player extends GameEntity implements Comparable<Player> {
 
     // This function handles damage after replacement and prevention effects are applied
     @Override
-    public final int addDamageAfterPrevention(final int amount, final Card source, final boolean isCombat, CardDamageMap damageMap, GameEntityCounterTable counterTable) {
+    public final int addDamageAfterPrevention(final int amount, final Card source, final boolean isCombat, GameEntityCounterTable counterTable) {
         if (amount <= 0) {
             return 0;
         }
@@ -703,36 +702,7 @@ public class Player extends GameEntity implements Comparable<Player> {
 
         game.fireEvent(new GameEventPlayerDamaged(this, source, amount, isCombat, infect));
 
-        if (amount > 0) {
-            damageMap.put(source, this, amount);
-        }
         return amount;
-    }
-
-    // This should be also usable by the AI to forecast an effect (so it must not change the game state)
-    @Override
-    public final int staticDamagePrevention(final int damage, final Card source, final boolean isCombat, final boolean isTest) {
-        if (damage <= 0) {
-            return 0;
-        }
-        if (!source.canDamagePrevented(isCombat)) {
-            return damage;
-        }
-
-        if (isCombat && game.getPhaseHandler().isPreventCombatDamageThisTurn()) {
-            return 0;
-        }
-
-        if (hasProtectionFromDamage(source)) {
-            return 0;
-        }
-
-        int restDamage = damage;
-
-        if (restDamage > 0) {
-            return restDamage;
-        }
-        return 0;
     }
 
     // This is usable by the AI to forecast an effect (so it must
@@ -1195,7 +1165,7 @@ public class Player extends GameEntity implements Comparable<Player> {
 
 
     public boolean hasProtectionFromDamage(final Card source) {
-        return hasProtectionFrom(source, false, false);
+        return hasProtectionFrom(source, false, true);
     }
 
     @Override
@@ -2711,11 +2681,6 @@ public class Player extends GameEntity implements Comparable<Player> {
             //getZone(ZoneType.Command).add(c);
         }
 
-        //DBG
-        //System.out.println("CurrentPlanes: " + currentPlanes);
-        //System.out.println("ActivePlanes: " + game.getActivePlanes());
-        //System.out.println("CommandPlanes: " + getZone(ZoneType.Command).getCards());
-
         game.setActivePlanes(currentPlanes);
         //Run PlaneswalkedTo triggers here.
         final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
@@ -2740,11 +2705,6 @@ public class Player extends GameEntity implements Comparable<Player> {
             game.getAction().moveTo(ZoneType.PlanarDeck, plane,-1, null);
         }
         currentPlanes.clear();
-
-        //DBG
-        //System.out.println("CurrentPlanes: " + currentPlanes);
-        //System.out.println("ActivePlanes: " + game.getActivePlanes());
-        //System.out.println("CommandPlanes: " + getZone(ZoneType.Command).getCards());
     }
 
     /**
