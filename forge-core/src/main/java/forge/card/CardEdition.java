@@ -147,7 +147,7 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
         }
     }
 
-    public static class CardInSet {
+    public static class CardInSet implements Comparable<CardInSet> {
         public final CardRarity rarity;
         public final String collectorNumber;
         public final String name;
@@ -170,6 +170,56 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
             }
             sb.append(name);
             return sb.toString();
+        }
+
+        /**
+         * This method implements the main strategy to allow for natural ordering of collectorNumber
+         * (i.e. "1" < "10"), overloading the default lexicographic order (i.e. "10" < "1").
+         * Any non-numerical parts in the input collectorNumber will be also accounted for, and attached to the
+         * resulting sorting key, accordingly.
+         *
+         * @param collectorNumber: Input collectorNumber tro transform in a Sorting Key
+         * @return A 5-digits zero-padded collector number + any non-numerical parts attached.
+         */
+        public static String getSortableCollectorNumber(final String collectorNumber){
+            String sortableCollNr = collectorNumber;
+            if (sortableCollNr == null || sortableCollNr.length() == 0)
+                sortableCollNr = "50000";  // very big number of 5 digits to have them in last positions
+
+            // Now, for proper sorting, let's zero-pad the collector number (if integer)
+            int collNr;
+            try {
+                collNr = Integer.parseInt(sortableCollNr);
+                sortableCollNr = String.format("%05d", collNr);
+            } catch (NumberFormatException ex) {
+                String nonNumeric = sortableCollNr.replaceAll("[0-9]", "");
+                String onlyNumeric = sortableCollNr.replaceAll("[^0-9]", "");
+                try {
+                    collNr = Integer.parseInt(onlyNumeric);
+                } catch (NumberFormatException exon) {
+                    collNr = 0;  // this is the case of ONLY-letters collector numbers
+                }
+                if ((collNr > 0) && (sortableCollNr.startsWith(onlyNumeric))) // e.g. 12a, 37+, 2018f,
+                    sortableCollNr = String.format("%05d", collNr) + nonNumeric;
+                else  // e.g. WS6, S1
+                    sortableCollNr = nonNumeric + String.format("%05d", collNr);
+            }
+            return sortableCollNr;
+        }
+
+        @Override
+        public int compareTo(CardInSet o) {
+            final int nameCmp = name.compareToIgnoreCase(o.name);
+            if (0 != nameCmp) {
+                return nameCmp;
+            }
+            String thisCollNr = getSortableCollectorNumber(collectorNumber);
+            String othrCollNr = getSortableCollectorNumber(o.collectorNumber);
+            final int collNrCmp = thisCollNr.compareTo(othrCollNr);
+            if (0 != collNrCmp) {
+                return collNrCmp;
+            }
+            return rarity.compareTo(o.rarity);
         }
     }
 
@@ -205,6 +255,7 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
     private String[] chaosDraftThemes = new String[0];
 
     private final ListMultimap<String, CardInSet> cardMap;
+    private final List<CardInSet> cardsInSet;
     private final Map<String, Integer> tokenNormalized;
     // custom print sheets that will be loaded lazily
     private final Map<String, List<String>> customPrintSheetsToParse;
@@ -214,13 +265,18 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
 
     private CardEdition(ListMultimap<String, CardInSet> cardMap, Map<String, Integer> tokens, Map<String, List<String>> customPrintSheetsToParse) {
         this.cardMap = cardMap;
+        this.cardsInSet = new ArrayList<>(cardMap.values());
+        Collections.sort(cardsInSet);
         this.tokenNormalized = tokens;
         this.customPrintSheetsToParse = customPrintSheetsToParse;
     }
 
     private CardEdition(CardInSet[] cards, Map<String, Integer> tokens) {
+        List<CardInSet> cardsList = Arrays.asList(cards);
         this.cardMap = ArrayListMultimap.create();
-        this.cardMap.replaceValues("cards", Arrays.asList(cards));
+        this.cardMap.replaceValues("cards", cardsList);
+        this.cardsInSet = new ArrayList<>(cardsList);
+        Collections.sort(cardsInSet);
         this.tokenNormalized = tokens;
         this.customPrintSheetsToParse = new HashMap<>();
     }
@@ -286,7 +342,7 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
 
     public List<CardInSet> getCards() { return cardMap.get("cards"); }
     public List<CardInSet> getAllCardsInSet() {
-        return Lists.newArrayList(cardMap.values());
+        return cardsInSet;
     }
 
     public boolean isModern() { return getDate().after(parseDate("2003-07-27")); } //8ED and above are modern except some promo cards and others
@@ -305,7 +361,10 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
         if (o == null) {
             return 1;
         }
-        return date.compareTo(o.date);
+        int dateComp = date.compareTo(o.date);
+        if (0 != dateComp)
+            return dateComp;
+        return name.compareTo(o.name);
     }
 
     @Override
@@ -339,7 +398,7 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
     }
 
     public boolean isLargeSet() {
-        return getAllCardsInSet().size() > 200 && !smallSetOverride;
+        return this.cardsInSet.size() > 200 && !smallSetOverride;
     }
 
     public int getCntBoosterPictures() {
@@ -413,7 +472,7 @@ public final class CardEdition implements Comparable<CardEdition> { // immutable
                     * rarity - grouping #4
                     * name - grouping #5
              */
-                "(^([0-9]+.?) )?(([SCURML]) )?(.*)$"
+                "(^([0-9A-Z]+.?) )?(([SCURML]) )?(.*)$"
             );
 
             ListMultimap<String, CardInSet> cardMap = ArrayListMultimap.create();

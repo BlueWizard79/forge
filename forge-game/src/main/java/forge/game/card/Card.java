@@ -610,6 +610,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 return false;
             }
 
+            // Need to remove mutated states, otherwise the changeToState() will fail
+            if (hasMergedCard()) {
+                removeMutatedStates();
+            }
             CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
             boolean retResult = false;
             for (final Card c : cards) {
@@ -621,8 +625,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 boolean result = c.changeToState(c.backside ? CardStateName.Transformed : CardStateName.Original);
                 retResult = retResult || result;
             }
-            if (retResult && hasMergedCard()) {
-                removeMutatedStates();
+            if (hasMergedCard()) {
                 rebuildMutatedStates(cause);
             }
 
@@ -643,6 +646,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 return false;
             }
 
+            // Need to remove mutated states, otherwise the changeToState() will fail
+            if (hasMergedCard()) {
+                removeMutatedStates();
+            }
             CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
             boolean retResult = false;
             for (final Card c : cards) {
@@ -653,8 +660,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 boolean result = c.changeToState(CardStateName.Flipped);
                 retResult = retResult || result;
             }
-            if (retResult && hasMergedCard()) {
-                removeMutatedStates();
+            if (hasMergedCard()) {
                 rebuildMutatedStates(cause);
                 game.getTriggerHandler().clearActiveTriggers(this, null);
                 game.getTriggerHandler().registerActiveTrigger(this, false);
@@ -5487,7 +5493,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public final void setRandomFoil() {
         setFoil(CardEdition.getRandomFoil(getSetCode()));
     }
-
     public final void setFoil(final int f) {
         currentState.setSVar("Foil", Integer.toString(f));
     }
@@ -5531,9 +5536,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return pairedWith != null;
     }
 
-    public Card getMeldedWith() {   return meldedWith;  }
-
-    public void setMeldedWith(Card meldedWith) {    this.meldedWith = meldedWith;   }
+    public Card getMeldedWith() { return meldedWith; }
+    public void setMeldedWith(Card meldedWith) { this.meldedWith = meldedWith; }
 
     public boolean hasProtectionFrom(final Card source) {
         return hasProtectionFrom(source, false, false);

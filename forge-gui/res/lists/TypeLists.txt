@@ -317,6 +317,7 @@ Bolas
 Calix
 Chandra
 Dack
+Dakkon
 Daretti
 Davriel
 Domri
@@ -328,6 +329,7 @@ Estrid
 Freyalise
 Garruk
 Gideon
+Grist
 Huatli
 Inzerva
 Jace
