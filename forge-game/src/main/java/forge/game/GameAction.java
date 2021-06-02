@@ -146,8 +146,8 @@ public class GameAction {
         boolean fromBattlefield = zoneFrom != null && zoneFrom.is(ZoneType.Battlefield);
         boolean wasFacedown = c.isFaceDown();
 
-        //Rule 110.5g: A token that has left the battlefield can't move to another zone
-        if (c.isToken() && zoneFrom != null && !fromBattlefield && !zoneFrom.is(ZoneType.Stack)) {
+        // Rule 111.8: A token that has left the battlefield can't move to another zone
+        if (!c.isSpell() && c.isToken() && zoneFrom != null && !fromBattlefield && !zoneFrom.is(ZoneType.Stack)) {
             return c;
         }
 
@@ -243,7 +243,7 @@ public class GameAction {
                 copied = CardFactory.copyCard(c, false);
 
                 if (zoneTo.is(ZoneType.Stack)) {
-                    // when moving to stack, copy changed card infomation
+                    // when moving to stack, copy changed card information
                     copied.setChangedCardColors(c.getChangedCardColors());
                     copied.setChangedCardKeywords(c.getChangedCardKeywords());
                     copied.setChangedCardTypes(c.getChangedCardTypesMap());
@@ -441,7 +441,7 @@ public class GameAction {
         }
 
         if (mergedCards != null) {
-            // Move components of merged permanet here
+            // Move components of merged permanent here
             // Also handle 721.3e and 903.9a
             boolean wasToken = c.isToken();
             if (commanderEffect != null) {
@@ -2131,25 +2131,19 @@ public class GameAction {
 
     public void dealDamage(final boolean isCombat, final CardDamageMap damageMap, final CardDamageMap preventMap,
             final GameEntityCounterTable counterTable, final SpellAbility cause) {
-        CardDamageMap replaceDamageMap = new CardDamageMap(damageMap);
-        // Run replacement effect for each entity dealt damage
-        // TODO: List all possible replacement effects and run them in APNAP order.
-        // TODO: To handle "Prevented this way" and abilities like "Phantom Nomad", should buffer the replaced SA
-        //       and only run them after all prevention and redirection effects are processed.
+        // Clear assigned damage if is combat
         for (Map.Entry<GameEntity, Map<Card, Integer>> et : damageMap.columnMap().entrySet()) {
             final GameEntity ge = et.getKey();
             if (isCombat && ge instanceof Card) {
                 ((Card) ge).clearAssignedDamage();
             }
-            for (Map.Entry<Card, Integer> e : et.getValue().entrySet()) {
-                if (e.getValue() > 0) {
-                    ge.replaceDamage(e.getValue(), e.getKey(), isCombat, replaceDamageMap, preventMap, counterTable, cause);
-                }
-            }
         }
 
+        // Run replacement effect for each entity dealt damage
+        game.getReplacementHandler().runReplaceDamage(isCombat, damageMap, preventMap, counterTable, cause);
+
         // Actually deal damage according to replaced damage map
-        for (Map.Entry<Card, Map<GameEntity, Integer>> et : replaceDamageMap.rowMap().entrySet()) {
+        for (Map.Entry<Card, Map<GameEntity, Integer>> et : damageMap.rowMap().entrySet()) {
             final Card sourceLKI = et.getKey();
             int sum = 0;
             for (Map.Entry<GameEntity, Integer> e : et.getValue().entrySet()) {
@@ -2168,9 +2162,8 @@ public class GameAction {
         preventMap.triggerPreventDamage(isCombat);
         preventMap.clear();
 
-        replaceDamageMap.triggerDamageDoneOnce(isCombat, game);
+        damageMap.triggerDamageDoneOnce(isCombat, game);
         damageMap.clear();
-        replaceDamageMap.clear();
 
         counterTable.triggerCountersPutAll(game);
         counterTable.clear();
