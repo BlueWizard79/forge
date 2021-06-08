@@ -47,6 +47,11 @@ public class CardProperty {
         final Card lki = game.getChangeZoneLKIInfo(card);
         final Player controller = lki.getController();
 
+        // CR 702.25b if card is phased out it will not count unless specifically asked for
+        if (card.isPhasedOut() && !property.contains("phasedOut")) {
+            return false;
+        }
+
         // by name can also have color names, so needs to happen before colors.
         if (property.startsWith("named")) {
             String name = TextUtil.fastReplace(property.substring(5), ";", ","); // for some legendary cards
@@ -1703,6 +1708,9 @@ public class CardProperty {
             }
         } else if (property.startsWith("set")) {
             final String setCode = property.substring(3, 6);
+            if (card.getName().isEmpty()) {
+                return false;
+            }
             final PaperCard setCard = StaticData.instance().getCommonCards().getCardFromEdition(card.getName(), CardDb.SetPreference.Earliest);
             if (setCard != null && !setCard.getEdition().equals(setCode)) {
                 return false;
