@@ -385,7 +385,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         manaPart = manaPart0;
     }
 
-
     // Spell, and Ability, and other Ability objects override this method
     public abstract boolean canPlay();
 
@@ -960,7 +959,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     public boolean isForetold() {
         return this.isAlternativeCost(AlternativeCost.Foretold);
     }
-
 
     /**
      * @return the aftermath
