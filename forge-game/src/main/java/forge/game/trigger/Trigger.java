@@ -30,6 +30,7 @@ import com.google.common.collect.Sets;
 
 import forge.game.Game;
 import forge.game.GameEntity;
+import forge.game.GameStage;
 import forge.game.IHasSVars;
 import forge.game.TriggerReplacementBase;
 import forge.game.ability.AbilityFactory;
@@ -346,8 +347,10 @@ public abstract class Trigger extends TriggerReplacementBase {
             }
         }
 
-        if (!meetsCommonRequirements(this.mapParams))
+        // host controller will be null when adding card in a simulation game
+        if (this.getHostCard().getController() == null || game.getAge() != GameStage.Play || !meetsCommonRequirements(this.mapParams)) {
             return false;
+        }
 
         return true;
     }

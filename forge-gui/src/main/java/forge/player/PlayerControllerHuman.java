@@ -361,7 +361,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             if ((attacker.hasKeyword(Keyword.TRAMPLE) && defender != null) || (blockers.size() > 1)
                     || ((attacker.hasKeyword("You may assign CARDNAME's combat damage divided as you choose among " +
                     "defending player and/or any number of creatures they control.")) && overrideOrder &&
-                    blockers.size() >0) || (attacker.hasKeyword("Trample over planeswalkers") && defender instanceof Card)) {
+                    blockers.size() >0) || (attacker.hasKeyword("Trample:Planeswalker") && defender instanceof Card)) {
                 GameEntityViewMap<Card, CardView> gameCacheBlockers = GameEntityView.getMap(blockers);
                 final CardView vAttacker = CardView.get(attacker);
                 final GameEntityView vDefender = GameEntityView.get(defender);
@@ -785,8 +785,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         buildQuestion.append(regtrig.getHostCard().toString()).append("?");
         if (!FModel.getPreferences().getPrefBoolean(FPref.UI_COMPACT_PROMPT)
                 && !FModel.getPreferences().getPrefBoolean(FPref.UI_DETAILED_SPELLDESC_IN_PROMPT)) {
-            // append trigger description unless prompt is compact or detailed
-            // descriptions are on
+            // append trigger description unless prompt is compact or detailed descriptions are on
             buildQuestion.append("\n(");
             buildQuestion.append(regtrig.toString());
             buildQuestion.append(")");
@@ -1171,31 +1170,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
      * (non-Javadoc)
      *
      * @see
-     * forge.game.player.PlayerController#chooseTargets(forge.gui.card.spellability.
-     * SpellAbility, forge.gui.card.spellability.SpellAbilityStackInstance)
-     */
-    @Override
-    public TargetChoices chooseNewTargetsFor(final SpellAbility ability, Predicate<GameObject> filter, boolean optional) {
-        final SpellAbility sa = ability.isWrapper() ? ((WrappedAbility) ability).getWrappedAbility() : ability;
-        if (!sa.usesTargeting()) {
-            return null;
-        }
-        final TargetChoices oldTarget = sa.getTargets();
-        final TargetSelection select = new TargetSelection(this, sa);
-        sa.clearTargets();
-        if (select.chooseTargets(oldTarget.size(), Lists.newArrayList(oldTarget.getDividedValues()), filter, optional, false)) {
-            return sa.getTargets();
-        } else {
-            sa.setTargets(oldTarget);
-            // Return old target, since we had to reset them above
-            return null;
-        }
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see
      * forge.game.player.PlayerController#chooseCardsToDiscardUnlessType(int,
      * java.lang.String, forge.gui.card.spellability.SpellAbility)
      */
@@ -1430,22 +1404,19 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             if (CombatUtil.validateAttackers(combat)) {
                 return; // don't prompt to declare attackers if user chose to
                         // end the turn and not attacking is legal
-            } else {
-                autoPassCancel(); // otherwise: cancel auto pass because of this
-                                  // unexpected attack
             }
+            // otherwise: cancel auto pass because of this unexpected attack
+            autoPassCancel();
         }
 
-        // This input should not modify combat object itself, but should return
-        // user choice
+        // This input should not modify combat object itself, but should return user choice
         final InputAttack inpAttack = new InputAttack(this, attackingPlayer, combat);
         inpAttack.showAndWait();
     }
 
     @Override
     public void declareBlockers(final Player defender, final Combat combat) {
-        // This input should not modify combat object itself, but should return
-        // user choice
+        // This input should not modify combat object itself, but should return user choice
         final InputBlock inpBlock = new InputBlock(this, defender, combat);
         inpBlock.showAndWait();
         getGui().updateAutoPassPrompt();
@@ -1821,8 +1792,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 return getGui().one(prompt, possibleReplacers);
             }
         }
-        return first; // return first option without prompting if all options
-                      // are the same
+        // return first option without prompting if all options are the same
+        return first;
     }
 
     @Override
@@ -1833,8 +1804,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     @Override
     public boolean payCostToPreventEffect(final Cost cost, final SpellAbility sa, final boolean alreadyPaid,
             final FCollectionView<Player> allPayers) {
-        // if it's paid by the AI already the human can pay, but it won't change
-        // anything
+        // if it's paid by the AI already the human can pay, but it won't change anything
         return HumanPlay.payCostDuringAbilityResolve(this, player, sa.getHostCard(), cost, sa, null);
     }
 
@@ -2018,6 +1988,31 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         return result;
     }
 
+    /*
+     * (non-Javadoc)
+     *
+     * @see
+     * forge.game.player.PlayerController#chooseTargets(forge.gui.card.spellability.
+     * SpellAbility, forge.gui.card.spellability.SpellAbilityStackInstance)
+     */
+    @Override
+    public TargetChoices chooseNewTargetsFor(final SpellAbility ability, Predicate<GameObject> filter, boolean optional) {
+        final SpellAbility sa = ability.isWrapper() ? ((WrappedAbility) ability).getWrappedAbility() : ability;
+        if (!sa.usesTargeting()) {
+            return null;
+        }
+        final TargetChoices oldTarget = sa.getTargets();
+        final TargetSelection select = new TargetSelection(this, sa);
+        sa.clearTargets();
+        if (select.chooseTargets(oldTarget.size(), sa.isDividedAsYouChoose() ? Lists.newArrayList(oldTarget.getDividedValues()) : null, filter, optional, false)) {
+            return sa.getTargets();
+        } else {
+            sa.setTargets(oldTarget);
+            // Return old target, since we had to reset them above
+            return null;
+        }
+    }
+
     @Override
     public boolean chooseCardsPile(final SpellAbility sa, final CardCollectionView pile1,
             final CardCollectionView pile2, final String faceUp) {
@@ -2075,8 +2070,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public List<PaperCard> chooseCardsYouWonToAddToDeck(final List<PaperCard> losses) {
-        return getGui().many(localizer.getMessage("lblSelectCardstoAddtoYourDeck"), localizer.getMessage("lblAddTheseToMyDeck"), 0, losses.size(), losses,
-                null);
+        return getGui().many(localizer.getMessage("lblSelectCardstoAddtoYourDeck"), localizer.getMessage("lblAddTheseToMyDeck"), 0, losses.size(), losses, null);
     }
 
     @Override
@@ -3278,8 +3272,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     }
 
     @Override
-    public int chooseNumberForKeywordCost(SpellAbility sa, Cost cost, KeywordInterface keyword, String prompt,
-            int max) {
+    public int chooseNumberForKeywordCost(SpellAbility sa, Cost cost, KeywordInterface keyword, String prompt, int max) {
         if (max <= 0) {
             return 0;
         }

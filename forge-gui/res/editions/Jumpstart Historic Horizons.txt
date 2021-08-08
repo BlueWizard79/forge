@@ -1,0 +1,42 @@
+[metadata]
+Code=J21
+Date=2021-08-12
+Name=Jumpstart: Historic Horizons
+Type=Draft
+ScryfallCode=J21
+
+[cards]
+1 C Faceless Agent @Nicholas Gregory
+2 C Baffling Defenses @Andrey Kuzinskiy
+3 R Benalish Partisan @Francisco Miyara
+4 C Leonin Sanctifier @Jokubas Uogintas
+5 C Lumbering Lightshield @Leanna Crossan
+6 M Teyo, Aegis Adept @Billy Christian
+7 U Wingsteed Trainer @Valera Lutfullina
+8 C Bounty of the Deep @Olena Richards
+9 C Ethereal Grasp @Miranda Meeks
+10 M Kiora, the Tide's Fury @Magali Villeneuve
+11 C Mentor of Evos Isle @Shreya Shetty
+12 U Shoreline Scout @Shreya Shetty
+13 R Tome of the Infinite @Joseph Meehan
+14 U Boneyard Aberration @Slawomir Maniak
+15 M Davriel, Soul Broker @Justine Cruz
+16 C Davriel's Withering @Alex Brock
+17 U Manor Guardian @Slawomir Maniak
+18 C Plaguecrafter's Familiar @Nicholas Gregory
+19 R Subversive Acolyte @Darren Tan
+20 R Managorger Phoenix @Brian Valeza
+21 C Reckless Ringleader @Brian Valeza
+22 C Sarkhan's Scorn @Daarken
+23 M Sarkhan, Wanderer to Shiv @Grzegorz Rutkowski
+24 C Scion of Shiv @Grzegorz Rutkowski
+25 U Static Discharge @Liiga Smilshkalne
+26 M Freyalise, Skyshroud Partisan @Daarken
+27 U Longtusk Stalker @Vincent Christiaens
+28 R Pool of Vigorous Growth @Jokubas Uogintas
+29 C Skyshroud Ambush @Andreas Zafiratos
+30 U Skyshroud Lookout @Olena Richards
+31 C Veteran Charger @Leanna Crossan
+
+[tokens]
+u_8_8_kraken

@@ -365,7 +365,7 @@ public class CardProperty {
                 return false;
             }
         } else if (property.equals("CanBeSacrificedBy") && spellAbility instanceof SpellAbility) {
-            if (!card.canBeSacrificedBy((SpellAbility)spellAbility)) {
+            if (!card.canBeSacrificedBy((SpellAbility) spellAbility)) {
                 return false;
             }
         } else if (property.startsWith("AttachedBy")) {
@@ -716,6 +716,16 @@ public class CardProperty {
                 final String restriction = property.split("notSharesColorWith ")[1];
                 for (final Card c : sourceController.getCardsIn(ZoneType.Battlefield)) {
                     if (c.isValid(restriction, sourceController, source, spellAbility) && card.sharesColorWith(c)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (property.startsWith("MostProminentCreatureTypeInLibrary")) {
+            final CardCollectionView list = sourceController.getCardsIn(ZoneType.Library);
+            String[] type = CardFactoryUtil.getMostProminentCreatureType(list);
+            if (type != null); {
+                for (String s : type) {
+                    if (!card.getType().hasCreatureType(s)) {
                         return false;
                     }
                 }
@@ -1409,8 +1419,7 @@ public class CardProperty {
         // These predicated refer to ongoing combat. If no combat happens, they'll return false (meaning not attacking/blocking ATM)
         else if (property.startsWith("attacking")) {
             if (null == combat) return false;
-            if (property.equals("attacking"))    return combat.isAttacking(card);
-            if (property.equals("attackingLKI")) return combat.isLKIAttacking(card);
+            if (property.equals("attacking"))    return card.isAttacking();
             if (property.equals("attackingYou")) return combat.isAttacking(card, sourceController);
             if (property.equals("attackingSame")) {
                 final GameEntity attacked = combat.getDefenderByAttacker(source);
@@ -1511,12 +1520,10 @@ public class CardProperty {
                 return false;
             }
             String valid = property.split(" ")[1];
-            for(Card c : blocked) {
-                if (c.isValid(valid, card.getController(), source, spellAbility)) {
-                    return true;
-                }
+            if (Iterables.any(blocked, CardPredicates.restriction(valid, card.getController(), source, spellAbility))) {
+                return true;
             }
-            for(Card c : AbilityUtils.getDefinedCards(source, valid, spellAbility)) {
+            for (Card c : AbilityUtils.getDefinedCards(source, valid, spellAbility)) {
                 if (blocked.contains(c)) {
                     return true;
                 }

@@ -633,7 +633,7 @@ public class ComputerUtilCost {
                             }
                             // Check if the AI intends to play the card and if it can pay for it with the mana it has
                             boolean willPlay = ComputerUtil.hasReasonToPlayCardThisTurn(payer, c);
-                            boolean canPay = c.getManaCost().canBePaidWithAvaliable(ColorSet.fromNames(getAvailableManaColors(payer, source)).getColor());
+                            boolean canPay = c.getManaCost().canBePaidWithAvailable(ColorSet.fromNames(getAvailableManaColors(payer, source)).getColor());
                             return canPay && willPlay;
                         }
                     }
@@ -695,8 +695,9 @@ public class ComputerUtilCost {
 
     public static int getMaxXValue(SpellAbility sa, Player ai) {
         final Card source = sa.getHostCard();
-        final SpellAbility root = sa.getRootAbility();
+        SpellAbility root = sa.getRootAbility();
         final Cost abCost = root.getPayCosts();
+
         if (abCost == null || !abCost.hasXInAnyCostPart()) {
             return 0;
         }

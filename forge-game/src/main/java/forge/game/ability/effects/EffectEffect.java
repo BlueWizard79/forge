@@ -124,8 +124,6 @@ public class EffectEffect extends SpellAbilityEffect {
         }
 
         String image;
-        String set = hostCard.getSetCode().toLowerCase();
-        StringBuilder imageSet = new StringBuilder();
         if (sa.hasParam("Image")) {
             image = ImageKeys.getTokenKey(sa.getParam("Image"));
         } else if (name.startsWith("Emblem")) { // try to get the image from name
@@ -138,8 +136,6 @@ public class EffectEffect extends SpellAbilityEffect {
         } else { // use host image
             image = hostCard.getImageKey();
         }
-        imageSet.append(image).append("_").append(set);
-        image = imageSet.toString();
 
         for (Player controller : effectOwner) {
             final Card eff = createEffect(sa, controller, name, image);
@@ -327,11 +323,10 @@ public class EffectEffect extends SpellAbilityEffect {
                 hostCard.addImprintedCard(eff);
             }
 
-            eff.updateStateForView();
-
             // TODO: Add targeting to the effect so it knows who it's dealing with
             game.getTriggerHandler().suppressMode(TriggerType.ChangesZone);
             game.getAction().moveTo(ZoneType.Command, eff, sa);
+            eff.updateStateForView();
             game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
             //if (effectTriggers != null) {
             //    game.getTriggerHandler().registerActiveTrigger(cmdEffect, false);

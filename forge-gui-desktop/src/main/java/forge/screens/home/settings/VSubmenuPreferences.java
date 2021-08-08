@@ -116,6 +116,8 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
     private final JCheckBox cbEscapeEndsTurn = new OptionsCheckBox(localizer.getMessage("cbEscapeEndsTurn"));
     private final JCheckBox cbPreselectPrevAbOrder = new OptionsCheckBox(localizer.getMessage("cbPreselectPrevAbOrder"));
     private final JCheckBox cbHideReminderText = new OptionsCheckBox(localizer.getMessage("cbHideReminderText"));
+    private final JCheckBox cbCardTextUseSansSerif = new OptionsCheckBox(localizer.getMessage("cbCardTextUseSansSerif"));
+    private final JCheckBox cbCardTextHideReminder = new OptionsCheckBox(localizer.getMessage("cbCardTextHideReminder"));
     private final JCheckBox cbOpenPacksIndiv = new OptionsCheckBox(localizer.getMessage("cbOpenPacksIndiv"));
     private final JCheckBox cbTokensInSeparateRow = new OptionsCheckBox(localizer.getMessage("cbTokensInSeparateRow"));
     private final JCheckBox cbStackCreatures = new OptionsCheckBox(localizer.getMessage("cbStackCreatures"));
@@ -134,6 +136,7 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
     private final FComboBoxPanel<GameLogEntryType> cbpGameLogEntryType = new FComboBoxPanel<>(localizer.getMessage("cbpGameLogEntryType")+":");
     private final FComboBoxPanel<CloseAction> cbpCloseAction = new FComboBoxPanel<>(localizer.getMessage("cbpCloseAction")+":");
     private final FComboBoxPanel<String> cbpDefaultFontSize = new FComboBoxPanel<>(localizer.getMessage("cbpDefaultFontSize")+":");
+    private final FComboBoxPanel<String> cbpCardArtFormat = new FComboBoxPanel<>(localizer.getMessage("cbpCardArtFormat")+":");
     private final FComboBoxPanel<String> cbpMulliganRule = new FComboBoxPanel<>(localizer.getMessage("cbpMulliganRule")+":");
     private final FComboBoxPanel<String> cbpAiProfiles = new FComboBoxPanel<>(localizer.getMessage("cbpAiProfiles")+":");
     private final FComboBoxPanel<String> cbpStackAdditions = new FComboBoxPanel<>(localizer.getMessage("cbpStackAdditions")+":");
@@ -333,6 +336,9 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
         pnlPrefs.add(cbpDefaultFontSize, comboBoxConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlDefaultFontSize")), descriptionConstraints);
 
+        pnlPrefs.add(cbpCardArtFormat, comboBoxConstraints);
+        pnlPrefs.add(new NoteLabel(localizer.getMessage("nlCardArtFormat")), descriptionConstraints);
+
         pnlPrefs.add(cbImageFetcher, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlImageFetcher")), descriptionConstraints);
 
@@ -371,6 +377,12 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
 
         pnlPrefs.add(cbHideReminderText, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlHideReminderText")), descriptionConstraints);
+
+        pnlPrefs.add(cbCardTextUseSansSerif, titleConstraints);
+        pnlPrefs.add(new NoteLabel(localizer.getMessage("nlCardTextUseSansSerif")), descriptionConstraints);
+
+        pnlPrefs.add(cbCardTextHideReminder, titleConstraints);
+        pnlPrefs.add(new NoteLabel(localizer.getMessage("nlCardTextHideReminder")), descriptionConstraints);
 
         pnlPrefs.add(cbOpenPacksIndiv, titleConstraints);
         pnlPrefs.add(new NoteLabel(localizer.getMessage("nlOpenPacksIndiv")), descriptionConstraints);
@@ -760,6 +772,10 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
         return cbpDefaultFontSize;
     }
 
+    public FComboBoxPanel<String> getCbpCardArtFormatComboBoxPanel() {
+        return cbpCardArtFormat;
+    }
+
     public FComboBoxPanel<String> getCbpDefaultLanguageComboBoxPanel() {
         return cbpDefaultLanguage;
     }
@@ -853,6 +869,14 @@ public enum VSubmenuPreferences implements IVSubmenu<CSubmenuPreferences> {
 
     public final JCheckBox getCbHideReminderText() {
         return cbHideReminderText;
+    }
+
+    public JCheckBox getCbCardTextUseSansSerif() {
+        return cbCardTextUseSansSerif;
+    }
+
+    public final JCheckBox getCbCardTextHideReminder() {
+        return cbCardTextHideReminder;
     }
 
     public final JCheckBox getCbOpenPacksIndiv() {

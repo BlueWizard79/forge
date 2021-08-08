@@ -413,33 +413,29 @@ public final class StaticAbilityContinuous {
             });
         }
 
-        if (layer == StaticAbilityLayer.TYPE && params.containsKey("RemoveType")) {
-            removeTypes = Lists.newArrayList(Arrays.asList(params.get("RemoveType").split(" & ")));
-
-            Iterables.removeIf(removeTypes, new Predicate<String>() {
-                @Override
-                public boolean apply(String input) {
-                    if (input.equals("ChosenType") && !hostCard.hasChosenType()) {
-                        return true;
-                    }
-                    return false;
-                }
-            });
-        }
-
         if (layer == StaticAbilityLayer.TYPE) {
+            if (params.containsKey("RemoveType")) {
+                removeTypes = Lists.newArrayList(Arrays.asList(params.get("RemoveType").split(" & ")));
+
+                Iterables.removeIf(removeTypes, new Predicate<String>() {
+                    @Override
+                    public boolean apply(String input) {
+                        if (input.equals("ChosenType") && !hostCard.hasChosenType()) {
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+            }
             if (params.containsKey("RemoveSuperTypes")) {
                 removeSuperTypes = true;
             }
-
             if (params.containsKey("RemoveCardTypes")) {
                 removeCardTypes = true;
             }
-
             if (params.containsKey("RemoveSubTypes")) {
                 removeSubTypes = true;
             }
-
             if (params.containsKey("RemoveLandTypes")) {
                 removeLandTypes = true;
             }
@@ -809,6 +805,18 @@ public final class StaticAbilityContinuous {
                         // with that the TargetedCard does not need the Svars added to them anymore
                         // but only do it if the trigger doesn't already have a overriding ability
                         addedTrigger.add(actualTrigger);
+                        if (params.containsKey("TriggerRememberDefined")) {
+                            String triggerRemembered = (params.get("TriggerRememberDefined"));
+                            for (final String rem : triggerRemembered.split(",")) {
+                                for (final Object o : AbilityUtils.getDefinedObjects(hostCard, rem, stAb)) {
+                                    if (o instanceof SpellAbility) {
+                                        // "RememberObjects$ Remembered" don't remember spellability
+                                        continue;
+                                    }
+                                    actualTrigger.addRemembered(o);
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -865,7 +873,7 @@ public final class StaticAbilityContinuous {
                 }
             }
 
-            if (mayLookAt != null) {
+            if (mayLookAt != null && (!affectedCard.getOwner().getTopXCardsFromLibrary(1).contains(affectedCard) || game.getTopLibForPlayer(affectedCard.getOwner()) == null || game.getTopLibForPlayer(affectedCard.getOwner()) == affectedCard)) {
                 affectedCard.addMayLookAt(se.getTimestamp(), mayLookAt);
             }
 

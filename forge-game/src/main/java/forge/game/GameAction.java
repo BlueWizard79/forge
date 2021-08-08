@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import forge.game.spellability.SpellAbilityStackInstance;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import com.google.common.base.Predicate;
@@ -1157,7 +1158,11 @@ public class GameAction {
         // sol(10/29) added for Phase updates, state effects shouldn't be
         // checked during Spell Resolution (except when persist-returning
         if (game.getStack().isResolving()) {
-            return;
+            Iterator<SpellAbilityStackInstance> it = game.getStack().iterator();
+            SpellAbility top = it.next().getSpellAbility(true);
+            if (!top.hasParam("CheckStates") && !top.getSubAbility().hasParam("CheckStates")) {
+                return;
+            }
         }
 
         if (game.isGameOver()) {
@@ -1229,7 +1234,7 @@ public class GameAction {
                     }
                     // Rule 704.5g - Destroy due to lethal damage
                     // Rule 704.5h - Destroy due to deathtouch
-                    else if (c.getDamage() > 0 && (c.getLethal() <= c.getDamage() || c.hasBeenDealtDeathtouchDamage())) {
+                    else if (c.hasBeenDealtDeathtouchDamage() || (c.getDamage() > 0 && c.getLethal() <= c.getDamage())) {
                         if (desCreats == null) {
                             desCreats = new CardCollection();
                         }
@@ -1633,7 +1638,7 @@ public class GameAction {
 
             recheck = true;
 
-            Card toKeep = p.getController().chooseSingleEntityForEffect(new CardCollection(cc), new SpellAbility.EmptySa(ApiType.InternalLegendaryRule, null, p),
+            Card toKeep = p.getController().chooseSingleEntityForEffect(new CardCollection(cc), new SpellAbility.EmptySa(ApiType.InternalLegendaryRule, new Card(-1, game), p),
                     "You have multiple legendary permanents named \""+name+"\" in play.\n\nChoose the one to stay on battlefield (the rest will be moved to graveyard)", null);
             for (Card c: cc) {
                 if (c != toKeep) {
@@ -1905,7 +1910,6 @@ public class GameAction {
             game.getTriggerHandler().runTrigger(TriggerType.NewGame, AbilityKey.newMap(), true);
             //</THIS CODE WILL WORK WITH PHASE = NULL>
 
-
             game.getPhaseHandler().startFirstTurn(first, startGameHook);
             //after game ends, ensure Auto-Pass canceled for all players so it doesn't apply to next game
             for (Player p : game.getRegisteredPlayers()) {
@@ -1980,7 +1984,6 @@ public class GameAction {
     private void runPreOpeningHandActions(final Player first) {
         Player takesAction = first;
         do {
-            //
             List<Card> ploys = CardLists.filter(takesAction.getCardsIn(ZoneType.Command), new Predicate<Card>() {
                 @Override
                 public boolean apply(Card input) {
@@ -2054,8 +2057,7 @@ public class GameAction {
     public void invoke(final Runnable proc) {
         if (ThreadUtil.isGameThread()) {
             proc.run();
-        }
-        else {
+        } else {
             ThreadUtil.invokeInGameThread(proc);
         }
     }

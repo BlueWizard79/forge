@@ -253,7 +253,10 @@ public class AiController {
         }
         boolean rightapi = false;
         Player activatingPlayer = sa.getActivatingPlayer();
-        
+
+        // for xPaid stuff
+        card.setCastSA(sa);
+
         // Trigger play improvements
         for (final Trigger tr : card.getTriggers()) {
             // These triggers all care for ETB effects
@@ -386,7 +389,7 @@ public class AiController {
         final List<SpellAbility> spellAbility = Lists.newArrayList();
         for (final Card c : l) {
             for (final SpellAbility sa : c.getNonManaAbilities()) {
-                // Check if this AF is a Counterpsell
+                // Check if this AF is a Counterspell
                 if (sa.getApi() == ApiType.Counter) {
                     spellAbility.add(sa);
                 }
@@ -743,14 +746,22 @@ public class AiController {
             return AiPlayDecision.CantPlaySa;
         }
 
-        boolean xCost = sa.getPayCosts().hasXInAnyCostPart();
+        boolean xCost = sa.getPayCosts().hasXInAnyCostPart() || sa.getHostCard().hasStartOfKeyword("Strive");
         if (!xCost && !ComputerUtilCost.canPayCost(sa, player)) {
             // for most costs, it's OK to check if they can be paid early in order to avoid running a heavy API check
             // when the AI won't even be able to play the spell in the first place (even if it could afford it)
             return AiPlayDecision.CantAfford;
         }
 
+        // state needs to be switched here so API checks evaluate the right face
+        if (sa.getCardState() != null && !sa.getHostCard().isInPlay() && sa.getCardState().getStateName() == CardStateName.Modal) {
+            sa.getHostCard().setState(CardStateName.Modal, false);
+        }
         AiPlayDecision canPlay = canPlaySa(sa); // this is the "heaviest" check, which also sets up targets, defines X, etc.
+        if (sa.getCardState() != null && !sa.getHostCard().isInPlay() && sa.getCardState().getStateName() == CardStateName.Modal) {
+            sa.getHostCard().setState(CardStateName.Original, false);
+        }
+
         if (canPlay != AiPlayDecision.WillPlay) {
             return canPlay;
         }
@@ -810,8 +821,7 @@ public class AiController {
             if (!canPlay) {
                 return AiPlayDecision.CantPlayAi;
             }
-        }
-        else {
+        } else {
             Cost payCosts = sa.getPayCosts();
             if (payCosts != null) {
                 ManaCost mana = payCosts.getTotalMana();
@@ -1747,10 +1757,10 @@ public class AiController {
     }
     
     public boolean doTrigger(SpellAbility spell, boolean mandatory) {
-        if (spell.getApi() != null)
-            return SpellApiToAi.Converter.get(spell.getApi()).doTriggerAI(player, spell, mandatory);
         if (spell instanceof WrappedAbility)
             return doTrigger(((WrappedAbility)spell).getWrappedAbility(), mandatory);
+        if (spell.getApi() != null)
+            return SpellApiToAi.Converter.get(spell.getApi()).doTriggerAI(player, spell, mandatory);
         if (spell.getPayCosts() == Cost.Zero && spell.getTargetRestrictions() == null) {
             // For non-converted triggers (such as Cumulative Upkeep) that don't have costs or targets to worry about
             return true;

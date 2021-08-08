@@ -421,7 +421,7 @@ public class CardFactoryUtil {
 
     /**
      * <p>
-     * getMostProminentCreatureType.
+     * getMostProminentCreatureTypeSize.
      * </p>
      *
      * @param list
@@ -459,6 +459,49 @@ public class CardFactoryUtil {
 
     /**
      * <p>
+     * getMostProminentCreatureType.
+     * </p>
+     *
+     * @param list
+     *            a {@link forge.game.card.CardCollection} object.
+     * @return a string.
+     */
+    public static String[] getMostProminentCreatureType(final CardCollectionView list) {
+        if (list.isEmpty()) {
+            return null;
+        }
+
+        final Map<String, Integer> map = Maps.newHashMap();
+        for (final Card c : list) {
+            // Remove Duplicated types
+            final Set<String> creatureTypes = c.getType().getCreatureTypes();
+            for (String creatureType : creatureTypes) {
+                Integer count = map.get(creatureType);
+                map.put(creatureType, count == null ? 1 : count + 1);
+            }
+        }
+
+        int max = 0;
+        for (final Entry<String, Integer> entry : map.entrySet()) {
+            if (max < entry.getValue()) {
+                max = entry.getValue();
+            }
+        }
+        if (max == 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (final Entry<String, Integer> entry : map.entrySet()) {
+            if (max == entry.getValue()) {
+                sb.append(entry.getKey()).append(",");
+            }
+        }
+
+        return sb.toString().split(",");
+    }
+
+    /**
+     * <p>
      * sharedKeywords.
      * </p>
      *
@@ -475,6 +518,7 @@ public class CardFactoryUtil {
         final Set<String> protectionkw = Sets.newHashSet();
         final Set<String> protectionColorkw = Sets.newHashSet();
         final Set<String> hexproofkw = Sets.newHashSet();
+        final Set<String> tramplekw = Sets.newHashSet();
         final Set<String> allkw = Sets.newHashSet();
 
         for (Card c : CardLists.getValidCards(cardlist, restrictions, p, host, null)) {
@@ -492,6 +536,8 @@ public class CardFactoryUtil {
                     }
                 } else if (k.startsWith("Hexproof")) {
                     hexproofkw.add(k);
+                } else if (k.startsWith("Trample")) {
+                    tramplekw.add(k);
                 }
                 allkw.add(k);
             }
@@ -505,6 +551,8 @@ public class CardFactoryUtil {
                 filteredkw.addAll(landkw);
             } else if (keyword.equals("Hexproof")) {
                 filteredkw.addAll(hexproofkw);
+            } else if (keyword.equals("Trample")) {
+                filteredkw.addAll(tramplekw);
             } else if (allkw.contains(keyword)) {
                 filteredkw.add(keyword);
             }
@@ -738,7 +786,7 @@ public class CardFactoryUtil {
                             + "TriggerZones$ Battlefield | Secondary$ True | TriggerDescription$ "
                             + "Annihilator " + n + " (" + inst.getReminderText() + ")";
 
-            final String effect = "DB$ Sacrifice | Defined$ DefendingPlayer | SacValid$ Permanent | Amount$ " + k[1];
+            final String effect = "DB$ Sacrifice | Defined$ TriggeredDefendingPlayer | SacValid$ Permanent | Amount$ " + k[1];
 
             final Trigger trigger = TriggerHandler.parseTrigger(trig, card, intrinsic);
             trigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
@@ -1473,7 +1521,7 @@ public class CardFactoryUtil {
         } else if (keyword.equals("Provoke")) {
             final String actualTrigger = "Mode$ Attacks | ValidCard$ Card.Self | OptionalDecider$ You | Secondary$ True"
                     + " | TriggerDescription$ Provoke (" + inst.getReminderText() + ")";
-            final String blockStr = "DB$ MustBlock | ValidTgts$ Creature.DefenderCtrl | TgtPrompt$ Select target creature defending player controls";
+            final String blockStr = "DB$ MustBlock | ValidTgts$ Creature.ControlledBy TriggeredDefendingPlayer | TgtPrompt$ Select target creature defending player controls";
             final String untapStr = "DB$ Untap | Defined$ Targeted";
 
             SpellAbility blockSA = AbilityFactory.getAbility(blockStr, card);
@@ -2558,23 +2606,17 @@ public class CardFactoryUtil {
             inst.addSpellAbility(sa);
         } else if (keyword.startsWith("Class")) {
             final String[] k = keyword.split(":");
-            final String[] costs = k[2].split(",");
-            if (costs.length != Integer.valueOf(k[1]) - 1) {
-                throw new RuntimeException("Class max differ from cost amount");
-            }
+            final int level = Integer.valueOf(k[1]);
 
-            for (int i = 0; i < costs.length; ++i) {
-                final String cost = costs[i];
-                final StringBuilder sbClass = new StringBuilder();
-                sbClass.append("AB$ ClassLevelUp | Cost$ ").append(cost);
-                sbClass.append(" | ClassLevel$ EQ").append(i + 1);
-                sbClass.append(" | SorcerySpeed$ True");
-                sbClass.append(" | StackDescription$ SpellDescription | SpellDescription$ Level ").append(i + 2);
+            final StringBuilder sbClass = new StringBuilder();
+            sbClass.append("AB$ ClassLevelUp | Cost$ ").append(k[2]);
+            sbClass.append(" | ClassLevel$ EQ").append(level - 1);
+            sbClass.append(" | SorcerySpeed$ True");
+            sbClass.append(" | StackDescription$ SpellDescription | SpellDescription$ Level ").append(level);
 
-                final SpellAbility sa = AbilityFactory.getAbility(sbClass.toString(), card);
-                sa.setIntrinsic(intrinsic);
-                inst.addSpellAbility(sa);
-            }
+            final SpellAbility sa = AbilityFactory.getAbility(sbClass.toString(), card);
+            sa.setIntrinsic(intrinsic);
+            inst.addSpellAbility(sa);
         } else if (keyword.startsWith("Dash")) {
             final String[] k = keyword.split(":");
             final Cost dashCost = new Cost(k[1], false);
@@ -3325,6 +3367,38 @@ public class CardFactoryUtil {
 
             svars.put("CipherTrigger", trig);
             svars.put("PlayEncoded", ab);
+        } else if (keyword.startsWith("Class")) {
+            final String[] k = keyword.split(":");
+            final String level = k[1];
+            final String params = k[3];
+
+            // get Description from CardTraits
+            StringBuilder desc = new StringBuilder();
+            boolean descAdded = false;
+            Map<String, String> mapParams = AbilityFactory.getMapParams(params);
+            if (mapParams.containsKey("AddTrigger")) {
+                for (String s : mapParams.get("AddTrigger").split(" & ")) {
+                    if (descAdded) {
+                        desc.append("\r\n");
+                    }
+                    desc.append(AbilityFactory.getMapParams(state.getSVar(s)).get("TriggerDescription"));
+                    descAdded = true;
+                }
+            }
+            if (mapParams.containsKey("AddStaticAbility")) {
+                for (String s : mapParams.get("AddStaticAbility").split(" & ")) {
+                    if (descAdded) {
+                        desc.append("\r\n");
+                    }
+                    desc.append(AbilityFactory.getMapParams(state.getSVar(s)).get("Description"));
+                    descAdded = true;
+                }
+            }
+
+            effect = "Mode$ Continuous | Affected$ Card.Self | ClassLevel$ " + level + " | " + params;
+            if (descAdded) {
+                effect += " | Description$ " + desc.toString();
+            }
         } else if (keyword.startsWith("Dash")) {
             effect = "Mode$ Continuous | Affected$ Card.Self+dashed | AddKeyword$ Haste";
         } else if (keyword.equals("Defender")) {

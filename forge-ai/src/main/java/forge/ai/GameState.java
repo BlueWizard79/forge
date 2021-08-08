@@ -434,7 +434,7 @@ public abstract class GameState {
         boolean first = true;
         StringBuilder counterString = new StringBuilder();
 
-        for(Entry<CounterType, Integer> kv : counters.entrySet()) {
+        for (Entry<CounterType, Integer> kv : counters.entrySet()) {
             if (!first) {
                 counterString.append(",");
             }
@@ -470,7 +470,7 @@ public abstract class GameState {
     }
 
     public void parse(List<String> lines) {
-        for(String line : lines) {
+        for (String line : lines) {
             parseLine(line);
         }
     }
@@ -1110,13 +1110,13 @@ public abstract class GameState {
 
     private void handleCardAttachments() {
         // Unattach all permanents first
-        for(Entry<Card, Integer> entry : cardToAttachId.entrySet()) {
+        for (Entry<Card, Integer> entry : cardToAttachId.entrySet()) {
             Card attachedTo = idToCard.get(entry.getValue());
             attachedTo.unAttachAllCards();
         }
 
         // Attach permanents by ID
-        for(Entry<Card, Integer> entry : cardToAttachId.entrySet()) {
+        for (Entry<Card, Integer> entry : cardToAttachId.entrySet()) {
             Card attachedTo = idToCard.get(entry.getValue());
             Card attacher = entry.getKey();
             if (attacher.isAttachment()) {
@@ -1125,7 +1125,7 @@ public abstract class GameState {
         }
 
         // Enchant players by ID
-        for(Entry<Card, Integer> entry : cardToEnchantPlayerId.entrySet()) {
+        for (Entry<Card, Integer> entry : cardToEnchantPlayerId.entrySet()) {
             // TODO: improve this for game states with more than two players
             Card attacher = entry.getKey();
             Game game = attacher.getGame();
@@ -1136,9 +1136,9 @@ public abstract class GameState {
     }
 
     private void handleMergedCards() {
-        for(Entry<Card, List<String>> entry : cardToMergedCards.entrySet()) {
+        for (Entry<Card, List<String>> entry : cardToMergedCards.entrySet()) {
             Card mergedTo = entry.getKey();
-            for(String mergedCardName : entry.getValue()) {
+            for (String mergedCardName : entry.getValue()) {
                 Card c;
                 PaperCard pc = StaticData.instance().getCommonCards().getCard(mergedCardName. replace("^", ","));
                 if (pc == null) {
@@ -1212,6 +1212,8 @@ public abstract class GameState {
         p.setLandsPlayedThisTurn(landsPlayed);
         p.setLandsPlayedLastTurn(landsPlayedLastTurn);
 
+        p.clearPaidForSA();
+
         for (Entry<ZoneType, CardCollectionView> kv : playerCards.entrySet()) {
             PlayerZone zone = p.getZone(kv.getKey());
             if (kv.getKey() == ZoneType.Battlefield) {
@@ -1236,7 +1238,7 @@ public abstract class GameState {
                         // (will be overridden later, so the actual value shouldn't matter)
 
                         //FIXME it shouldn't be able to attach itself
-                        c.setEntityAttachedTo(c);
+                        c.setEntityAttachedTo(CardFactory.copyCard(c, true));
                     }
 
                     if (cardsWithoutETBTrigs.contains(c)) {
