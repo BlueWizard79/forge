@@ -209,7 +209,7 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
     public final String toString() {
         if (hasParam("Description") && !this.isSuppressed()) {
             String currentName;
-            if (this.isIntrinsic() && !this.getHostCard().isMutated() && cardState != null) {
+            if (this.isIntrinsic() && cardState != null && cardState.getCard() == getHostCard()) {
                 currentName = cardState.getName();
             }
             else {
@@ -581,6 +581,14 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
             int ctrl = AbilityUtils.calculateAmount(hostCard, "Count$LastStateBattlefield " + type + ".YouCtrl", hostCard.getCastSA());
 
             if (revealed + ctrl == 0) {
+                return false;
+            }
+        }
+
+        if (hasParam("ClassLevel")) {
+            final int level = this.hostCard.getClassLevel();
+            final int levelMin = Integer.parseInt(getParam("ClassLevel"));
+            if (level < levelMin) {
                 return false;
             }
         }

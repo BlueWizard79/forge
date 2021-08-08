@@ -95,7 +95,7 @@ public class TokenAi extends SpellAbilityAi {
             if (sa.getSVar("X").equals("Count$xPaid")) {
                 // Set PayX here to maximum value.
                 x = ComputerUtilCost.getMaxXValue(sa, ai);
-                sa.setXManaCostPaid(x);
+                sa.getRootAbility().setXManaCostPaid(x);
             }
             if (x <= 0) {
                 return false; // 0 tokens or 0 toughness token(s)
@@ -358,7 +358,8 @@ public class TokenAi extends SpellAbilityAi {
         if (!sa.hasParam("TokenScript")) {
             throw new RuntimeException("Spell Ability has no TokenScript: " + sa);
         }
-        Card result = TokenInfo.getProtoType(sa.getParam("TokenScript"), sa);
+        // TODO for now, only checking the first token is good enough
+        Card result = TokenInfo.getProtoType(sa.getParam("TokenScript").split(",")[0], sa, ai);
 
         if (result == null) {
             throw new RuntimeException("don't find Token for TokenScript: " + sa.getParam("TokenScript"));

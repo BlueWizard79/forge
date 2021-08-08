@@ -154,8 +154,7 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
                     setCurrentPlayer(Iterables.getFirst(gameControllers.keySet(), null));
                 }
             }
-        }
-        else {
+        } else {
             gameControllers.put(player, gameController);
         }
     }
@@ -271,7 +270,7 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
 
     private final Set<CardView> selectableCards = Sets.newHashSet();
     public void setSelectables(final Iterable<CardView> cards) {
-        for ( CardView cv : cards ) { selectableCards.add(cv); }
+        for (CardView cv : cards) { selectableCards.add(cv); }
     }
     public void clearSelectables() {
         selectableCards.clear();
@@ -286,12 +285,12 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     public void setgamePause(boolean pause) { gamePause = pause; }
     public void pauseMatch() {
         IGameController controller = spectator;
-        if(controller != null && !isGamePaused())
+        if (controller != null && !isGamePaused())
             controller.selectButtonOk();
     }
     public void resumeMatch() {
         IGameController controller = spectator;
-        if(controller != null && isGamePaused())
+        if (controller != null && isGamePaused())
             controller.selectButtonOk();
     }
 
@@ -316,12 +315,10 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
                         // Concede each player on this Gui (except mind-controlled players)
                         c.concede();
                     }
-                }
-                else {
+                } else {
                     return false;
                 }
-            }
-            else {
+            } else {
                 return !ignoreConcedeChain;
             }
             if (gameView.isGameOver()) {

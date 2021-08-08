@@ -653,8 +653,7 @@ public class Player extends GameEntity implements Comparable<Player> {
                 loseLife(Math.min(amount, life - 7));
             } else if (hasKeyword("DamageLifeThreshold:1") && life <= amount) {
                 loseLife(Math.min(amount, life - 1));
-            }
-            else {
+            } else {
                 // rule 118.2. Damage dealt to a player normally causes that player to lose that much life.
                 loseLife(amount);
             }
@@ -1234,7 +1233,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         return drawCards(1, null);
     }
 
-    public void surveil(int num, SpellAbility cause) {
+    public void surveil(int num, SpellAbility cause, CardZoneTable table) {
         final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(this);
         repParams.put(AbilityKey.Source, cause);
         repParams.put(AbilityKey.SurveilNum, num);
@@ -1265,7 +1264,9 @@ public class Player extends GameEntity implements Comparable<Player> {
 
         if (toGrave != null) {
             for (Card c : toGrave) {
-                getGame().getAction().moveToGraveyard(c, cause);
+                ZoneType oZone = c.getZone().getZoneType();
+                Card moved = getGame().getAction().moveToGraveyard(c, cause);
+                table.put(oZone, moved.getZone().getZoneType(), moved);
                 numToGrave++;
             }
         }
@@ -1693,8 +1694,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         for (int i = 0; i < max; i++) {
             if (bottom) {
                 milled.add(lib.get(lib.size() - i - 1));
-            }
-            else {
+            } else {
                 milled.add(lib.get(i));
             }
         }
@@ -1756,7 +1756,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     public final boolean playLand(final Card land, final boolean ignoreZoneAndTiming) {
         // Dakkon Blackblade Avatar will use a similar effect
         if (canPlayLand(land, ignoreZoneAndTiming)) {
-            playLandNoCheck(land);
+            playLandNoCheck(land, null);
             return true;
         }
 
@@ -1764,20 +1764,22 @@ public class Player extends GameEntity implements Comparable<Player> {
         return false;
     }
 
-    public final Card playLandNoCheck(final Card land) {
+    public final Card playLandNoCheck(final Card land, SpellAbility cause) {
         land.setController(this, 0);
         if (land.isFaceDown()) {
             land.turnFaceUp(null);
         }
         game.copyLastState();
-        final Card c = game.getAction().moveTo(getZone(ZoneType.Battlefield), land, null);
+        final Card c = game.getAction().moveTo(getZone(ZoneType.Battlefield), land, cause);
         game.updateLastStateForCard(c);
 
         // play a sound
         game.fireEvent(new GameEventLandPlayed(this, land));
 
         // Run triggers
-        game.getTriggerHandler().runTrigger(TriggerType.LandPlayed, AbilityKey.mapFromCard(land), false);
+        Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(land);
+        runParams.put(AbilityKey.SpellAbility, cause);
+        game.getTriggerHandler().runTrigger(TriggerType.LandPlayed, runParams, false);
         game.getStack().unfreezeStack();
         addLandPlayedThisTurn();
 
@@ -2203,8 +2205,7 @@ public class Player extends GameEntity implements Comparable<Player> {
 
         if (incR.length > 1) {
             final String excR = incR[1];
-            final String[] exR = excR.split("\\+"); // Exclusive Restrictions
-            // are ...
+            final String[] exR = excR.split("\\+"); // Exclusive Restrictions are ...
             for (int j = 0; j < exR.length; j++) {
                 if (!hasProperty(exR[j], sourceController, source, spellAbility)) {
                     return false;
@@ -2216,6 +2217,9 @@ public class Player extends GameEntity implements Comparable<Player> {
 
     @Override
     public final boolean hasProperty(final String property, final Player sourceController, final Card source, CardTraitBase spellAbility) {
+        if (property.startsWith("!")) {
+            return !PlayerProperty.playerHasProperty(this, property.substring(1), sourceController, source, spellAbility);
+        }
         return PlayerProperty.playerHasProperty(this, property, sourceController, source, spellAbility);
     }
 
@@ -3172,6 +3176,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         if (monarchEffect == null) {
             monarchEffect = new Card(game.nextCardId(), null, game);
             monarchEffect.setOwner(this);
+            monarchEffect.setImmutable(true);
             if (set != null) {
                 monarchEffect.setImageKey("t:monarch_" + set.toLowerCase());
                 monarchEffect.setSetCode(set);
@@ -3179,7 +3184,6 @@ public class Player extends GameEntity implements Comparable<Player> {
                 monarchEffect.setImageKey("t:monarch");
             }
             monarchEffect.setName("The Monarch");
-            monarchEffect.addType("Effect");
 
             {
                 final String drawTrig = "Mode$ Phase | Phase$ End of Turn | TriggerZones$ Command | " +
@@ -3276,8 +3280,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             blessingEffect.setOwner(this);
             blessingEffect.setImageKey("t:blessing");
             blessingEffect.setName("City's Blessing");
-            blessingEffect.addType("Effect");
-
+            blessingEffect.setImmutable(true);
 
             blessingEffect.updateStateForView();
 
@@ -3349,7 +3352,6 @@ public class Player extends GameEntity implements Comparable<Player> {
         keywordEffect.setOwner(this);
         keywordEffect.setName("Keyword Effects");
         keywordEffect.setImageKey(ImageKeys.HIDDEN_CARD);
-        keywordEffect.addType("Effect");
 
         keywordEffect.updateStateForView();
 

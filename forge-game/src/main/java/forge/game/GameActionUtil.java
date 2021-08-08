@@ -118,7 +118,7 @@ public final class GameActionUtil {
                     continue;
                 }
                 // non basic are only allowed if PayManaCost is yes
-                if (!sa.isBasicSpell() && o.getPayManaCost() == PayManaCost.NO) {
+                if ((!sa.isBasicSpell() || (sa.costHasManaX() && !sa.getPayCosts().getCostMana().canXbe0())) && o.getPayManaCost() == PayManaCost.NO) {
                     continue;
                 }
                 final Card host = o.getHost();
@@ -153,8 +153,7 @@ public final class GameActionUtil {
                 final StringBuilder sb = new StringBuilder(sa.getDescription());
                 if (!source.equals(host)) {
                     sb.append(" by ");
-                    if ((host.isEmblem() || host.getType().hasSubtype("Effect"))
-                            && host.getEffectSource() != null) {
+                    if ((host.isImmutable()) && host.getEffectSource() != null) {
                         sb.append(host.getEffectSource());
                     } else {
                         sb.append(host);
@@ -542,7 +541,6 @@ public final class GameActionUtil {
         final Card eff = new Card(game.nextCardId(), game);
         eff.setTimestamp(game.getNextTimestamp());
         eff.setName(sourceCard.getName() + "'s Effect");
-        eff.addType("Effect");
         eff.setOwner(controller);
 
         eff.setImageKey(sourceCard.getImageKey());

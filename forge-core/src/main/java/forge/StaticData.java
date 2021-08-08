@@ -7,8 +7,6 @@ import com.google.common.base.Predicate;
 
 import forge.card.*;
 import forge.card.CardDb.CardRequest;
-import forge.item.BoosterBox;
-import forge.item.FatPack;
 import forge.item.PaperCard;
 import forge.item.SealedProduct;
 import forge.token.TokenDb;
@@ -46,22 +44,21 @@ public class StaticData {
     private MulliganDefs.MulliganRule mulliganRule = MulliganDefs.getDefaultRule();
 
     private String prefferedArt;
+    private boolean enableCustomCardsInDecks = false;  // default
 
     // Loaded lazily:
     private IStorage<SealedProduct.Template> boosters;
     private IStorage<SealedProduct.Template> specialBoosters;
     private IStorage<SealedProduct.Template> tournaments;
-    private IStorage<FatPack.Template> fatPacks;
-    private IStorage<BoosterBox.Template> boosterBoxes;
     private IStorage<PrintSheet> printSheets;
 
     private static StaticData lastInstance = null;
 
     public StaticData(CardStorageReader cardReader, CardStorageReader customCardReader, String editionFolder, String customEditionsFolder, String blockDataFolder, String prefferedArt, boolean enableUnknownCards, boolean loadNonLegalCards) {
-        this(cardReader, null, customCardReader, editionFolder, customEditionsFolder, blockDataFolder, prefferedArt, enableUnknownCards, loadNonLegalCards);
+        this(cardReader, null, customCardReader, editionFolder, customEditionsFolder, blockDataFolder, prefferedArt, enableUnknownCards, loadNonLegalCards, false);
     }
 
-    public StaticData(CardStorageReader cardReader, CardStorageReader tokenReader, CardStorageReader customCardReader, String editionFolder, String customEditionsFolder, String blockDataFolder, String prefferedArt, boolean enableUnknownCards, boolean loadNonLegalCards) {
+    public StaticData(CardStorageReader cardReader, CardStorageReader tokenReader, CardStorageReader customCardReader, String editionFolder, String customEditionsFolder, String blockDataFolder, String prefferedArt, boolean enableUnknownCards, boolean loadNonLegalCards, boolean enableCustomCardsInDecks) {
         this.cardReader = cardReader;
         this.tokenReader = tokenReader;
         this.editions = new CardEdition.Collection(new CardEdition.Reader(new File(editionFolder)));
@@ -69,6 +66,7 @@ public class StaticData {
         this.customCardReader = customCardReader;
         this.customEditions = new CardEdition.Collection(new CardEdition.Reader(new File(customEditionsFolder), true));
         this.prefferedArt = prefferedArt;
+        this.enableCustomCardsInDecks = enableCustomCardsInDecks;
         lastInstance = this;
         List<String> funnyCards = new ArrayList<>();
         List<String> filtered = new ArrayList<>();
@@ -237,14 +235,6 @@ public class StaticData {
         }
     }
 
-    // TODO Remove these in favor of them being associated to the Edition
-    /** @return {@link forge.util.storage.IStorage}<{@link forge.item.SealedProduct.Template}> */
-    public IStorage<FatPack.Template> getFatPacks() {
-        if (fatPacks == null)
-            fatPacks = new StorageBase<>("Fat packs", new FatPack.Template.Reader(blockDataFolder + "fatpacks.txt"));
-        return fatPacks;
-    }
-
     /** @return {@link forge.util.storage.IStorage}<{@link forge.item.SealedProduct.Template}> */
     public final IStorage<SealedProduct.Template> getTournamentPacks() {
         if (tournaments == null)
@@ -285,7 +275,9 @@ public class StaticData {
 
     public TokenDb getAllTokens() { return allTokens; }
 
-    
+    public boolean isEnableCustomCardsInDecks() {
+        return this.enableCustomCardsInDecks;
+    }
 
     public void setStandardPredicate(Predicate<PaperCard> standardPredicate) { this.standardPredicate = standardPredicate; }
 
@@ -318,7 +310,6 @@ public class StaticData {
     }
 
     public PaperCard getCardByEditionDate(PaperCard card, Date editionDate) {
-
         PaperCard c = this.getCommonCards().getCardFromEdition(card.getName(), editionDate, CardDb.SetPreference.LatestCoreExp, card.getArtIndex());
 
         if (null != c) {
@@ -342,7 +333,6 @@ public class StaticData {
     }
 
     public PaperCard getCardFromLatestorEarliest(PaperCard card) {
-
         PaperCard c = this.getCommonCards().getCardFromEdition(card.getName(), null, CardDb.SetPreference.Latest, card.getArtIndex());
 
         if (null != c && c.hasImage()) {
@@ -372,7 +362,6 @@ public class StaticData {
     }
 
     public PaperCard getCardFromEarliestCoreExp(PaperCard card) {
-
         PaperCard c = this.getCommonCards().getCardFromEdition(card.getName(), null, CardDb.SetPreference.EarliestCoreExp, card.getArtIndex());
 
         if (null != c && c.hasImage()) {

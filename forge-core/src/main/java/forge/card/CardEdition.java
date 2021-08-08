@@ -102,6 +102,16 @@ public final class CardEdition implements Comparable<CardEdition> {
             }
         }
 
+        public String getFatPackDefault() {
+            switch (this) {
+                case CORE:
+                case EXPANSION:
+                    return "10";
+                default:
+                    return "0";
+            }
+        }
+
         public String toString(){
             String[] names = TextUtil.splitWithParenthesis(this.name().toLowerCase(), '_');
             for (int i = 0; i < names.length; i++)
@@ -146,7 +156,8 @@ public final class CardEdition implements Comparable<CardEdition> {
         BUY_A_BOX("buy a box"),
         PROMO("promo"),
         BUNDLE("bundle"),
-        BOX_TOPPER("box topper");
+        BOX_TOPPER("box topper"),
+        DUNGEONS("dungeons");
 
         private final String name;
 
@@ -216,11 +227,11 @@ public final class CardEdition implements Comparable<CardEdition> {
                 try {
                     collNr = Integer.parseInt(onlyNumeric);
                 } catch (NumberFormatException exon) {
-                    collNr = 0;  // this is the case of ONLY-letters collector numbers
+                    collNr = 0; // this is the case of ONLY-letters collector numbers
                 }
                 if ((collNr > 0) && (sortableCollNr.startsWith(onlyNumeric))) // e.g. 12a, 37+, 2018f,
                     sortableCollNr = String.format("%05d", collNr) + nonNumeric;
-                else  // e.g. WS6, S1
+                else // e.g. WS6, S1
                     sortableCollNr = nonNumeric + String.format("%05d", collNr);
             }
             return sortableCollNr;
@@ -260,6 +271,8 @@ public final class CardEdition implements Comparable<CardEdition> {
     // SealedProduct
     private String prerelease = null;
     private int boosterBoxCount = 36;
+    private int fatPackCount = 10;
+    private String fatPackExtraSlots = "";
 
     // Booster/draft info
     private boolean smallSetOverride = false;
@@ -350,6 +363,8 @@ public final class CardEdition implements Comparable<CardEdition> {
 
     public String getPrerelease() { return prerelease; }
     public int getBoosterBoxCount() { return boosterBoxCount; }
+    public int getFatPackCount() { return fatPackCount; }
+    public String getFatPackExtraSlots() { return fatPackExtraSlots; }
 
     public FoilType getFoilType() { return foilType; }
     public double getFoilChanceInBooster() { return foilChanceInBooster; }
@@ -459,11 +474,11 @@ public final class CardEdition implements Comparable<CardEdition> {
         Map<String, Integer> cardToIndex = new HashMap<>();
 
         List<PrintSheet> sheets = Lists.newArrayList();
-        for(String sectionName : cardMap.keySet()) {
+        for (String sectionName : cardMap.keySet()) {
             PrintSheet sheet = new PrintSheet(String.format("%s %s", this.getCode(), sectionName));
 
             List<CardInSet> cards = cardMap.get(sectionName);
-            for(CardInSet card : cards) {
+            for (CardInSet card : cards) {
                 int index = 1;
                 if (cardToIndex.containsKey(card.name)) {
                     index = cardToIndex.get(card.name);
@@ -478,7 +493,7 @@ public final class CardEdition implements Comparable<CardEdition> {
             sheets.add(sheet);
         }
 
-        for(String sheetName : customPrintSheetsToParse.keySet()) {
+        for (String sheetName : customPrintSheetsToParse.keySet()) {
             List<String> sheetToParse = customPrintSheetsToParse.get(sheetName);
             CardPool sheetPool = CardPool.fromCardList(sheetToParse);
             PrintSheet sheet = new PrintSheet(String.format("%s %s", this.getCode(), sheetName), sheetPool);
@@ -561,7 +576,7 @@ public final class CardEdition implements Comparable<CardEdition> {
 
             // parse tokens section
             if (contents.containsKey("tokens")) {
-                for(String line : contents.get("tokens")) {
+                for (String line : contents.get("tokens")) {
                     if (StringUtils.isBlank(line))
                         continue;
 
@@ -589,11 +604,11 @@ public final class CardEdition implements Comparable<CardEdition> {
                 res.mciCode = res.code2.toLowerCase();
             }
             res.scryfallCode = section.get("ScryfallCode");
-            if (res.scryfallCode == null){
+            if (res.scryfallCode == null) {
                 res.scryfallCode = res.code;
             }
             res.cardsLanguage = section.get("CardLang");
-            if (res.cardsLanguage == null){
+            if (res.cardsLanguage == null) {
                 res.cardsLanguage = "en";
             }
 
@@ -619,7 +634,7 @@ public final class CardEdition implements Comparable<CardEdition> {
             res.borderColor = BorderColor.valueOf(section.get("border", "Black").toUpperCase(Locale.ENGLISH));
             Type enumType = Type.UNKNOWN;
             if (this.isCustomEditions){
-                enumType = Type.CUSTOM_SET;  // Forcing ThirdParty Edition Type to avoid inconsistencies
+                enumType = Type.CUSTOM_SET; // Forcing ThirdParty Edition Type to avoid inconsistencies
             } else {
                 String type  = section.get("type");
                 if (null != type && !type.isEmpty()) {
@@ -635,8 +650,10 @@ public final class CardEdition implements Comparable<CardEdition> {
             res.type = enumType;
             res.prerelease = section.get("Prerelease", null);
             res.boosterBoxCount = Integer.parseInt(section.get("BoosterBox", enumType.getBoosterBoxDefault()));
+            res.fatPackCount = Integer.parseInt(section.get("FatPack", enumType.getFatPackDefault()));
+            res.fatPackExtraSlots = section.get("FatPackExtraSlots", "");
 
-            switch(section.get("foil", "newstyle").toLowerCase()) {
+            switch (section.get("foil", "newstyle").toLowerCase()) {
                 case "notsupported":
                     res.foilType = FoilType.NOT_SUPPORTED;
                     break;
@@ -769,7 +786,7 @@ public final class CardEdition implements Comparable<CardEdition> {
                 @Override
                 public Map<String, SealedProduct.Template> readAll() {
                     Map<String, SealedProduct.Template> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-                    for(CardEdition ce : Collection.this) {
+                    for (CardEdition ce : Collection.this) {
                         List<String> boosterTypes = Lists.newArrayList(ce.getAvailableBoosterTypes());
                         for (String type : boosterTypes) {
                             String setAffix = type.equals("Draft") ? "" : type;
@@ -799,18 +816,18 @@ public final class CardEdition implements Comparable<CardEdition> {
 
             for (Entry<PaperCard, Integer> k : cards) {
                 PaperCard cp = StaticData.instance().getCommonCards().getCardFromEdition(k.getKey().getName(), strictness);
-                if( cp == null && strictness == SetPreference.EarliestCoreExp) {
+                if (cp == null && strictness == SetPreference.EarliestCoreExp) {
                     strictness = SetPreference.Earliest; // card is not found in core and expansions only (probably something CMD or C13)
                     cp = StaticData.instance().getCommonCards().getCardFromEdition(k.getKey().getName(), strictness);
                 }
-                if ( cp == null )
+                if (cp == null)
                     cp = k.getKey(); // it's unlikely, this code will ever run
 
                 minEditions.add(cp.getEdition());
             }
 
-            for(CardEdition ed : getOrderedEditions()) {
-                if(minEditions.contains(ed.getCode()))
+            for (CardEdition ed : getOrderedEditions()) {
+                if (minEditions.contains(ed.getCode()))
                     return ed;
             }
             return UNKNOWN;
@@ -852,7 +869,7 @@ public final class CardEdition implements Comparable<CardEdition> {
         private static class CanMakeFatPack implements Predicate<CardEdition> {
             @Override
             public boolean apply(final CardEdition subject) {
-                return StaticData.instance().getFatPacks().contains(subject.getCode());
+                return subject.getFatPackCount() > 0;
             }
         }
 

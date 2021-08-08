@@ -854,7 +854,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             if (node.getHostCard() != null) {
                 String currentName;
                 // if alternate state is viewed while card uses original
-                if (node.isIntrinsic() && !node.getHostCard().isMutated() && node.cardState != null) {
+                if (node.isIntrinsic() && node.cardState != null && node.cardState.getCard() == node.getHostCard()) {
                     currentName = node.cardState.getName();
                 }
                 else {
@@ -1116,7 +1116,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public SpellAbility copyWithManaCostReplaced(Player active, Cost abCost) {
-
         final SpellAbility newSA = copy(active);
         if (newSA == null) {
             return null; // the ability was not copyable, e.g. a Suspend SA may get here
@@ -1992,6 +1991,16 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
         if (incR[0].equals("Spell")) {
             if (!root.isSpell()) {
+                return false;
+            }
+        }
+        else if (incR[0].equals("Instant")) {
+            if (!root.getCardState().getType().isInstant()) {
+                return false;
+            }
+        }
+        else if (incR[0].equals("Sorcery")) {
+            if (!root.getCardState().getType().isSorcery()) {
                 return false;
             }
         }

@@ -334,7 +334,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 String errMsg;
                 if (newMain.size() < deckMinSize) {
                     errMsg = TextUtil.concatNoSpace(localizer.getMessage("lblTooFewCardsMainDeck", String.valueOf(deckMinSize)));
-
                 } else {
                     errMsg = TextUtil.concatNoSpace(localizer.getMessage("lblTooManyCardsSideboard", String.valueOf(sbMax)));
                 }
@@ -469,8 +468,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         if (cost.isMandatory()) {
             return chooseNumber(ability, localizer.getMessage("lblChooseAnnounceForCard", announce,
                     CardTranslation.getTranslatedName(ability.getHostCard().getName())) , min, max);
-        }
-        else {
+        } else {
             return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announce,
                     CardTranslation.getTranslatedName(ability.getHostCard().getName())) , min, max, min + 9);
         }
@@ -498,8 +496,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         String inpMessage = null;
         if (min == 0) {
             inpMessage = localizer.getMessage("lblSelectUpToNumTargetToAction", message, action);
-        }
-        else {
+        } else {
             inpMessage = localizer.getMessage("lblSelectNumTargetToAction", message, action);
         }
 
@@ -817,8 +814,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             String prompt = null;
             if (isFirstGame) {
                 prompt = localizer.getMessage("lblYouHaveWonTheCoinToss", player.getName());
-            }
-            else {
+            } else {
                 prompt = localizer.getMessage("lblYouLostTheLastGame", player.getName());
             }
             prompt += "\n\n" + localizer.getMessage("lblWouldYouLiketoPlayorDraw");
@@ -829,8 +825,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             String prompt = null;
             if (isFirstGame) {
                 prompt = localizer.getMessage("lblYouHaveWonTheCoinToss", player.getName());
-            }
-            else {
+            } else {
                 prompt = localizer.getMessage("lblYouLostTheLastGame", player.getName());
             }
             prompt += "\n\n" + localizer.getMessage("lblWhoWouldYouLiketoStartthisGame");
@@ -1324,14 +1319,17 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 }
                 if (sa.hasParam("TokenScript")) {
                     sa.setActivatingPlayer(player);
-                    Card protoType = TokenInfo.getProtoType(sa.getParam("TokenScript"), sa);
-                    for (String type : protoType.getType().getCreatureTypes()) {
-                        Integer count = typesInDeck.get(type);
-                        if (count == null) {
-                            count = 0;
+                    for (String token : sa.getParam("TokenScript").split(",")) {
+                        Card protoType = TokenInfo.getProtoType(token, sa, null);
+                        for (String type : protoType.getType().getCreatureTypes()) {
+                            Integer count = typesInDeck.get(type);
+                            if (count == null) {
+                                count = 0;
+                            }
+                            typesInDeck.put(type, count + 1);
                         }
-                        typesInDeck.put(type, count + 1);
                     }
+
                 }
             }
             // same for Trigger that does make Tokens
@@ -1340,13 +1338,15 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 if (sa != null) {
                     if (sa.hasParam("TokenScript")) {
                         sa.setActivatingPlayer(player);
-                        Card protoType = TokenInfo.getProtoType(sa.getParam("TokenScript"), sa);
-                        for (String type : protoType.getType().getCreatureTypes()) {
-                            Integer count = typesInDeck.get(type);
-                            if (count == null) {
-                                count = 0;
+                        for (String token : sa.getParam("TokenScript").split(",")) {
+                            Card protoType = TokenInfo.getProtoType(token, sa, null);
+                            for (String type : protoType.getType().getCreatureTypes()) {
+                                Integer count = typesInDeck.get(type);
+                                if (count == null) {
+                                    count = 0;
+                                }
+                                typesInDeck.put(type, count + 1);
                             }
-                            typesInDeck.put(type, count + 1);
                         }
                     }
                 }
@@ -1972,15 +1972,23 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
         boolean result = select.chooseTargets(null, null, null, false, canFilterMustTarget);
 
+        final List<GameEntity> targets = currentAbility.getTargets().getTargetEntities();
+        int amount = currentAbility.getStillToDivide();
+
         // assign divided as you choose values
-        if (result && currentAbility.isDividedAsYouChoose() && currentAbility.getStillToDivide() > 0) {
-            int amount = currentAbility.getStillToDivide();
-            final List<GameEntity> targets = currentAbility.getTargets().getTargetEntities();
+        if (result && targets.size() > 0 && amount > 0) {
+            if (currentAbility.hasParam("DividedUpTo")) {
+                amount = chooseNumber(currentAbility, localizer.getMessage("lblHowMany"), targets.size(), amount);
+            }
             if (targets.size() == 1) {
                 currentAbility.addDividedAllocation(targets.get(0), amount);
             } else if (targets.size() == amount) {
                 for (GameEntity e : targets) {
                     currentAbility.addDividedAllocation(e, 1);
+                }
+            } else if (amount == 0) {
+                for (GameEntity e : targets) {
+                    currentAbility.addDividedAllocation(e, 0);
                 }
             } else if (targets.size() > amount) {
                 return false;
@@ -2672,12 +2680,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             String message = null;
             if (targetZone != ZoneType.Battlefield) {
                 message = localizer.getMessage("lblPutCardInWhichPlayerZone", targetZone.getTranslatedName().toLowerCase());
-            }
-            else {
+            } else {
                 if (noTriggers) {
                     message = localizer.getMessage("lblPutCardInWhichPlayerBattlefield");
-                }
-                else {
+                } else {
                     message = localizer.getMessage("lblPutCardInWhichPlayerPlayOrStack");
                 }
             }

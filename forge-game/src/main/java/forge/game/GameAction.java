@@ -244,9 +244,11 @@ public class GameAction {
 
                 if (zoneTo.is(ZoneType.Stack)) {
                     // when moving to stack, copy changed card information
-                    copied.setChangedCardColors(c.getChangedCardColors());
+                    copied.setChangedCardColors(c.getChangedCardColorsMap());
+                    copied.setChangedCardColorsCharacterDefining(c.getChangedCardColorsCharacterDefiningMap());
                     copied.setChangedCardKeywords(c.getChangedCardKeywords());
                     copied.setChangedCardTypes(c.getChangedCardTypesMap());
+                    copied.setChangedCardTypesCharacterDefining(c.getChangedCardTypesCharacterDefiningMap());
                     copied.setChangedCardNames(c.getChangedCardNames());
                     copied.setChangedCardTraits(c.getChangedCardTraits());
 
@@ -266,6 +268,9 @@ public class GameAction {
                     // on Transformed objects)
                     copied.setState(CardStateName.Original, false);
                     copied.setBackSide(false);
+
+                    // reset timestamp in changezone effects so they have same timestamp if ETB simutaneously
+                    copied.setTimestamp(game.getNextTimestamp());
                 }
 
                 copied.setUnearthed(c.isUnearthed());
@@ -278,6 +283,7 @@ public class GameAction {
                 }
             } else { //Token
                 copied = c;
+                copied.setTimestamp(game.getNextTimestamp());
             }
         }
 
@@ -539,7 +545,7 @@ public class GameAction {
         if (fromBattlefield && !zoneFrom.getPlayer().equals(zoneTo.getPlayer())) {
             final Map<AbilityKey, Object> runParams2 = AbilityKey.mapFromCard(lastKnownInfo);
             runParams2.put(AbilityKey.OriginalController, zoneFrom.getPlayer());
-            if(params != null) {
+            if (params != null) {
                 runParams2.putAll(params);
             }
             game.getTriggerHandler().runTrigger(TriggerType.ChangesController, runParams2, false);
@@ -603,8 +609,6 @@ public class GameAction {
             }
             unattachCardLeavingBattlefield(copied);
         } else if (toBattlefield) {
-            // reset timestamp in changezone effects so they have same timestamp if ETB simutaneously
-            copied.setTimestamp(game.getNextTimestamp());
             for (Player p : game.getPlayers()) {
                 copied.getDamageHistory().setNotAttackedSinceLastUpkeepOf(p);
                 copied.getDamageHistory().setNotBlockedSinceLastUpkeepOf(p);
@@ -619,7 +623,6 @@ public class GameAction {
                 || zoneTo.is(ZoneType.Hand)
                 || zoneTo.is(ZoneType.Library)
                 || zoneTo.is(ZoneType.Exile)) {
-            copied.setTimestamp(game.getNextTimestamp());
             copied.clearOptionalCostsPaid();
             if (copied.isFaceDown()) {
                 copied.setState(CardStateName.Original, true);
@@ -702,17 +705,20 @@ public class GameAction {
             }
         }
 
-        if (zoneFrom == null) {
-            c.setCastFrom(null);
-            c.setCastSA(null);
-        } else if (zoneTo.is(ZoneType.Stack)) {
-            c.setCastFrom(zoneFrom.getZoneType());
+        if (zoneTo.is(ZoneType.Stack)) {
+            // zoneFrom maybe null if the spell is cast from "Ouside the game", ex. ability of Garth One-Eye
+            if (zoneFrom == null) {
+                c.setCastFrom(null);
+            } else {
+                c.setCastFrom(zoneFrom.getZoneType());
+            }
             if (cause != null && cause.isSpell() && c.equals(cause.getHostCard()) && !c.isCopiedSpell()) {
                 c.setCastSA(cause);
             } else {
                 c.setCastSA(null);
             }
-        } else if (!(zoneTo.is(ZoneType.Battlefield) && zoneFrom.is(ZoneType.Stack))) {
+        } else if (zoneFrom == null || !(zoneFrom.is(ZoneType.Stack) &&
+                (zoneTo.is(ZoneType.Battlefield) || zoneTo.is(ZoneType.Merged)))) {
             c.setCastFrom(null);
             c.setCastSA(null);
         }
@@ -2181,12 +2187,28 @@ public class GameAction {
                 if (e.getValue() <= 0) {
                     continue;
                 }
+                e.setValue(Integer.valueOf(e.getKey().addDamageAfterPrevention(e.getValue(), sourceLKI, isCombat, counterTable)));
                 sum += e.getValue();
-                e.getKey().addDamageAfterPrevention(e.getValue(), sourceLKI, isCombat, counterTable);
             }
 
             if (sourceLKI.hasKeyword(Keyword.LIFELINK)) {
                 sourceLKI.getController().gainLife(sum, sourceLKI, cause);
+            }
+        }
+
+        if (cause != null) {
+            // Remember objects as needed
+            final Card sourceLKI = game.getChangeZoneLKIInfo(cause.getHostCard());
+            final boolean rememberCard = cause.hasParam("RememberDamaged") || cause.hasParam("RememberDamagedCreature");
+            final boolean rememberPlayer = cause.hasParam("RememberDamaged") || cause.hasParam("RememberDamagedPlayer");
+            if (rememberCard || rememberPlayer) {
+                for (GameEntity e : damageMap.row(sourceLKI).keySet()) {
+                    if (e instanceof Card && rememberCard) {
+                        cause.getHostCard().addRemembered(e);
+                    } else if (e instanceof Player && rememberPlayer) {
+                        cause.getHostCard().addRemembered(e);
+                    }
+                }
             }
         }
 
