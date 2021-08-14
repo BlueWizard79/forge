@@ -1428,7 +1428,14 @@ public class CardProperty {
                 }
             }
             if (property.equals("attackingYouOrYourPW")) {
-                Player defender = combat.getDefenderPlayerByAttacker(card);
+                GameEntity defender = combat.getDefenderByAttacker(card);
+                if (defender instanceof Card) {
+                    // attack on a planeswalker that was removed from combat
+                    if (!((Card)defender).isPlaneswalker()) {
+                        return false;
+                    }
+                    defender = ((Card)defender).getController();
+                }
                 if (!sourceController.equals(defender)) {
                     return false;
                 }
@@ -1764,6 +1771,16 @@ public class CardProperty {
                 }
             }
             return false;
+        } else if (property.startsWith("Triggered")) {
+            if (spellAbility instanceof SpellAbility) {
+                final String key = property.substring(9);
+                CardCollection cc = (CardCollection) ((SpellAbility)spellAbility).getTriggeringObject(AbilityKey.fromString(key));
+                if (cc == null || !cc.contains(card)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
         } else if (property.startsWith("NotTriggered")) {
             final String key = property.substring("NotTriggered".length());
             if (spellAbility instanceof SpellAbility) {
