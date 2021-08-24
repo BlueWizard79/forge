@@ -1,15 +1,14 @@
 package forge;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.commons.lang3.StringUtils;
-
 import forge.item.PaperCard;
 import forge.util.FileUtil;
 import forge.util.ImageUtil;
 import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class ImageKeys {
     public static final String CARD_PREFIX           = "c:";
@@ -130,18 +129,31 @@ public final class ImageKeys {
             // if there's a 1st art variant try with it for .full images
             file = findFile(dir, filename.replaceAll("[0-9]*.full", "1.full"));
             if (file != null) { return file; }
+            //setlookup
+            if (!StaticData.instance().getSetLookup().isEmpty()) {
+                for (String setKey : StaticData.instance().getSetLookup().keySet()) {
+                    if (filename.startsWith(setKey)) {
+                        for (String setLookup : StaticData.instance().getSetLookup().get(setKey)) {
+                            //.fullborder lookup
+                            file = findFile(dir, TextUtil.fastReplace(fullborderFile, setKey, getSetFolder(setLookup)));
+                            if (file != null) { return file; }
+                            file = findFile(dir, TextUtil.fastReplace(fullborderFile, setKey, getSetFolder(setLookup)).replaceAll("[0-9]*.fullborder", "1.fullborder"));
+                            if (file != null) { return file; }
+                            //.full lookup
+                            file = findFile(dir, TextUtil.fastReplace(filename, setKey, getSetFolder(setLookup)));
+                            if (file != null) { return file; }
+                            file = findFile(dir, TextUtil.fastReplace(filename, setKey, getSetFolder(setLookup)).replaceAll("[0-9]*.full", "1.full"));
+                            if (file != null) { return file; }
+                        }
+                    }
+                }
+            }
         }
         //if an image, like phenomenon or planes is missing .full in their filenames but you have an existing images that have .full/.fullborder
         if (!filename.contains(".full")) {
             file = findFile(dir, TextUtil.addSuffix(filename,".full"));
             if (file != null) { return file; }
             file = findFile(dir, TextUtil.addSuffix(filename,".fullborder"));
-            if (file != null) { return file; }
-        }
-        // some S00 cards are really part of 6ED
-        String s2kAlias = getSetFolder("S00");
-        if (filename.startsWith(s2kAlias)) {
-            file = findFile(dir, TextUtil.fastReplace(filename, s2kAlias, getSetFolder("6ED")));
             if (file != null) { return file; }
         }
 
@@ -216,6 +228,6 @@ public final class ImageKeys {
             editionImageLookup.put(pc.getEdition(), editionHasImage);
         }
         //avoid checking for file if edition doesn't have any images
-        return editionHasImage && findFile(CACHE_CARD_PICS_DIR, ImageUtil.getImageKey(pc, false, true)) != null;
+        return editionHasImage && getImageFile(ImageUtil.getImageKey(pc, false, true)) != null;
     }
 }

@@ -17,50 +17,13 @@
  */
 package forge.game.card;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.NavigableMap;
-import java.util.Set;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.MutableBoolean;
-import org.apache.commons.lang3.tuple.Pair;
-
 import com.esotericsoftware.minlog.Log;
 import com.google.common.base.Predicates;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
-import com.google.common.collect.Sets;
-import com.google.common.collect.Table;
-import com.google.common.collect.TreeBasedTable;
-
+import com.google.common.collect.*;
 import forge.GameCommand;
 import forge.StaticData;
-import forge.card.CardChangedType;
-import forge.card.CardDb.SetPreference;
-import forge.card.CardEdition;
-import forge.card.CardRarity;
-import forge.card.CardRules;
-import forge.card.CardSplitType;
-import forge.card.CardStateName;
-import forge.card.CardType;
-import forge.card.CardTypeView;
-import forge.card.ColorSet;
-import forge.card.ICardFace;
-import forge.card.MagicColor;
+import forge.card.*;
+import forge.card.CardDb.CardArtPreference;
 import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostParser;
 import forge.game.CardTraitBase;
@@ -81,31 +44,16 @@ import forge.game.combat.Combat;
 import forge.game.combat.CombatLki;
 import forge.game.cost.Cost;
 import forge.game.cost.CostSacrifice;
-import forge.game.event.GameEventCardAttachment;
-import forge.game.event.GameEventCardCounters;
-import forge.game.event.GameEventCardDamaged;
+import forge.game.event.*;
 import forge.game.event.GameEventCardDamaged.DamageType;
-import forge.game.event.GameEventCardPhased;
-import forge.game.event.GameEventCardStatsChanged;
-import forge.game.event.GameEventCardTapped;
-import forge.game.event.GameEventTokenStateUpdate;
-import forge.game.keyword.Companion;
-import forge.game.keyword.Keyword;
-import forge.game.keyword.KeywordCollection;
-import forge.game.keyword.KeywordInterface;
-import forge.game.keyword.KeywordsChange;
+import forge.game.keyword.*;
 import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.replacement.ReplaceMoved;
 import forge.game.replacement.ReplacementEffect;
 import forge.game.replacement.ReplacementResult;
 import forge.game.replacement.ReplacementType;
-import forge.game.spellability.LandAbility;
-import forge.game.spellability.OptionalCost;
-import forge.game.spellability.SpellAbility;
-import forge.game.spellability.SpellAbilityPredicates;
-import forge.game.spellability.SpellPermanent;
-import forge.game.spellability.TargetRestrictions;
+import forge.game.spellability.*;
 import forge.game.staticability.StaticAbility;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
@@ -115,15 +63,17 @@ import forge.item.IPaperCard;
 import forge.item.PaperCard;
 import forge.trackable.TrackableProperty;
 import forge.trackable.Tracker;
-import forge.util.CardTranslation;
-import forge.util.Lang;
-import forge.util.Localizer;
-import forge.util.TextUtil;
-import forge.util.Visitor;
+import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
 import io.sentry.Sentry;
 import io.sentry.event.BreadcrumbBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableBoolean;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * <p>
@@ -1487,7 +1437,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         if (newValue <= 0) {
             removeCounterTimestamp(counterType);
         } else {
-            addCounterTimestamp(counterType);
+            if (addCounterTimestamp(counterType)) {
+                updateAbilityTextForView();
+            }
         }
         if (table != null) {
             table.put(source, this, counterType, addAmount);
@@ -1499,6 +1451,22 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return addCounterTimestamp(counterType, true);
     }
     public boolean addCounterTimestamp(CounterType counterType, boolean updateView) {
+        if (counterType.is(CounterEnumType.MANABOND)) {
+            removeCounterTimestamp(counterType);
+
+            long timestamp = game.getNextTimestamp();
+            counterTypeTimestamps.put(counterType, timestamp);
+            // becomes land in instead of other card types
+            addChangedCardTypes(new CardType(ImmutableList.of("Land"), false), null, false, true, true, false, false, false, false, timestamp, updateView, false);
+
+            String abStr = "AB$ ManaReflected | Cost$ T | Valid$ Defined.Self | ColorOrType$ Color | ReflectProperty$ Is | SpellDescription$ Add one mana of any of this card's colors.";
+
+            SpellAbility sa = AbilityFactory.getAbility(abStr, this);
+            sa.setIntrinsic(false);
+
+            addChangedCardTraits(ImmutableList.of(sa), null, null, null, null, true, false, false, timestamp);
+            return true;
+        }
         if (!counterType.isKeywordCounter()) {
             return false;
         }
@@ -1516,6 +1484,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public boolean removeCounterTimestamp(CounterType counterType, boolean updateView) {
         Long old = counterTypeTimestamps.remove(counterType);
         if (old != null) {
+            removeChangedCardTypes(old, updateView);
+            removeChangedCardTraits(old);
             removeChangedCardKeywords(old, updateView);
         }
         return old != null;
@@ -1537,7 +1507,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         view.updateCounters(this);
 
         if (newValue <= 0) {
-            this.removeCounterTimestamp(counterName);
+            if (removeCounterTimestamp(counterName)) {
+                updateAbilityTextForView();
+            }
         }
 
         //fire card stats changed event if p/t bonuses or loyalty changed from subtracted counters
@@ -1578,6 +1550,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
         if (changed) {
             updateKeywords();
+            updateAbilityTextForView();
         }
     }
 
@@ -1595,6 +1568,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
         if (changed) {
             updateKeywords();
+            updateAbilityTextForView();
         }
     }
 
@@ -5719,6 +5693,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 if (!source.isColorless() && !colorlessDamage) {
                     return true;
                 }
+            } else if (kw.equals("Protection from colorless")) {
+                if (source.isColorless() || colorlessDamage) {
+                    return true;
+                }
             } else if (kw.equals("Protection from everything")) {
                 return true;
             } else if (kw.startsWith("Protection:")) { // uses isValid; Protection:characteristic:desc:exception
@@ -6525,7 +6503,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return cp == null ? StaticData.instance().getCommonCards().getCard(name, set) : cp;
         }
         cp = StaticData.instance().getVariantCards().getCard(name);
-        return cp == null ? StaticData.instance().getCommonCards().getCardFromEdition(name, SetPreference.Latest) : cp;
+        return cp != null ? cp : StaticData.instance().getCommonCards().getCardFromEditions(name, CardArtPreference.LATEST_ART_ALL_EDITIONS);
     }
 
     /**

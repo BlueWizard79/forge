@@ -243,7 +243,7 @@ public class Cost implements Serializable {
             } else {
                 CostPart cp = parseCostPart(part, tapCost, untapCost);
                 if (null != cp )
-                    if (cp instanceof CostPartMana ) {
+                    if (cp instanceof CostPartMana) {
                         parsedMana = (CostPartMana) cp;
                     } else {
                         this.costParts.add(cp);
@@ -948,7 +948,6 @@ public class Cost implements Serializable {
     public boolean canPay(SpellAbility sa) {
         return canPay(sa, sa.getActivatingPlayer());
     }
-
     public boolean canPay(SpellAbility sa, Player payer) {
         for (final CostPart part : this.getCostParts()) {
             if (!part.canPay(sa, payer)) {

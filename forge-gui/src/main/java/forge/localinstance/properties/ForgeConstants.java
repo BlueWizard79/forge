@@ -32,6 +32,7 @@ public final class ForgeConstants {
 
     public static final String RES_DIR = ASSETS_DIR + "res" + PATH_SEPARATOR;
     public static final String LISTS_DIR = RES_DIR + "lists" + PATH_SEPARATOR;
+    public static final String SETLOOKUP_DIR = RES_DIR + "setlookup" + PATH_SEPARATOR;
     public static final String KEYWORD_LIST_FILE                     = LISTS_DIR + "NonStackingKWList.txt";
     public static final String TYPE_LIST_FILE                        = LISTS_DIR + "TypeLists.txt";
     public static final String PLANESWALKER_ACHIEVEMENT_LIST_FILE    = LISTS_DIR + "planeswalker-achievements.txt";
@@ -119,6 +120,8 @@ public final class ForgeConstants {
     public static final String SPRITE_SLEEVES2_FILE   = "sprite_sleeves2.png";
     public static final String SPRITE_FAVICONS_FILE   = "sprite_favicons.png";
     public static final String SPRITE_PLANAR_CONQUEST_FILE = "sprite_planar_conquest.png";
+    public static final String SPRITE_SETLOGO_FILE    = "sprite_setlogo.png";
+    public static final String SPRITE_WATERMARK_FILE  = "sprite_watermark.png";
     public static final String FONT_FILE              = "font1.ttf";
     public static final String SPLASH_BG_FILE         = "bg_splash.png";
     public static final String MATCH_BG_FILE          = "bg_match.jpg";
