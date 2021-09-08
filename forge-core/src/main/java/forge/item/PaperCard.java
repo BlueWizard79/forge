@@ -51,7 +51,7 @@ public final class PaperCard implements Comparable<IPaperCard>, InventoryItemFro
        (see getCollectorNumber())
     */
     private String collectorNumber;
-    private final String artist;
+    private String artist;
     private final int artIndex;
     private final boolean foil;
     private Boolean hasImage;
@@ -73,6 +73,8 @@ public final class PaperCard implements Comparable<IPaperCard>, InventoryItemFro
 
     @Override
     public String getCollectorNumber() {
+        if (collectorNumber == null)
+            collectorNumber = IPaperCard.NO_COLLECTOR_NUMBER;
         return collectorNumber;
     }
 
@@ -103,6 +105,8 @@ public final class PaperCard implements Comparable<IPaperCard>, InventoryItemFro
 
     @Override
     public String getArtist() {
+        if (this.artist == null)
+            artist = IPaperCard.NO_ARTIST_NAME;
         return artist;
     }
 
@@ -170,7 +174,7 @@ public final class PaperCard implements Comparable<IPaperCard>, InventoryItemFro
         artIndex = Math.max(artIndex0, IPaperCard.DEFAULT_ART_INDEX);
         foil = foil0;
         rarity = rarity0;
-        artist = (artist0 != null ? artist0 : IPaperCard.NO_ARTIST_NAME);
+        artist = (artist0 != null ? TextUtil.normalizeText(artist0) : IPaperCard.NO_ARTIST_NAME);
         collectorNumber = (collectorNumber0 != null) && (collectorNumber0.length() > 0) ? collectorNumber0 : IPaperCard.NO_COLLECTOR_NUMBER;
     }
 
