@@ -42,6 +42,7 @@ import forge.card.ICardFace;
 import forge.card.MagicColor;
 import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostParser;
+import forge.game.CardTraitBase;
 import forge.game.Game;
 import forge.game.GameEntityCounterTable;
 import forge.game.GameLogEntryType;
@@ -264,8 +265,7 @@ public class CardFactoryUtil {
             return false;
         }
 
-        for (KeywordInterface k : c.getKeywords()) {
-            final String o = k.getOriginal();
+        for (String o : c.getHiddenExtrinsicKeywords()) {
             if (o.startsWith("CantBeCounteredBy")) {
                 final String[] m = o.split(":");
                 if (sa.isValid(m[1].split(","), c.getController(), c, null)) {
@@ -510,7 +510,7 @@ public class CardFactoryUtil {
      * @return a List<String>.
      */
     public static List<String> sharedKeywords(final Iterable<String> kw, final String[] restrictions,
-            final Iterable<ZoneType> zones, final Card host) {
+            final Iterable<ZoneType> zones, final Card host, CardTraitBase ctb) {
         final List<String> filteredkw = Lists.newArrayList();
         final Player p = host.getController();
         CardCollectionView cardlist = p.getGame().getCardsIn(zones);
@@ -521,7 +521,7 @@ public class CardFactoryUtil {
         final Set<String> tramplekw = Sets.newHashSet();
         final Set<String> allkw = Sets.newHashSet();
 
-        for (Card c : CardLists.getValidCards(cardlist, restrictions, p, host, null)) {
+        for (Card c : CardLists.getValidCards(cardlist, restrictions, p, host, ctb)) {
             for (KeywordInterface inst : c.getKeywords()) {
                 final String k = inst.getOriginal();
                 if (k.endsWith("walk")) {
@@ -2169,40 +2169,25 @@ public class CardFactoryUtil {
             StringBuilder sb = new StringBuilder();
             sb.append("Event$ Moved | ValidCard$ Card.Self | Origin$ Stack | ExcludeDestination$ Exile ");
             sb.append("| ValidStackSa$ Spell.Flashback | Description$ Flashback");
-            String reminderInsert = "";
 
-            // K:Flashback:Cost:ExtraParams:ExtraDescription:cost for display:reminder text insert
-            if (keyword.contains(":")) {
+            if (keyword.contains(":")) { // K:Flashback:Cost:ExtraParams:ExtraDescription
                 final String[] k = keyword.split(":");
                 final Cost cost = new Cost(k[1], false);
-                sb.append(cost.isOnlyManaCost() ? " " : "—");
+                sb.append(cost.isOnlyManaCost() ? " " : "—").append(cost.toSimpleString());
+                sb.append(cost.isOnlyManaCost() ? "" : ".");
 
-                String prettyCost = k.length > 4 ? k[4] : "";
-                if (!prettyCost.isEmpty()) {
-                    sb.append(prettyCost);
-                } else {
-                    sb.append(cost.toSimpleString());
-                }
-
-                if (!cost.isOnlyManaCost()) {
-                    sb.append(".");
-                }
                 String extraDesc =  k.length > 3 ? k[3] : "";
-                if (!extraDesc.isEmpty()) {
-                    if (!cost.isOnlyManaCost()) {
-                        sb.append(" ").append(extraDesc);
-                    } else {
-                        sb.append(". ").append(extraDesc);
-                    }
+                if (!extraDesc.isEmpty()) { // extra params added in GameActionUtil, desc added here
+                    sb.append(cost.isOnlyManaCost() ? ". " : " ").append(extraDesc);
                 }
-                reminderInsert = k.length > 5 ? k[5] : "";
             }
 
             sb.append(" (");
-            if (!reminderInsert.isEmpty()) {
+            if (host.hasStartOfKeyword("AlternateAdditionalCost")
+                    || !host.getFirstSpellAbility().getPayCosts().isOnlyManaCost()) {
                 String reminder = inst.getReminderText();
-                sb.append(reminder, 0, 65).append(" ");
-                sb.append(reminderInsert).append(reminder, 65, 81);
+                sb.append(reminder, 0, 65).append(" and any additional costs");
+                sb.append(reminder, 65, 81);
             } else {
                 sb.append(inst.getReminderText());
             }

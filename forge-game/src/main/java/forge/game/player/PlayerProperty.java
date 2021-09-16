@@ -169,7 +169,7 @@ public class PlayerProperty {
                 return false;
             }
         }  else if (property.equals("Defending")) {
-            if (!player.getGame().getCombat().getAttackersAndDefenders().values().contains(player)) {
+            if (!game.getCombat().getAttackersAndDefenders().values().contains(player)) {
                 return false;
             }
         } else if (property.equals("wasDealtCombatDamageThisTurn")) {
@@ -213,6 +213,10 @@ public class PlayerProperty {
             }
         } else if (property.equals("EnchantedBy")) {
             if (!player.isEnchantedBy(source)) {
+                return false;
+            }
+        } else if (property.equals("NotEnchantedBy")) {
+            if (player.isEnchantedBy(source)) {
                 return false;
             }
         } else if (property.equals("EnchantedController")) {
