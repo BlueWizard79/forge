@@ -373,7 +373,12 @@ public class ComputerUtil {
                         }
 
                         if (!prefList.isEmpty() || (overrideList != null && !overrideList.isEmpty())) {
-                            return ComputerUtilCard.getWorstAI(overrideList == null ? prefList : overrideList);
+                            boolean isBestAI = "true".equalsIgnoreCase(activate.getSVar("AIPreferBestCard"));
+                            if (isBestAI) {
+                                return ComputerUtilCard.getBestAI(overrideList == null ? prefList : overrideList);
+                            } else {
+                                return ComputerUtilCard.getWorstAI(overrideList == null ? prefList : overrideList);
+                            }
                         }
                     }
                 }
@@ -576,7 +581,7 @@ public class ComputerUtil {
         int count = 0;
 
         while (count < amount) {
-            Card prefCard = ComputerUtil.getCardPreference(ai, source, "SacCost", typeList);
+            Card prefCard = getCardPreference(ai, source, "SacCost", typeList);
             if (prefCard == null) {
                 prefCard = ComputerUtilCard.getWorstAI(typeList);
             }
@@ -1051,7 +1056,7 @@ public class ComputerUtil {
         }
 
         if (card.isCreature() && !cardState.hasKeyword(Keyword.DEFENDER)
-                && (cardState.hasKeyword(Keyword.HASTE) || ComputerUtil.hasACardGivingHaste(ai, true) || sa.isDash())) {
+                && (cardState.hasKeyword(Keyword.HASTE) || hasACardGivingHaste(ai, true) || sa.isDash())) {
             return true;
         }
 
@@ -1556,7 +1561,7 @@ public class ComputerUtil {
                 sub = sub.getSubAbility();
             }
             if (sa == null || (sa != spell && sa != sub)) {
-                Iterables.addAll(objects, ComputerUtil.predictThreatenedObjects(ai, sa, spell));
+                Iterables.addAll(objects, predictThreatenedObjects(ai, sa, spell));
             }
             if (top) {
                 break; // only evaluate top-stack
@@ -1892,7 +1897,7 @@ public class ComputerUtil {
             }
         }
 
-        Iterables.addAll(threatened, ComputerUtil.predictThreatenedObjects(aiPlayer, saviour, topStack.getSubAbility()));
+        Iterables.addAll(threatened, predictThreatenedObjects(aiPlayer, saviour, topStack.getSubAbility()));
         return threatened;
     }
 
@@ -1927,7 +1932,7 @@ public class ComputerUtil {
                 }
             }
         }
-        willDieFromSpell = !noStackCheck && ComputerUtil.predictThreatenedObjects(creature.getController(), excludeSa).contains(creature);
+        willDieFromSpell = !noStackCheck && predictThreatenedObjects(creature.getController(), excludeSa).contains(creature);
 
         return willDieInCombat || willDieFromSpell;
     }
@@ -1950,7 +1955,7 @@ public class ComputerUtil {
             List<Card> willBeKilled = CardLists.filter(list, new Predicate<Card>() {
                 @Override
                 public boolean apply(Card card) {
-                    return card.isCreature() && ComputerUtil.predictCreatureWillDieThisTurn(ai, card, excludeSa);
+                    return card.isCreature() && predictCreatureWillDieThisTurn(ai, card, excludeSa);
                 }
             });
             list.removeAll(willBeKilled);
@@ -1985,7 +1990,6 @@ public class ComputerUtil {
         }
         return false;
     }
-
 
     public static int scoreHand(CardCollectionView handList, Player ai, int cardsToReturn) {
         // TODO Improve hand scoring in relation to cards to return.
@@ -2094,8 +2098,7 @@ public class ComputerUtil {
             for (int i=0;i<tgtCandidates;i++) {
                 candidates.add(nonLands.get(i));
             }
-        }
-        else {
+        } else {
             //Too many lands!
             //Init
             int cntColors = MagicColor.WUBRG.length;
@@ -2513,7 +2516,6 @@ public class ComputerUtil {
             return (scoreNumbers >= scoreStrength) != opponent ? "Numbers" : "Strength";
 
         case "SproutOrHarvest":
-
             // lifegain would hurt or has no effect
             if (opponent) {
                 if (lifegainNegative(controller, source)) {
@@ -2630,7 +2632,6 @@ public class ComputerUtil {
     }
 
     public static int getDamageForPlaying(final Player player, final SpellAbility sa) {
-
         // check for bad spell cast triggers
         int damage = 0;
         final Game game = player.getGame();
@@ -2642,7 +2643,6 @@ public class ComputerUtil {
         }
         for (Trigger trigger : theTriggers) {
             final Card source = trigger.getHostCard();
-
 
             if (!trigger.zonesCheck(game.getZoneOf(source))) {
                 continue;
@@ -2772,7 +2772,6 @@ public class ComputerUtil {
 
     // this countertypes has no effect
     public static boolean isUselessCounter(CounterType type, Card c) {
-
         // Quest counter on a card without MaxQuestEffect are useless
         if (type.is(CounterEnumType.QUEST)) {
             int e = 0;

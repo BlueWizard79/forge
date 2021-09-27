@@ -279,6 +279,12 @@ public class PhaseHandler implements java.io.Serializable {
 
                 case DRAW:
                     playerTurn.drawCard();
+                    for (Player p : game.getPlayers()) {
+                        if (p.isOpponentOf(playerTurn) &&
+                                p.hasKeyword("You draw a card during each opponent's draw step.")) {
+                            p.drawCard();
+                        }
+                    }
                     break;
 
                 case MAIN1:
@@ -472,7 +478,7 @@ public class PhaseHandler implements java.io.Serializable {
             boolean manaBurns = game.getRules().hasManaBurn() ||
                     (game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.manaBurn));
             if (manaBurns) {
-                p.loseLife(burn, true);
+                p.loseLife(burn, false, true);
             }
         }
 
@@ -566,7 +572,7 @@ public class PhaseHandler implements java.io.Serializable {
 
                     if (canAttack) {
                         if (shouldTapForAttack) {
-                            attacker.tap(true);
+                            attacker.tap(true, true);
                         }
                     } else {
                         combat.removeFromCombat(attacker);
@@ -788,7 +794,6 @@ public class PhaseHandler implements java.io.Serializable {
 
             // Run this trigger once for each blocker
             for (final Card b : blockers) {
-
                 b.addBlockedThisTurn(a);
                 a.addBlockedByThisTurn(b);
 

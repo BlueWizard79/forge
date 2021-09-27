@@ -469,8 +469,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             return chooseNumber(ability, localizer.getMessage("lblChooseAnnounceForCard", announce,
                     CardTranslation.getTranslatedName(ability.getHostCard().getName())) , min, max);
         } else {
-            return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announce,
-                    CardTranslation.getTranslatedName(ability.getHostCard().getName())) , min, max, min + 9);
+            if ("NumTimes".equals(announce)) {
+                return getGui().getInteger(localizer.getMessage("lblHowManyTimesToPay", ability.getPayCosts().getTotalMana(),
+                        CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
+            } else {
+                return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announce,
+                        CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
+            }
         }
     }
 
@@ -2514,7 +2519,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                     inp.showAndWait();
                     if (!inp.hasCancelled()) {
                         for (final Card c : inp.getSelected()) {
-                            c.tap();
+                            c.tap(true);
                         }
                     }
                 }
@@ -2540,7 +2545,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                     inp.showAndWait();
                     if (!inp.hasCancelled()) {
                         for (final Card c : inp.getSelected()) {
-                            c.untap();
+                            c.untap(true);
                         }
                     }
                 }
@@ -2761,7 +2766,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                             if (finalC.getRules().getType().isLand()) {
                                 // this is needed to ensure land abilities fire
                                 getGame().getAction().moveToHand(forgeCard, null);
-                                getGame().getAction().moveToPlay(forgeCard, null);
+                                getGame().getAction().moveToPlay(forgeCard, null, null);
                                 // ensure triggered abilities fire
                                 getGame().getTriggerHandler().runWaitingTriggers();
                             } else {

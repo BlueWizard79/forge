@@ -17,23 +17,12 @@
  */
 package forge.game.card;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-
 import forge.ImageKeys;
 import forge.StaticData;
-import forge.card.CardRules;
-import forge.card.CardSplitType;
-import forge.card.CardStateName;
-import forge.card.CardType;
-import forge.card.ICardFace;
-import forge.card.MagicColor;
+import forge.card.*;
 import forge.card.mana.ManaCost;
 import forge.game.CardTraitBase;
 import forge.game.Game;
@@ -41,12 +30,7 @@ import forge.game.ability.AbilityFactory;
 import forge.game.cost.Cost;
 import forge.game.player.Player;
 import forge.game.replacement.ReplacementHandler;
-import forge.game.spellability.AbilitySub;
-import forge.game.spellability.OptionalCost;
-import forge.game.spellability.SpellAbility;
-import forge.game.spellability.SpellAbilityCondition;
-import forge.game.spellability.SpellAbilityRestriction;
-import forge.game.spellability.SpellPermanent;
+import forge.game.spellability.*;
 import forge.game.staticability.StaticAbility;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerHandler;
@@ -55,6 +39,11 @@ import forge.item.IPaperCard;
 import forge.item.PaperCard;
 import forge.util.CardTranslation;
 import forge.util.TextUtil;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * <p>
@@ -601,6 +590,11 @@ public class CardFactory {
             keywords.addAll(Arrays.asList(sa.getParam("AddKeywords").split(" & ")));
         }
 
+        if (sa.hasParam("AddColors")) {
+            shortColors = CardUtil.getShortColorsString(Arrays.asList(sa.getParam("AddColors")
+                    .split(" & ")));
+        }
+
         if (sa.hasParam("RemoveKeywords")) {
             removeKeywords.addAll(Arrays.asList(sa.getParam("RemoveKeywords").split(" & ")));
         }
@@ -655,6 +649,10 @@ public class CardFactory {
                 state.setName(originalState.getName());
             } else if (newName != null) {
                 state.setName(newName);
+            }
+
+            if (sa.hasParam("AddColors")) {
+                state.addColor(shortColors);
             }
 
             if (sa.hasParam("SetColor")) {

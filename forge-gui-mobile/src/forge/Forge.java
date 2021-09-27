@@ -1,10 +1,7 @@
 package forge;
 
 import java.io.File;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
 
 import com.badlogic.gdx.Application;
 import com.badlogic.gdx.ApplicationListener;
@@ -70,6 +67,7 @@ public class Forge implements ApplicationListener {
     public static boolean allowCardBG = false;
     public static boolean altPlayerLayout = false;
     public static boolean altZoneTabs = false;
+    public static boolean animatedCardTapUntap = false;
     public static String enableUIMask = "Crop";
     public static boolean enablePreloadExtendedArt = false;
     public static boolean isTabletDevice = false;
@@ -146,6 +144,7 @@ public class Forge implements ApplicationListener {
         showFPS = prefs.getPrefBoolean(FPref.UI_SHOW_FPS);
         altPlayerLayout = prefs.getPrefBoolean(FPref.UI_ALT_PLAYERINFOLAYOUT);
         altZoneTabs = prefs.getPrefBoolean(FPref.UI_ALT_PLAYERZONETABS);
+        animatedCardTapUntap = prefs.getPrefBoolean(FPref.UI_ANIMATED_CARD_TAPUNTAP);
         enableUIMask = prefs.getPref(FPref.UI_ENABLE_BORDER_MASKING);
         if (prefs.getPref(FPref.UI_ENABLE_BORDER_MASKING).equals("true")) //override old settings if not updated
             enableUIMask = "Full";
@@ -211,7 +210,7 @@ public class Forge implements ApplicationListener {
     }
 
     private void preloadExtendedArt() {
-        if (!enablePreloadExtendedArt)
+        if (!enablePreloadExtendedArt||!enableUIMask.equals("Full"))
             return;
         List<String> borderlessCardlistkeys = FileUtil.readFile(ForgeConstants.BORDERLESS_CARD_LIST_FILE);
         if(borderlessCardlistkeys.isEmpty())
@@ -226,9 +225,19 @@ public class Forge implements ApplicationListener {
             ImageCache.preloadCache(filteredkeys);
     }
 
-    public static void openHomeScreen(int index) {
+    public static void openHomeScreen(int index, FScreen lastMatch) {
         openScreen(HomeScreen.instance);
         HomeScreen.instance.openMenu(index);
+        if (lastMatch != null) {
+            try {
+                Dscreens.remove(lastMatch);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        //check
+        /*for (FScreen fScreen : Dscreens)
+            System.out.println(fScreen.toString());*/
     }
 
     private void afterDbLoaded() {
@@ -239,7 +248,7 @@ public class Forge implements ApplicationListener {
         SoundSystem.instance.setBackgroundMusic(MusicPlaylist.MENUS); //start background music
         destroyThis = false; //Allow back()
         Gdx.input.setCatchKey(Keys.MENU, true);
-        openHomeScreen(-1); //default for startup
+        openHomeScreen(-1, null); //default for startup
         splashScreen = null;
 
         boolean isLandscapeMode = isLandscapeMode();
@@ -314,6 +323,10 @@ public class Forge implements ApplicationListener {
     }
 
     public static void back() {
+        back(false);
+    }
+    public static void back(boolean clearlastMatch) {
+        FScreen lastMatch = currentScreen;
         if(destroyThis && isLandscapeMode())
             return;
         if (Dscreens.size() < 2 || (currentScreen == HomeScreen.instance && Forge.isPortraitMode)) {
@@ -326,6 +339,16 @@ public class Forge implements ApplicationListener {
                 if (result) {
                     Dscreens.pollFirst();
                     setCurrentScreen(Dscreens.peekFirst());
+                    if (clearlastMatch) {
+                        try {
+                            Dscreens.remove(lastMatch);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        //check
+                        /*for (FScreen fScreen : Dscreens)
+                            System.out.println(fScreen.toString());*/
+                    }
                 }
             }
         });
@@ -460,25 +483,9 @@ public class Forge implements ApplicationListener {
         try {
             endKeyInput(); //end key input before switching screens
             ForgeAnimation.endAll(); //end all active animations before switching screens
-
             currentScreen = screen0;
             currentScreen.setSize(screenWidth, screenHeight);
             currentScreen.onActivate();
-            /*keep Dscreens growing
-            if (Dscreens.size() > 3) {
-                for(int x = Dscreens.size(); x > 3; x--) {
-                    Dscreens.removeLast();
-                }
-            }*/
-            /* for checking only
-            if (!Dscreens.isEmpty()) {
-                int x = 0;
-                for(FScreen fScreen : Dscreens) {
-                    System.out.println("Screen ["+x+"]: "+fScreen.toString());
-                    x++;
-                }
-                System.out.println("---------------");
-            }*/
         }
         catch (Exception ex) {
             graphics.end();

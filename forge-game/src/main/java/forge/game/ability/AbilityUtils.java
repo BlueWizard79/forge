@@ -405,8 +405,12 @@ public class AbilityUtils {
         }
 
         if (incR.length > 1 && !cards.isEmpty()) {
-            final String excR = "Card." + incR[1];
-            cards = CardLists.getValidCards(cards, excR.split(","), hostCard.getController(), hostCard, sa);
+            String[] valids = incR[1].split(",");
+            // need to add valids onto all of them
+            for (int i = 0; i < valids.length; i++) {
+                valids[i] = "Card." + valids[i];
+            }
+            cards = CardLists.getValidCards(cards, valids, hostCard.getController(), hostCard, sa);
         }
 
         return cards;
@@ -1824,6 +1828,12 @@ public class AbilityUtils {
                     }
                     return count;
                 }
+                // Count$TriggeredManaSpent
+                if (sq[0].equals("TriggeredManaSpent")) {
+                    final SpellAbility root = (SpellAbility) sa.getRootAbility().getTriggeringObject(AbilityKey.SpellAbility);
+                    return root.getTotalManaSpent();
+                }
+
                 // Count$Adamant.<Color>.<True>.<False>
                 if (sq[0].startsWith("Adamant")) {
                     final String payingMana = StringUtils.join(sa.getRootAbility().getPayingMana());
@@ -2049,8 +2059,7 @@ public class AbilityUtils {
                         count += i;
                     }
                 }
-            }
-            else {
+            } else {
                 count = c.getCounters(CounterType.getType(sq[1]));
             }
             return doXMath(count, expr, c, ctb);

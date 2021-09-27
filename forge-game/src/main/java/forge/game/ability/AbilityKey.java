@@ -73,9 +73,11 @@ public enum AbilityKey {
     FoundSearchingLibrary("FoundSearchingLibrary"),
     IsCombat("IsCombat"), // TODO confirm that this and IsCombatDamage can be merged
     IsCombatDamage("IsCombatDamage"),
+    IsDamage("IsDamage"),
     IndividualCostPaymentInstance("IndividualCostPaymentInstance"),
     IsMadness("IsMadness"),
     LastStateBattlefield("LastStateBattlefield"),
+    LastStateGraveyard("LastStateGraveyard"),
     LifeAmount("LifeAmount"), //TODO confirm that this and LifeGained can be merged
     LifeGained("LifeGained"),
     Mana("Mana"),

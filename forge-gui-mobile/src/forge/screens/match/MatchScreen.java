@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import forge.animation.ForgeAnimation;
+import forge.assets.FImage;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.badlogic.gdx.Input.Keys;
@@ -76,7 +78,7 @@ public class MatchScreen extends FScreen {
     private final VPrompt bottomPlayerPrompt, topPlayerPrompt;
     private VPlayerPanel bottomPlayerPanel, topPlayerPanel;
     private AbilityEffect activeEffect;
-
+    private BGAnimation bgAnimation;
     private ViewWinLose viewWinLose = null;
 
     public MatchScreen(List<VPlayerPanel> playerPanels0) {
@@ -577,14 +579,45 @@ public class MatchScreen extends FScreen {
         }
     }
 
+    private class BGAnimation extends ForgeAnimation {
+        private static final float DURATION = 1.5f;
+        private float progress = 0;
+        private boolean finished;
+
+        private void drawBackground(Graphics g, FImage image, float x, float y, float w, float h, boolean darkoverlay) {
+            float percentage = progress / DURATION;
+            float oldAlpha = g.getfloatAlphaComposite();
+            if (percentage < 0) {
+                percentage = 0;
+            } else if (percentage > 1) {
+                percentage = 1;
+            }
+            g.setAlphaComposite(percentage);
+            g.drawGrayTransitionImage(image, x, y, w, h, darkoverlay, 1-(percentage*1));
+            g.setAlphaComposite(oldAlpha);
+        }
+
+        @Override
+        protected boolean advance(float dt) {
+            progress += dt;
+            return progress < DURATION;
+        }
+
+        @Override
+        protected void onEnd(boolean endingAll) {
+            finished = true;
+        }
+    }
     private class FieldScroller extends FScrollPane {
         private float extraHeight = 0;
+        private String plane = "";
 
         @Override
         public void drawBackground(Graphics g) {
             super.drawBackground(g);
 
             if (FModel.getPreferences().getPrefBoolean(FPref.UI_MATCH_IMAGE_VISIBLE)) {
+                boolean isGameFast = MatchController.instance.isGameFast();
                 float midField = topPlayerPanel.getBottom();
                 float x = topPlayerPanel.getField().getLeft();
                 float y = midField - topPlayerPanel.getField().getHeight();
@@ -598,6 +631,11 @@ public class MatchScreen extends FScreen {
                                 .replace(" ", "_")
                                 .replace("'", "")
                                 .replace("-", "");
+                    if (!plane.equals(imageName)) {
+                        bgAnimation = new BGAnimation();
+                        bgAnimation.start();
+                        plane = imageName;
+                    }
                     if (FSkinTexture.getValues().contains(imageName)) {
                         bgFullWidth = bgHeight * FSkinTexture.valueOf(imageName).getWidth() / FSkinTexture.valueOf(imageName).getHeight();
                         if (bgFullWidth < w) {
@@ -605,10 +643,13 @@ public class MatchScreen extends FScreen {
                             bgFullWidth = w;
                             bgHeight = scaledbgHeight;
                         }
-                        g.drawImage(FSkinTexture.valueOf(imageName), x + (w - bgFullWidth) / 2, y, bgFullWidth, bgHeight, true);
+                        if (bgAnimation != null && !isGameFast && !MatchController.instance.getGameView().isMatchOver()) {
+                            bgAnimation.drawBackground(g, FSkinTexture.valueOf(imageName), x + (w - bgFullWidth) / 2, y, bgFullWidth, bgHeight, true);
+                        } else {
+                            g.drawImage(FSkinTexture.valueOf(imageName), x + (w - bgFullWidth) / 2, y, bgFullWidth, bgHeight, true);
+                        }
                     }
-                }
-                else {
+                } else {
                     bgFullWidth = bgHeight * FSkinTexture.BG_MATCH.getWidth() / FSkinTexture.BG_MATCH.getHeight();
                     if (bgFullWidth < w) {
                         scaledbgHeight = w * (bgHeight / bgFullWidth);
@@ -652,42 +693,6 @@ public class MatchScreen extends FScreen {
             if (!Forge.isLandscapeMode()) {
                 y = bottomPlayerPanel.getTop() + bottomPlayerPanel.getField().getHeight();
                 g.drawLine(1, BORDER_COLOR, x, y, w, y);
-            }
-
-            //Draw Priority Human Multiplayer 2 player
-            float oldAlphaComposite = g.getfloatAlphaComposite();
-            //TODO: support up to 4 players
-            if ((getPlayerPanels().keySet().size() == 2) && (countHuman() == 2)){
-                for (VPlayerPanel playerPanel: playerPanelsList){
-                    midField = playerPanel.getTop();
-                    y = midField - 0.5f;
-                    float adjustY = Forge.isLandscapeMode() ? y + 1f : midField;
-                    float adjustH = Forge.isLandscapeMode() ? playerPanel.getField().getBottom() - 1f : playerPanel.getBottom() - 1f;
-
-                    if(playerPanel.getPlayer().getHasPriority())
-                        g.setAlphaComposite(0.8f);
-                    else
-                        g.setAlphaComposite(0f);
-
-                    if(game!= null) {
-                        if(combat!=null) {
-                            //hide rectangle
-                            if(playerPanel.getPlayer() == currentPlayer)
-                                g.setAlphaComposite(0.8f);
-                            else
-                                g.setAlphaComposite(0f);
-                            //color rectangle
-                            if(playerPanel.getPlayer() == game.getPlayerTurn())
-                                color = Color.RED; //attacking player
-                            else
-                                color = Color.LIME; //defending player
-                        } else {
-                            color = Color.CYAN;
-                        }
-                    }
-                    g.drawRect(4f, color, playerPanel.getField().getLeft(), adjustY, playerPanel.getField().getWidth(), adjustH);
-                    g.setAlphaComposite(oldAlphaComposite);
-                }
             }
         }
 
@@ -792,14 +797,6 @@ public class MatchScreen extends FScreen {
                     return !MatchController.instance.getGameView().getPlanarPlayer().getCurrentPlaneName().equals("");
             }
             return false;
-        }
-        private int countHuman(){
-            int humanplayers = 0;
-            for (VPlayerPanel playerPanel: playerPanelsList) {
-            if(!playerPanel.getPlayer().isAI())
-                humanplayers++;
-            }
-            return humanplayers;
         }
     }
 }

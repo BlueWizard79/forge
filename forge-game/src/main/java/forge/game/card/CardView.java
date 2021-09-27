@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 import forge.game.spellability.SpellAbility;
+import forge.util.*;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Predicate;
@@ -36,10 +37,6 @@ import forge.trackable.TrackableCollection;
 import forge.trackable.TrackableObject;
 import forge.trackable.TrackableProperty;
 import forge.trackable.Tracker;
-import forge.util.CardTranslation;
-import forge.util.Lang;
-import forge.util.Localizer;
-import forge.util.TextUtil;
 import forge.util.collect.FCollectionView;
 
 public class CardView extends GameEntityView {
@@ -311,12 +308,19 @@ public class CardView extends GameEntityView {
         state.updateLoyalty(c);
     }
 
+    public int getCrackOverlayInt() {
+        if (get(TrackableProperty.CrackOverlay) == null)
+            return 0;
+        return get(TrackableProperty.CrackOverlay);
+    }
     public int getDamage() {
         return get(TrackableProperty.Damage);
     }
     void updateDamage(Card c) {
         set(TrackableProperty.Damage, c.getDamage());
         updateLethalDamage(c);
+        //update CrackOverlay (currently 16 overlays)
+        set(TrackableProperty.CrackOverlay, c.getDamage() > 0 ? MyRandom.getRandom().nextInt(16) : 0);
     }
 
     public int getAssignedDamage() {
@@ -409,6 +413,15 @@ public class CardView extends GameEntityView {
     }
     void updateCurrentRoom(Card c) {
         set(TrackableProperty.CurrentRoom, c.getCurrentRoom());
+    }
+
+    public boolean wasDestroyed() {
+        if (get(TrackableProperty.WasDestroyed) == null)
+            return false;
+        return get(TrackableProperty.WasDestroyed);
+    }
+    void updateWasDestroyed(boolean value) {
+        set(TrackableProperty.WasDestroyed, value);
     }
 
     public int getClassLevel() {
@@ -816,6 +829,30 @@ public class CardView extends GameEntityView {
     void updateBackSide(String stateName, boolean hasBackSide) {
         set(TrackableProperty.HasBackSide, hasBackSide);
         set(TrackableProperty.BackSideName, stateName);
+    }
+    public boolean needsUntapAnimation() {
+        if (get(TrackableProperty.NeedsUntapAnimation) == null)
+            return false;
+        return get(TrackableProperty.NeedsUntapAnimation);
+    }
+    public void updateNeedsUntapAnimation(boolean value) {
+        set(TrackableProperty.NeedsUntapAnimation, value);
+    }
+    public boolean needsTapAnimation() {
+        if (get(TrackableProperty.NeedsTapAnimation) == null)
+            return false;
+        return get(TrackableProperty.NeedsTapAnimation);
+    }
+    public void updateNeedsTapAnimation(boolean value) {
+        set(TrackableProperty.NeedsTapAnimation, value);
+    }
+    public boolean needsTransformAnimation() {
+        if (get(TrackableProperty.NeedsTransformAnimation) == null)
+            return false;
+        return get(TrackableProperty.NeedsTransformAnimation);
+    }
+    public void updateNeedsTransformAnimation(boolean value) {
+        set(TrackableProperty.NeedsTransformAnimation, value);
     }
     void updateState(Card c) {
         updateName(c);

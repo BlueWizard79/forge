@@ -203,13 +203,21 @@ public class Game {
         }
     }
 
-    public CardCollectionView copyLastStateBattlefield() {
+    public CardCollectionView copyLastState(ZoneType type) {
         CardCollection result = new CardCollection();
         Map<Integer, Card> cachedMap = Maps.newHashMap();
         for (final Player p : getPlayers()) {
-            result.addAll(p.getZone(ZoneType.Battlefield).getLKICopy(cachedMap));
+            result.addAll(p.getZone(type).getLKICopy(cachedMap));
         }
         return result;
+    }
+
+    public CardCollectionView copyLastStateBattlefield() {
+        return copyLastState(ZoneType.Battlefield);
+    }
+
+    public CardCollectionView copyLastStateGraveyard() {
+        return copyLastState(ZoneType.Graveyard);
     }
 
     public void updateLastStateForCard(Card c) {
@@ -781,6 +789,8 @@ public class Game {
     }
 
     public void onPlayerLost(Player p) {
+        //set for Avatar
+        p.setHasLost(true);
         // Rule 800.4 Losing a Multiplayer game
         CardCollectionView cards = this.getCardsInGame();
         boolean planarControllerLost = false;

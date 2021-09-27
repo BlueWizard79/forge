@@ -47,6 +47,7 @@ import forge.game.Game;
 import forge.game.GameEntityCounterTable;
 import forge.game.GameLogEntryType;
 import forge.game.ability.AbilityFactory;
+import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
 import forge.game.cost.Cost;
@@ -110,7 +111,16 @@ public class CardFactoryUtil {
                 if (!hostCard.isFaceDown()) {
                     hostCard.setOriginalStateAsFaceDown();
                 }
-                hostCard.getGame().getAction().moveToPlay(hostCard, this);
+                final Game game = hostCard.getGame();
+
+                CardCollectionView lastStateBattlefield = game.copyLastStateBattlefield();
+                CardCollectionView lastStateGraveyard = game.copyLastStateGraveyard();
+
+                Map<AbilityKey, Object> moveParams = Maps.newEnumMap(AbilityKey.class);
+                moveParams.put(AbilityKey.LastStateBattlefield, lastStateBattlefield);
+                moveParams.put(AbilityKey.LastStateGraveyard, lastStateGraveyard);
+
+                hostCard.getGame().getAction().moveToPlay(hostCard, this, moveParams);
             }
 
             @Override
@@ -182,7 +192,6 @@ public class CardFactoryUtil {
     }
 
     public static SpellAbility abilityManifestFaceUp(final Card sourceCard, final ManaCost manaCost) {
-
         String costDesc = manaCost.toString();
 
         // Cost need to be set later
@@ -333,7 +342,7 @@ public class CardFactoryUtil {
                 if (color.hasAnyColor(MagicColor.WUBRG[i]))
                     map[i]++;
             }
-        } // for
+        }
 
         byte mask = 0;
         int nMax = -1;
@@ -371,7 +380,7 @@ public class CardFactoryUtil {
                 if (color.hasAnyColor(MagicColor.WUBRG[i]))
                     map[i]++;
             }
-        } // for
+        }
         Arrays.sort(map);
         return map;
     }

@@ -44,6 +44,7 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     private final Map<PlayerView, IGameController> gameControllers = Maps.newHashMap();
     private final Map<PlayerView, IGameController> originalGameControllers = Maps.newHashMap();
     private boolean gamePause = false;
+    private boolean gameSpeed = false;
     private boolean ignoreConcedeChain = false;
 
     public final boolean hasLocalPlayers() {
@@ -282,7 +283,9 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         return !selectableCards.isEmpty();
     }
     public boolean isGamePaused() { return gamePause; }
+    public boolean isGameFast() { return gameSpeed; }
     public void setgamePause(boolean pause) { gamePause = pause; }
+    public void setGameSpeed(boolean isFast) { gameSpeed = isFast; }
     public void pauseMatch() {
         IGameController controller = spectator;
         if (controller != null && !isGamePaused())
