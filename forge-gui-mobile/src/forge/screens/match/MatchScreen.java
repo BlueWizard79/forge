@@ -1,18 +1,17 @@
 package forge.screens.match;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
+import com.badlogic.gdx.math.Vector2;
 import forge.animation.ForgeAnimation;
 import forge.assets.FImage;
+import forge.game.spellability.StackItemView;
+import forge.gui.interfaces.IGuiGame;
+import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.google.common.collect.Maps;
 
@@ -350,6 +349,32 @@ public class MatchScreen extends FScreen {
         return new Rectangle(0, VPrompt.HEIGHT, scroller.getWidth(), getHeight() - 2 * VPrompt.HEIGHT);
     }
 
+    private PlayerView lastPlayer;
+    @Override
+    public void draw(Graphics g) {
+        super.draw(g);
+        final GameView game = MatchController.instance.getGameView();
+        if (game == null) { return; }
+        if (game.getPhase() != null) {
+            final PhaseType ph = game.getPhase();
+            if (ph.isBefore(PhaseType.END_OF_TURN))
+                lastPlayer = game.getPlayerTurn();
+            //reset phase labels
+            resetAllPhaseButtons();
+            if (lastPlayer != null && PhaseType.CLEANUP.equals(ph)) {
+                //set phaselabel
+                final PhaseLabel phaseLabel = getPlayerPanel(lastPlayer).getPhaseIndicator().getLabel(ph);
+                if (phaseLabel != null)
+                    phaseLabel.setActive(true);
+            } else if (game.getPlayerTurn() != null) {
+                //set phaselabel
+                final PhaseLabel phaseLabel = getPlayerPanel(game.getPlayerTurn()).getPhaseIndicator().getLabel(ph);
+                if (phaseLabel != null)
+                    phaseLabel.setActive(true);
+            }
+        }
+    }
+
     @Override
     protected void drawOverlay(Graphics g) {
         final GameView game = MatchController.instance.getGameView();
@@ -386,19 +411,6 @@ public class MatchScreen extends FScreen {
             }
         }
 
-        //draw arrows for paired cards
-        Set<CardView> pairedCards = new HashSet<>();
-        for (VPlayerPanel playerPanel : playerPanels.values()) {
-            for (CardView card : playerPanel.getField().getRow1().getOrderedCards()) {
-                if (pairedCards.contains(card)) { continue; } //prevent arrows going both ways
-
-                CardView paired = card.getPairedWith();
-                if (paired != null) {
-                    TargetingOverlay.drawArrow(g, card, paired);
-                }
-            }
-        }
-
         //draw arrows for combat
         final CombatView combat = game.getCombat();
         if (combat != null) {
@@ -406,28 +418,48 @@ public class MatchScreen extends FScreen {
                 //connect each attacker with planeswalker it's attacking if applicable
                 final GameEntityView defender = combat.getDefender(attacker);
                 if (defender instanceof CardView) {
-                    TargetingOverlay.drawArrow(g, attacker, (CardView) defender);
+                    final Vector2 vDefender = new Vector2(((CardView) defender).getTargetingOriginVectorX(), ((CardView) defender).getTargetingOriginVectorY());
+                    final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
+                    TargetingOverlay.drawArrow(g, vAttacker, vDefender, TargetingOverlay.ArcConnection.FoesAttacking);
                 }
                 final Iterable<CardView> blockers = combat.getBlockers(attacker);
                 if (blockers != null) {
                     //connect each blocker with the attacker it's blocking
                     for (final CardView blocker : blockers) {
-                        TargetingOverlay.drawArrow(g, blocker, attacker);
+                        final Vector2 vBlocker = new Vector2(blocker.getTargetingOriginVectorX(), blocker.getTargetingOriginVectorY());
+                        final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
+                        TargetingOverlay.drawArrow(g, vBlocker, vAttacker, TargetingOverlay.ArcConnection.FoesBlocking);
                     }
                 }
                 final Iterable<CardView> plannedBlockers = combat.getPlannedBlockers(attacker);
                 if (plannedBlockers != null) {
                     //connect each planned blocker with the attacker it's blocking
                     for (final CardView blocker : plannedBlockers) {
-                        TargetingOverlay.drawArrow(g, blocker, attacker);
+                        final Vector2 vBlocker = new Vector2(blocker.getTargetingOriginVectorX(), blocker.getTargetingOriginVectorY());
+                        final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
+                        TargetingOverlay.drawArrow(g, vBlocker, vAttacker, TargetingOverlay.ArcConnection.FoesBlocking);
                     }
                 }
                 //player
                 if (is4Player() || is3Player()) {
-                    int numplayers = is3Player() ? 3 : 4;
                     for (final PlayerView p : game.getPlayers()) {
-                        if (combat.getAttackersOf(p).contains(attacker))
-                            TargetingOverlay.drawArrow(g, attacker, p, numplayers);
+                        if (combat.getAttackersOf(p).contains(attacker)) {
+                            final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
+                            final Vector2 vPlayer = MatchController.getView().getPlayerPanel(p).getAvatar().getTargetingArrowOrigin();
+                            TargetingOverlay.drawArrow(g, vAttacker, vPlayer, TargetingOverlay.ArcConnection.FoesAttacking);
+                        }
+                    }
+                }
+            }
+        }
+        //draw arrows for paired cards
+        for (VPlayerPanel playerPanel : playerPanels.values()) {
+            for (CardView card : playerPanel.getField().getRow1().getOrderedCards()) {
+                if (card != null) {
+                    if (card.getPairedWith() != null) {
+                        final Vector2 vCard = new Vector2(card.getTargetingOriginVectorX(), card.getTargetingOriginVectorY());
+                        final Vector2 vPairedWith = new Vector2(card.getPairedWith().getTargetingOriginVectorX(), card.getPairedWith().getTargetingOriginVectorY());
+                        TargetingOverlay.drawArrow(g, vCard, vPairedWith, TargetingOverlay.ArcConnection.Friends);
                     }
                 }
             }
@@ -440,46 +472,115 @@ public class MatchScreen extends FScreen {
 
     @Override
     public boolean keyDown(int keyCode) {
+        // TODO: make the keyboard shortcuts configurable on Mobile
         switch (keyCode) {
-        case Keys.ENTER:
-        case Keys.SPACE:
-            if (getActivePrompt().getBtnOk().trigger()) { //trigger OK on Enter or Space
-                return true;
-            }
-            return getActivePrompt().getBtnCancel().trigger(); //trigger Cancel if can't trigger OK
-        case Keys.ESCAPE:
-            if (!FModel.getPreferences().getPrefBoolean(FPref.UI_ALLOW_ESC_TO_END_TURN)) {
-                if (getActivePrompt().getBtnCancel().getText().equals(Localizer.getInstance().getMessage("lblEndTurn"))) {
-                    return false;
+            case Keys.ENTER:
+            case Keys.SPACE:
+                if (getActivePrompt().getBtnOk().trigger()) { //trigger OK on Enter or Space
+                    return true;
                 }
-            }
-            return getActivePrompt().getBtnCancel().trigger(); //otherwise trigger Cancel
-        case Keys.BACK:
-            return true; //suppress Back button so it's not bumped when trying to press OK or Cancel buttons
-        case Keys.A: //alpha strike on Ctrl+A on Android, A when running on desktop
-            if (KeyInputAdapter.isCtrlKeyDown() || GuiBase.getInterface().isRunningOnDesktop()) {
-                getGameController().alphaStrike();
-                return true;
-            }
-            break;
-        case Keys.E: //end turn on Ctrl+E on Android, E when running on desktop
-            if (KeyInputAdapter.isCtrlKeyDown() || GuiBase.getInterface().isRunningOnDesktop()) {
-                getGameController().passPriorityUntilEndOfTurn();
-                return true;
-            }
-            break;
-        case Keys.Q: //concede game on Ctrl+Q
-            if (KeyInputAdapter.isCtrlKeyDown()) {
-                MatchController.instance.concede();
-                return true;
-            }
-            break;
-        case Keys.Z: //undo on Ctrl+Z
-            if (KeyInputAdapter.isCtrlKeyDown()) {
-                getGameController().undoLastAction();
-                return true;
-            }
-            break;
+                return getActivePrompt().getBtnCancel().trigger(); //trigger Cancel if can't trigger OK
+            case Keys.ESCAPE:
+                if (!FModel.getPreferences().getPrefBoolean(FPref.UI_ALLOW_ESC_TO_END_TURN)) {
+                    if (getActivePrompt().getBtnCancel().getText().equals(Localizer.getInstance().getMessage("lblEndTurn"))) {
+                        return false;
+                    }
+                }
+                return getActivePrompt().getBtnCancel().trigger(); //otherwise trigger Cancel
+            case Keys.BACK:
+                return true; //suppress Back button so it's not bumped when trying to press OK or Cancel buttons
+            case Keys.A: //alpha strike on Ctrl+A on Android, A when running on desktop
+                if (KeyInputAdapter.isCtrlKeyDown() || GuiBase.getInterface().isRunningOnDesktop()) {
+                    getGameController().alphaStrike();
+                    return true;
+                }
+                break;
+            case Keys.E: //end turn on Ctrl+E on Android, E when running on desktop
+                if (KeyInputAdapter.isCtrlKeyDown() || GuiBase.getInterface().isRunningOnDesktop()) {
+                    getGameController().passPriorityUntilEndOfTurn();
+                    return true;
+                }
+                break;
+            case Keys.Q: //concede game on Ctrl+Q
+                if (KeyInputAdapter.isCtrlKeyDown()) {
+                    MatchController.instance.concede();
+                    return true;
+                }
+                break;
+            case Keys.Z: //undo on Ctrl+Z
+                if (KeyInputAdapter.isCtrlKeyDown()) {
+                    getGameController().undoLastAction();
+                    return true;
+                }
+                break;
+            case Keys.Y: //auto-yield, always yes, Ctrl+Y on Android, Y when running on desktop
+                if (KeyInputAdapter.isCtrlKeyDown() || GuiBase.getInterface().isRunningOnDesktop()) {
+                    final IGuiGame gui = MatchController.instance;
+                    final IGameController controller = MatchController.instance.getGameController();
+                    final GameView gameView = MatchController.instance.getGameView();
+                    final FCollectionView<StackItemView> stack = MatchController.instance.getGameView().getStack();
+                    if (stack.isEmpty()) {
+                        return false;
+                    }
+                    StackItemView stackInstance = stack.getLast();
+                    if (!stackInstance.isAbility()) {
+                        return false;
+                    }
+                    final int triggerID = stackInstance.getSourceTrigger();
+
+                    if (gui.shouldAlwaysAcceptTrigger(triggerID)) {
+                        gui.setShouldAlwaysAskTrigger(triggerID);
+                    }
+                    else {
+                        gui.setShouldAlwaysAcceptTrigger(triggerID);
+                        if (stackInstance.equals(gameView.peekStack())) {
+                            //auto-yes if ability is on top of stack
+                            controller.selectButtonOk();
+                        }
+                    }
+
+                    final String key = stackInstance.getKey();
+                    gui.setShouldAutoYield(key, true);
+                    if (stackInstance.equals(gameView.peekStack())) {
+                        //auto-pass priority if ability is on top of stack
+                        controller.passPriority();
+                    }
+                }
+                break;
+            case Keys.N: //auto-yield, always no, Ctrl+N on Android, N when running on desktop
+                if (KeyInputAdapter.isCtrlKeyDown() || GuiBase.getInterface().isRunningOnDesktop()) {
+                    final IGuiGame gui = MatchController.instance;
+                    final IGameController controller = MatchController.instance.getGameController();
+                    final GameView gameView = MatchController.instance.getGameView();
+                    final FCollectionView<StackItemView> stack = MatchController.instance.getGameView().getStack();
+                    if (stack.isEmpty()) {
+                        return false;
+                    }
+                    StackItemView stackInstance = stack.getLast();
+                    if (!stackInstance.isAbility()) {
+                        return false;
+                    }
+                    final int triggerID = stackInstance.getSourceTrigger();
+
+                    if (gui.shouldAlwaysDeclineTrigger(triggerID)) {
+                        gui.setShouldAlwaysAskTrigger(triggerID);
+                    }
+                    else {
+                        gui.setShouldAlwaysDeclineTrigger(triggerID);
+                        if (stackInstance.equals(gameView.peekStack())) {
+                            //auto-no if ability is on top of stack
+                            controller.selectButtonCancel();
+                        }
+                    }
+
+                    final String key = stackInstance.getKey();
+                    gui.setShouldAutoYield(key, true);
+                    if (stackInstance.equals(gameView.peekStack())) {
+                        //auto-pass priority if ability is on top of stack
+                        controller.passPriority();
+                    }
+                }
+                break;
         }
         return super.keyDown(keyCode);
     }
@@ -667,10 +768,6 @@ public class MatchScreen extends FScreen {
             float x = 0;
             float y;
             float w = getWidth();
-            Color color = Color.CYAN;
-            GameView game = MatchController.instance.getGameView();
-            CombatView combat = game.getCombat();
-            PlayerView currentPlayer = MatchController.instance.getCurrentPlayer();
 
             //field separator lines
             if (!Forge.isLandscapeMode()) {

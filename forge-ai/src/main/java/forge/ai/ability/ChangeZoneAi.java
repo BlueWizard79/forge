@@ -137,13 +137,13 @@ public class ChangeZoneAi extends SpellAbilityAi {
             if (aiLogic.equals("Always")) {
                 return true;
             } else if (aiLogic.startsWith("SacAndUpgrade")) { // Birthing Pod, Natural Order, etc.
-                return this.doSacAndUpgradeLogic(aiPlayer, sa);
+                return doSacAndUpgradeLogic(aiPlayer, sa);
             } else if (aiLogic.startsWith("SacAndRetFromGrave")) { // Recurring Nightmare, etc.
-                return this.doSacAndReturnFromGraveLogic(aiPlayer, sa);
+                return doSacAndReturnFromGraveLogic(aiPlayer, sa);
             } else if (aiLogic.equals("Necropotence")) {
                 return SpecialCardAi.Necropotence.consider(aiPlayer, sa);
             } else if (aiLogic.equals("SameName")) { // Declaration in Stone
-                return this.doSameNameLogic(aiPlayer, sa);
+                return doSameNameLogic(aiPlayer, sa);
             } else if (aiLogic.equals("ReanimateAll")) {
                 return SpecialCardAi.LivingDeath.consider(aiPlayer, sa);
             } else if (aiLogic.equals("TheScarabGod")) {
@@ -339,8 +339,10 @@ public class ChangeZoneAi extends SpellAbilityAi {
         if (tgt != null && tgt.canTgtPlayer()) {
             boolean isCurse = sa.isCurse();
             if (isCurse && sa.canTarget(opponent)) {
+                sa.resetTargets();
                 sa.getTargets().add(opponent);
             } else if (!isCurse && sa.canTarget(ai)) {
+                sa.resetTargets();
                 sa.getTargets().add(ai);
             }
             pDefined = sa.getTargets().getTargetPlayers();
@@ -744,6 +746,18 @@ public class ChangeZoneAi extends SpellAbilityAi {
                         }
                     }
                 }
+                // predict Legendary cards already present
+                if (!ai.getGame().getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noLegendRule)) {
+                    boolean nothingWillReturn = true;
+                    for (final Card c : retrieval) {
+                        if (!(c.getType().isLegendary() && ai.isCardInPlay(c.getName()))) {
+                            nothingWillReturn = false;
+                        }
+                    }
+                    if (nothingWillReturn) {
+                        return false;
+                    }
+                }
             }
         }
 
@@ -923,7 +937,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
             return false;
         }
 
-        immediately |= ComputerUtil.playImmediately(ai, sa);
+        immediately = immediately || ComputerUtil.playImmediately(ai, sa);
 
         // Narrow down the list:
         if (origin.contains(ZoneType.Battlefield)) {
@@ -1320,8 +1334,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
         // Don't blink cards that will die.
         aiPermanents = ComputerUtil.getSafeTargets(ai, sa, aiPermanents);
         if (!game.getStack().isEmpty()) {
-            final List<GameObject> objects = ComputerUtil
-                    .predictThreatenedObjects(ai, sa);
+            final List<GameObject> objects = ComputerUtil.predictThreatenedObjects(ai, sa);
 
             final List<Card> threatenedTargets = new ArrayList<>();
 
@@ -1486,7 +1499,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
             return doExileCombatThreatLogic(ai, sa);
         }
 
-        if (sa.getTargetRestrictions() == null) {
+        if (!sa.usesTargeting()) {
             // Just in case of Defined cases
             if (!mandatory && sa.hasParam("AttachedTo")) {
                 final List<Card> list = AbilityUtils.getDefinedCards(sa.getHostCard(), sa.getParam("AttachedTo"), sa);
@@ -1611,7 +1624,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
             if (CardLists.filter(hand, Presets.LANDS).isEmpty() && CardLists.filter(decider.getCardsIn(ZoneType.Battlefield), Presets.LANDS).size() < 4) {
                 boolean canCastSomething = false;
                 for (Card cardInHand : hand) {
-                    canCastSomething |= ComputerUtilMana.hasEnoughManaSourcesToCast(cardInHand.getFirstSpellAbility(), decider);
+                    canCastSomething = canCastSomething || ComputerUtilMana.hasEnoughManaSourcesToCast(cardInHand.getFirstSpellAbility(), decider);
                 }
                 if (!canCastSomething) {
                     System.out.println("Pulling a land as there are none in hand, less than 4 on the board, and nothing in hand is castable.");

@@ -96,15 +96,20 @@ public class FCardPanel extends FDisplayObject {
     public void draw(Graphics g) {
         if (card == null) { return; }
         boolean animate = Forge.animatedCardTapUntap;
+        float mod = isHighlighted()||isHovered() ? getWidth()/16f : 0f;
         float padding = getPadding();
-        float x = padding;
-        float y = padding;
-        float w = getWidth() - 2 * padding;
-        float h = getHeight() - 2 * padding;
+        float x = padding-mod/2;
+        float y = padding-mod/2;
+        float w = (getWidth() - 2 * padding)+mod;
+        float xoffset = w / 2f;
+        float h = (getHeight() - 2 * padding)+mod;
+        float yoffset = h / 2f;
         if (w == h) { //adjust width if needed to make room for tapping
             w = h / ASPECT_RATIO;
         }
         float edgeOffset = w / 2f;
+
+        card.setTargetingOriginVector(tapped? this.screenPos.x + yoffset : this.screenPos.x + edgeOffset, tapped ? this.screenPos.y + h - yoffset/1.5f : this.screenPos.y + h - xoffset);
 
         if (!ZoneType.Battlefield.equals(card.getZone())) {
             rotateTransform(g, x, y, w, h, edgeOffset, false);

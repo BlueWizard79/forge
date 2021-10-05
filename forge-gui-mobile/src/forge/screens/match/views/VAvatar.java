@@ -106,28 +106,16 @@ public class VAvatar extends FDisplayObject {
     }
 
     public Vector2 getTargetingArrowOrigin() {
-        return getTargetingArrowOrigin(2);
-    }
-    public Vector2 getTargetingArrowOrigin(int numplayers) {
-        Vector2 origin = new Vector2(screenPos.x, screenPos.y);
-
-        float modx = numplayers > 2 ? 0.25f : 0.75f;
-
-        origin.x += WIDTH * modx;
-        if (origin.y < MatchController.getView().getHeight() / numplayers) {
-            origin.y += HEIGHT * 0.75f; //target bottom right corner if on top half of screen
-        }
-        else {
-            origin.y += HEIGHT * 0.25f; //target top right corner if on bottom half of screen
-        }
-
+        Vector2 origin = new Vector2(this.screenPos.x, this.screenPos.y);
+        origin.x += getWidth()-getWidth()/3.5f; //move a little bit so the avatar face is still shown...
+        origin.y += getWidth()/2f;
         return origin;
     }
 
     @Override
     public void draw(Graphics g) {
-        float w = getWidth();
-        float h = getHeight();
+        float w = isHovered() ? getWidth()/16f+getWidth() : getWidth();
+        float h = isHovered() ? getWidth()/16f+getHeight() : getHeight();
 
         if (avatarAnimation != null && !MatchController.instance.getGameView().isMatchOver()) {
             if (player.wasAvatarLifeChanged()) {

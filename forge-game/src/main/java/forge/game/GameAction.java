@@ -165,7 +165,7 @@ public class GameAction {
         // need to check before it enters
         if (c.isAura() && !c.isAttachedToEntity() && toBattlefield && (zoneFrom == null || !zoneFrom.is(ZoneType.Stack))) {
             boolean found = false;
-            if (Iterables.any(game.getPlayers(),PlayerPredicates.canBeAttached(c))) {
+            if (Iterables.any(game.getPlayers(), PlayerPredicates.canBeAttached(c))) {
                 found = true;
             }
             if (Iterables.any((CardCollectionView) params.get(AbilityKey.LastStateBattlefield), CardPredicates.canBeAttached(c))) {
@@ -2342,8 +2342,7 @@ public class GameAction {
                 source.attachToEntity(pa);
                 return true;
             }
-        }
-        else {
+        } else {
             List<ZoneType> zones = Lists.newArrayList(tgt.getZone());
             CardCollection list = new CardCollection();
 

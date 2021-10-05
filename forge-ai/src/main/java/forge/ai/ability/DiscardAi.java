@@ -3,7 +3,6 @@ package forge.ai.ability;
 import java.util.Collections;
 import java.util.List;
 
-import forge.ai.AiAttackController;
 import forge.ai.ComputerUtil;
 import forge.ai.ComputerUtilAbility;
 import forge.ai.ComputerUtilCost;
@@ -20,8 +19,8 @@ import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.PlayerActionConfirmMode;
 import forge.game.player.PlayerCollection;
+import forge.game.player.PlayerPredicates;
 import forge.game.spellability.SpellAbility;
-import forge.game.spellability.TargetRestrictions;
 import forge.game.zone.ZoneType;
 import forge.util.MyRandom;
 
@@ -29,7 +28,6 @@ public class DiscardAi extends SpellAbilityAi {
 
     @Override
     protected boolean canPlayAI(Player ai, SpellAbility sa) {
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
         final Card source = sa.getHostCard();
         final String sourceName = ComputerUtilAbility.getAbilitySourceName(sa);
         final Cost abCost = sa.getPayCosts();
@@ -51,7 +49,7 @@ public class DiscardAi extends SpellAbilityAi {
 
         final boolean humanHasHand = ai.getWeakestOpponent().getCardsIn(ZoneType.Hand).size() > 0;
 
-        if (tgt != null) {
+        if (sa.usesTargeting()) {
             if (!discardTargetAI(ai, sa)) {
                 return false;
             }
@@ -148,7 +146,6 @@ public class DiscardAi extends SpellAbilityAi {
     } // discardCanPlayAI()
 
     private boolean discardTargetAI(final Player ai, final SpellAbility sa) {
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
         final PlayerCollection opps = ai.getOpponents();
         Collections.shuffle(opps);
         for (Player opp : opps) {
@@ -157,7 +154,7 @@ public class DiscardAi extends SpellAbilityAi {
             } else if (!opp.canDiscardBy(sa)) { // e.g. Tamiyo, Collector of Tales
                 continue;
             }
-            if (tgt != null) {
+            if (sa.usesTargeting()) {
                 if (sa.canTarget(opp)) {
                     sa.resetTargets();
                     sa.getTargets().add(opp);
@@ -170,11 +167,11 @@ public class DiscardAi extends SpellAbilityAi {
 
     @Override
     protected boolean doTriggerAINoCost(Player ai, SpellAbility sa, boolean mandatory) {
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
-        if (tgt != null) {
-            Player opp = AiAttackController.choosePreferredDefenderPlayer(ai);
+        if (sa.usesTargeting()) {
+            PlayerCollection targetableOpps = ai.getOpponents().filter(PlayerPredicates.isTargetableBy(sa));
+            Player opp = targetableOpps.min(PlayerPredicates.compareByLife());
             if (!discardTargetAI(ai, sa)) {
-                if (mandatory && sa.canTarget(opp)) {
+                if (mandatory && opp != null) {
                     sa.getTargets().add(opp);
                 } else if (mandatory && sa.canTarget(ai)) {
                     sa.getTargets().add(ai);
@@ -206,8 +203,7 @@ public class DiscardAi extends SpellAbilityAi {
     public boolean chkAIDrawback(SpellAbility sa, Player ai) {
         // Drawback AI improvements
         // if parent draws cards, make sure cards in hand + cards drawn > 0
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
-        if (tgt != null) {
+        if (sa.usesTargeting()) {
             return discardTargetAI(ai, sa);
         }
         // TODO: check for some extra things

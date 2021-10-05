@@ -97,12 +97,12 @@ public class AttachEffect extends SpellAbilityEffect {
             FCollection<GameEntity> targets = new FCollection<>(getDefinedEntitiesOrTargeted(sa, "Defined"));
             if (targets.isEmpty()) {
                 return;
-            } else {
-                String title = Localizer.getInstance().getMessage("lblChoose");
-                Map<String, Object> params = Maps.newHashMap();
-                params.put("Attachments", attachments);
-                attachTo = chooser.getController().chooseSingleEntityForEffect(targets, sa, title, params);
             }
+            String title = Localizer.getInstance().getMessage("lblChoose");
+            Map<String, Object> params = Maps.newHashMap();
+            params.put("Attachments", attachments);
+            attachTo = chooser.getController().chooseSingleEntityForEffect(targets, sa, title, params);
+
         }
 
         String attachToName = null;
@@ -122,6 +122,9 @@ public class AttachEffect extends SpellAbilityEffect {
                 continue;
 
             attachment.attachToEntity(attachTo);
+            if (sa.hasParam("RememberAttached") && attachment.isAttachedToEntity(attachTo)) {
+                source.addRemembered(attachment);
+            }
         }
 
         if (source.isAura() && sa.isSpell()) {

@@ -23,10 +23,6 @@ import com.badlogic.gdx.math.Vector2;
 import forge.Graphics;
 import forge.assets.FSkinColor;
 import forge.assets.FSkinColor.Colors;
-import forge.game.card.CardView;
-import forge.game.player.PlayerView;
-import forge.screens.match.views.VCardDisplayArea.CardAreaPanel;
-import forge.toolbox.FDisplayObject;
 import forge.util.Utils;
 
 public class TargetingOverlay {
@@ -63,42 +59,6 @@ public class TargetingOverlay {
     private TargetingOverlay() {
     }
 
-    public static void drawArrow(Graphics g, CardView startCard, CardView endCard) {
-        ArcConnection connects;
-        if (startCard.getOwner().isOpponentOf((endCard.getOwner()))) {
-            if (startCard.isAttacking()) {
-                connects = ArcConnection.FoesAttacking;
-            } else {
-                connects = ArcConnection.FoesBlocking;
-            }
-        } else {
-            connects = ArcConnection.Friends;
-        }
-
-        drawArrow(g, CardAreaPanel.get(startCard).getTargetingArrowOrigin(),
-                    CardAreaPanel.get(endCard).getTargetingArrowOrigin(),
-                    connects);
-    }
-    public static void drawArrow(Graphics g, CardView startCard, PlayerView targetPlayer, int numplayers) {
-        drawArrow(g, CardAreaPanel.get(startCard).getTargetingArrowOrigin(),
-                MatchController.getView().getPlayerPanel(targetPlayer).getAvatar().getTargetingArrowOrigin(numplayers),
-                ArcConnection.FoesAttacking);
-    }
-    public static void drawArrow(Graphics g, Vector2 start, CardView targetCard, ArcConnection connects) {
-        drawArrow(g, start,
-                CardAreaPanel.get(targetCard).getTargetingArrowOrigin(),
-                connects);
-    }
-    public static void drawArrow(Graphics g, Vector2 start, PlayerView targetPlayer, ArcConnection connects) {
-        drawArrow(g, start,
-                MatchController.getView().getPlayerPanel(targetPlayer).getAvatar().getTargetingArrowOrigin(),
-                connects);
-    }
-    public static void drawArrow(Graphics g, FDisplayObject startCardDisplay, FDisplayObject endCardDisplay, ArcConnection connects) {
-        drawArrow(g, CardAreaPanel.getTargetingArrowOrigin(startCardDisplay, false),
-                CardAreaPanel.getTargetingArrowOrigin(endCardDisplay, false),
-                connects);
-    }
     public static void drawArrow(Graphics g, Vector2 start, Vector2 end, ArcConnection connects) {
         if (start == null || end == null) { return; }
 

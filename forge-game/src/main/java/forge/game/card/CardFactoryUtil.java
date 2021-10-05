@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import forge.game.event.GameEventCardForetold;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Predicate;
@@ -2853,6 +2854,7 @@ public class CardFactoryUtil {
                     }
                     String sb = TextUtil.concatWithSpace(getActivatingPlayer().toString(),"has foretold.");
                     game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
+                    game.fireEvent(new GameEventCardForetold(getActivatingPlayer()));
                 }
             };
             final StringBuilder sbDesc = new StringBuilder();
@@ -3187,6 +3189,10 @@ public class CardFactoryUtil {
                         return false;
                     }
 
+                    if (this.getHostCard().getGame().getStack().isSplitSecondOnStack()) {
+                        return false;
+                    }
+
                     if (StaticAbilityCantBeCast.cantBeCastAbility(this, this.getHostCard(), this.getActivatingPlayer())) {
                         return false;
                     }
@@ -3195,7 +3201,7 @@ public class CardFactoryUtil {
                         return true;
                     }
 
-                    return this.getHostCard().getOwner().canCastSorcery();
+                    return this.getHostCard().getOwner().canCastSorcery() || this.getHostCard().getFirstSpellAbility().withFlash(this.getHostCard(), this.getActivatingPlayer());
                 }
 
                 @Override

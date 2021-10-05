@@ -429,7 +429,7 @@ public class PumpAi extends PumpAiBase {
         final Card source = sa.getHostCard();
         final boolean isFight = "Fight".equals(sa.getParam("AILogic")) || "PowerDmg".equals(sa.getParam("AILogic"));
 
-        immediately |= ComputerUtil.playImmediately(ai, sa);
+        immediately = immediately || ComputerUtil.playImmediately(ai, sa);
 
         if (!mandatory
                 && !immediately
@@ -559,7 +559,7 @@ public class PumpAi extends PumpAiBase {
             list = CardLists.filter(list, Predicates.or(CardPredicates.Presets.CREATURES, new Predicate<Card>() {
                 @Override
                 public boolean apply(Card card) {
-                    for (SpellAbility sa: card.getSpellAbilities()) {
+                    for (SpellAbility sa : card.getSpellAbilities()) {
                         if (sa.isAbility()) {
                             return true;
                         }

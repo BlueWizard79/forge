@@ -83,6 +83,8 @@ public class Forge implements ApplicationListener {
     public static boolean autoCache = false;
     public static int lastButtonIndex = 0;
     public static String CJK_Font = "";
+    public static int hoveredCount = 0;
+    public static boolean afterDBloaded = false;
 
     public static ApplicationListener getApp(Clipboard clipboard0, IDeviceAdapter deviceAdapter0, String assetDir0, boolean value, boolean androidOrientation, int totalRAM, boolean isTablet, int AndroidAPI, String AndroidRelease, String deviceName) {
         if (GuiBase.getInterface() == null) {
@@ -250,6 +252,7 @@ public class Forge implements ApplicationListener {
         Gdx.input.setCatchKey(Keys.MENU, true);
         openHomeScreen(-1, null); //default for startup
         splashScreen = null;
+        afterDBloaded = true;
 
         boolean isLandscapeMode = isLandscapeMode();
         if (isLandscapeMode) { //open preferred new game screen by default if landscape mode
@@ -920,11 +923,24 @@ public class Forge implements ApplicationListener {
 
         //mouseMoved and scrolled events for desktop version
         private int mouseMovedX, mouseMovedY;
-
         @Override
-        public boolean mouseMoved(int x, int y) {
-            mouseMovedX = x;
-            mouseMovedY = y;
+        public boolean mouseMoved(int screenX, int screenY) {
+            mouseMovedX = screenX;
+            mouseMovedY = screenY;
+            //todo: mouse listener for android?
+            if (GuiBase.isAndroid())
+                return true;
+            hoveredCount = 0;
+            //reset
+            try {
+                for (FDisplayObject listener : potentialListeners) {
+                    listener.setHovered(false);
+                }
+            }
+            catch (Exception ex) {
+                BugReporter.reportException(ex);
+            }
+            updatePotentialListeners(screenX, screenY);
             return true;
         }
 

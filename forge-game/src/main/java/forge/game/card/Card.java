@@ -2225,6 +2225,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         final String linebreak = "\r\n\r\n";
         final String grayTag = "<span style=\"color:gray;\">";
         final String endTag = "</span>";
+        boolean useGrayTag = true;
+        if (getGame() != null && getController() != null && game.getAge() != GameStage.Play) {
+            useGrayTag = game.getRules().useGrayText();
+        }
         final CardTypeView type = state.getType();
 
         final StringBuilder sb = new StringBuilder();
@@ -2332,9 +2336,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                     disabled = getGame() != null && !trig.requirementsCheck(getGame());
                 }
                 String trigStr = trig.replaceAbilityText(trig.toString(), state);
-                if (disabled) sb.append(grayTag);
+                if (disabled && useGrayTag) sb.append(grayTag);
                 sb.append(trigStr.replaceAll("\\\\r\\\\n", "\r\n"));
-                if (disabled) sb.append(endTag);
+                if (disabled && useGrayTag) sb.append(endTag);
                 sb.append(linebreak);
             }
         }
@@ -2348,9 +2352,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 final String stAbD = stAb.toString();
                 if (!stAbD.equals("")) {
                     boolean disabled = getGame() != null && getController() != null && game.getAge() != GameStage.Play && !stAb.checkConditions();
-                    if (disabled) sb.append(grayTag);
+                    if (disabled && useGrayTag) sb.append(grayTag);
                     sb.append(stAbD);
-                    if (disabled) sb.append(endTag);
+                    if (disabled && useGrayTag) sb.append(endTag);
                     sb.append(linebreak);
                 }
             }
@@ -2431,7 +2435,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
                         String currentName = host.getName();
                         String desc1 = TextUtil.fastReplace(stAb.toString(), "CARDNAME", currentName);
-                        String desc = TextUtil.fastReplace(desc1,"NICKNAME", currentName.split(",")[0]);
+                        String desc = TextUtil.fastReplace(desc1,"NICKNAME", currentName.split(" ")[0].replace(",", ""));
                         if (host.getEffectSource() != null) {
                             desc = TextUtil.fastReplace(desc, "EFFECTSOURCE", host.getEffectSource().getName());
                         }
@@ -2451,9 +2455,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 // Class second part is a static ability that grants the other abilities
                 for (final StaticAbility st : state.getStaticAbilities()) {
                     if (st.isClassLevelNAbility(level) && !st.isSecondary()) {
-                        if (disabled) sb.append(grayTag);
+                        if (disabled && useGrayTag) sb.append(grayTag);
                         sb.append(st.toString());
-                        if (disabled) sb.append(endTag);
+                        if (disabled && useGrayTag) sb.append(endTag);
                         sb.append(linebreak);
                     }
                 }
@@ -3426,6 +3430,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final boolean isAttachedToEntity() {
         return entityAttachedTo != null;
+    }
+    public final boolean isAttachedToEntity(final GameEntity e) {
+        return (entityAttachedTo == e);
     }
 
     public final Card getAttachedTo() {

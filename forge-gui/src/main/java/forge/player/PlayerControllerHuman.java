@@ -465,18 +465,18 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             return null;
         }
 
+        String announceTitle = ability.getParamOrDefault("AnnounceTitle", announce);
         if (cost.isMandatory()) {
-            return chooseNumber(ability, localizer.getMessage("lblChooseAnnounceForCard", announce,
+            return chooseNumber(ability, localizer.getMessage("lblChooseAnnounceForCard", announceTitle,
                     CardTranslation.getTranslatedName(ability.getHostCard().getName())) , min, max);
-        } else {
-            if ("NumTimes".equals(announce)) {
-                return getGui().getInteger(localizer.getMessage("lblHowManyTimesToPay", ability.getPayCosts().getTotalMana(),
-                        CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
-            } else {
-                return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announce,
-                        CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
-            }
         }
+        if ("NumTimes".equals(announce)) {
+            return getGui().getInteger(localizer.getMessage("lblHowManyTimesToPay", ability.getPayCosts().getTotalMana(),
+                    CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
+        }
+        return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announceTitle,
+                CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
+
     }
 
     @Override
@@ -1575,7 +1575,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             labels = ImmutableList.of(localizer.getMessage("lblHeads"), localizer.getMessage("lblTails"));
             break;
         case TapOrUntap:
-            labels = ImmutableList.of(localizer.getMessage("lblTap"), localizer.getMessage("lblUntap"));
+            labels = ImmutableList.of(StringUtils.capitalize(localizer.getMessage("lblTap")),
+                    localizer.getMessage("lblUntap"));
             break;
         case OddsOrEvens:
             labels = ImmutableList.of(localizer.getMessage("lblOdds"), localizer.getMessage("lblEvens"));
@@ -2497,7 +2498,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             } else {
                 card.addCounter(counter, count, card.getController(), null, false, null);
             }
-
         }
 
         /*

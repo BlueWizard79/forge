@@ -17,7 +17,6 @@ import forge.game.player.Player;
 import forge.game.player.PlayerActionConfirmMode;
 import forge.game.player.PlayerCollection;
 import forge.game.spellability.SpellAbility;
-import forge.game.spellability.TargetRestrictions;
 import forge.game.zone.ZoneType;
 import forge.util.MyRandom;
 
@@ -45,9 +44,7 @@ public class RearrangeTopOfLibraryAi extends SpellAbilityAi {
             return false;
         }
 
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
-
-        if (tgt != null) {
+        if (sa.usesTargeting()) {
             // ability is targeted
             sa.resetTargets();
 

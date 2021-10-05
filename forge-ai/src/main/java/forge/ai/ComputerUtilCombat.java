@@ -522,7 +522,6 @@ public class ComputerUtilCombat {
         return resultingPoison(ai, combat) > 9;
     }
 
-
     // This calculates the amount of damage a blockgang can deal to the attacker
     // (first strike not supported)
     /**
@@ -2320,7 +2319,7 @@ public class ComputerUtilCombat {
 	                continue;
 	            }
 	            if (c != combatant) {
-	            	if (ability.getTargetRestrictions() == null || !ability.canTarget(combatant)) {
+	            	if (!ability.usesTargeting() || !ability.canTarget(combatant)) {
 	            		continue;
 	            	}
 	            	//the AI will will fail to predict tapping of attackers
