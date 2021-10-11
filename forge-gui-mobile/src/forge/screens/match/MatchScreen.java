@@ -349,32 +349,6 @@ public class MatchScreen extends FScreen {
         return new Rectangle(0, VPrompt.HEIGHT, scroller.getWidth(), getHeight() - 2 * VPrompt.HEIGHT);
     }
 
-    private PlayerView lastPlayer;
-    @Override
-    public void draw(Graphics g) {
-        super.draw(g);
-        final GameView game = MatchController.instance.getGameView();
-        if (game == null) { return; }
-        if (game.getPhase() != null) {
-            final PhaseType ph = game.getPhase();
-            if (ph.isBefore(PhaseType.END_OF_TURN))
-                lastPlayer = game.getPlayerTurn();
-            //reset phase labels
-            resetAllPhaseButtons();
-            if (lastPlayer != null && PhaseType.CLEANUP.equals(ph)) {
-                //set phaselabel
-                final PhaseLabel phaseLabel = getPlayerPanel(lastPlayer).getPhaseIndicator().getLabel(ph);
-                if (phaseLabel != null)
-                    phaseLabel.setActive(true);
-            } else if (game.getPlayerTurn() != null) {
-                //set phaselabel
-                final PhaseLabel phaseLabel = getPlayerPanel(game.getPlayerTurn()).getPhaseIndicator().getLabel(ph);
-                if (phaseLabel != null)
-                    phaseLabel.setActive(true);
-            }
-        }
-    }
-
     @Override
     protected void drawOverlay(Graphics g) {
         final GameView game = MatchController.instance.getGameView();
@@ -415,36 +389,33 @@ public class MatchScreen extends FScreen {
         final CombatView combat = game.getCombat();
         if (combat != null) {
             for (final CardView attacker : combat.getAttackers()) {
+                final Vector2 vAttacker = CardAreaPanel.get(attacker).getTargetingArrowOrigin();
                 //connect each attacker with planeswalker it's attacking if applicable
                 final GameEntityView defender = combat.getDefender(attacker);
                 if (defender instanceof CardView) {
-                    final Vector2 vDefender = new Vector2(((CardView) defender).getTargetingOriginVectorX(), ((CardView) defender).getTargetingOriginVectorY());
-                    final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
+                    final Vector2 vDefender = CardAreaPanel.get(((CardView) defender)).getTargetingArrowOrigin();
                     TargetingOverlay.drawArrow(g, vAttacker, vDefender, TargetingOverlay.ArcConnection.FoesAttacking);
                 }
                 final Iterable<CardView> blockers = combat.getBlockers(attacker);
                 if (blockers != null) {
                     //connect each blocker with the attacker it's blocking
                     for (final CardView blocker : blockers) {
-                        final Vector2 vBlocker = new Vector2(blocker.getTargetingOriginVectorX(), blocker.getTargetingOriginVectorY());
-                        final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
+                        final Vector2 vBlocker = CardAreaPanel.get(blocker).getTargetingArrowOrigin();
                         TargetingOverlay.drawArrow(g, vBlocker, vAttacker, TargetingOverlay.ArcConnection.FoesBlocking);
                     }
                 }
                 final Iterable<CardView> plannedBlockers = combat.getPlannedBlockers(attacker);
                 if (plannedBlockers != null) {
                     //connect each planned blocker with the attacker it's blocking
-                    for (final CardView blocker : plannedBlockers) {
-                        final Vector2 vBlocker = new Vector2(blocker.getTargetingOriginVectorX(), blocker.getTargetingOriginVectorY());
-                        final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
-                        TargetingOverlay.drawArrow(g, vBlocker, vAttacker, TargetingOverlay.ArcConnection.FoesBlocking);
+                    for (final CardView plannedBlocker : plannedBlockers) {
+                        final Vector2 vPlannedBlocker = CardAreaPanel.get(plannedBlocker).getTargetingArrowOrigin();
+                        TargetingOverlay.drawArrow(g, vPlannedBlocker, vAttacker, TargetingOverlay.ArcConnection.FoesBlocking);
                     }
                 }
                 //player
                 if (is4Player() || is3Player()) {
                     for (final PlayerView p : game.getPlayers()) {
                         if (combat.getAttackersOf(p).contains(attacker)) {
-                            final Vector2 vAttacker = new Vector2(attacker.getTargetingOriginVectorX(), attacker.getTargetingOriginVectorY());
                             final Vector2 vPlayer = MatchController.getView().getPlayerPanel(p).getAvatar().getTargetingArrowOrigin();
                             TargetingOverlay.drawArrow(g, vAttacker, vPlayer, TargetingOverlay.ArcConnection.FoesAttacking);
                         }
@@ -456,9 +427,9 @@ public class MatchScreen extends FScreen {
         for (VPlayerPanel playerPanel : playerPanels.values()) {
             for (CardView card : playerPanel.getField().getRow1().getOrderedCards()) {
                 if (card != null) {
+                    final Vector2 vCard = CardAreaPanel.get(card).getTargetingArrowOrigin();
                     if (card.getPairedWith() != null) {
-                        final Vector2 vCard = new Vector2(card.getTargetingOriginVectorX(), card.getTargetingOriginVectorY());
-                        final Vector2 vPairedWith = new Vector2(card.getPairedWith().getTargetingOriginVectorX(), card.getPairedWith().getTargetingOriginVectorY());
+                        final Vector2 vPairedWith = CardAreaPanel.get(card.getPairedWith()).getTargetingArrowOrigin();
                         TargetingOverlay.drawArrow(g, vCard, vPairedWith, TargetingOverlay.ArcConnection.Friends);
                     }
                 }
@@ -467,6 +438,17 @@ public class MatchScreen extends FScreen {
 
         if (activeEffect != null) {
             activeEffect.draw(g, 10, 10, 100, 100);
+        }
+
+        if (game.getNeedsPhaseRedrawn()) {
+            resetAllPhaseButtons();
+            if (game.getPlayerTurn() != null && game.getPhase() != null) {
+                final PhaseLabel phaseLabel = getPlayerPanel(game.getPlayerTurn()).getPhaseIndicator().getLabel(game.getPhase());
+                if (phaseLabel != null) {
+                    phaseLabel.setActive(true);
+                    game.clearNeedsPhaseRedrawn();
+                }
+            }
         }
     }
 

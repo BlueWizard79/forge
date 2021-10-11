@@ -165,7 +165,7 @@ public class DamageDealAi extends DamageAiBase {
             dmg = 2;
         } else if ("OpponentHasCreatures".equals(logic)) {
             for (Player opp : ai.getOpponents()) {
-                if (!opp.getCreaturesInPlay().isEmpty()){
+                if (!opp.getCreaturesInPlay().isEmpty()) {
                     return true;
                 }
             }
@@ -287,7 +287,7 @@ public class DamageDealAi extends DamageAiBase {
         }
 
         if ((damage.equals("X") && sa.getSVar(damage).equals("Count$xPaid")) ||
-                sourceName.equals("Crater's Claws")){
+                sourceName.equals("Crater's Claws")) {
             // If I can kill my target by paying less mana, do it
             if (sa.usesTargeting() && !sa.getTargets().isTargetingAnyPlayer() && !sa.isDividedAsYouChoose()) {
                 int actualPay = dmg;
@@ -330,7 +330,6 @@ public class DamageDealAi extends DamageAiBase {
      */
     private Card dealDamageChooseTgtC(final Player ai, final SpellAbility sa, final int d, final boolean noPrevention,
             final Player pl, final boolean mandatory) {
-
         // wait until stack is empty (prevents duplicate kills)
         if (!sa.isTrigger() && !ai.getGame().getStack().isEmpty()) {
             //TODO:all removal APIs require a check to prevent duplicate kill/bounce/exile/etc.
@@ -382,15 +381,20 @@ public class DamageDealAi extends DamageAiBase {
             return null;
         }
 
+        // try unfiltered now
+        hPlay = getTargetableCards(pl, sa, pl, tgt, activator, source, game);
+        List<Card> controlledByOpps = CardLists.filterControlledBy(hPlay, ai.getOpponents());
+
         if (!hPlay.isEmpty()) {
             if (pl.isOpponentOf(ai) && activator.equals(ai)) {
                 if (sa.getTargetRestrictions().canTgtPlaneswalker()) {
-                    targetCard = ComputerUtilCard.getBestPlaneswalkerAI(hPlay);
+                    targetCard = ComputerUtilCard.getBestPlaneswalkerAI(controlledByOpps);
                 }
                 if (targetCard == null) {
-                    targetCard = ComputerUtilCard.getBestCreatureAI(hPlay);
+                    targetCard = ComputerUtilCard.getBestCreatureAI(controlledByOpps);
                 }
-            } else {
+            }
+            if (targetCard == null) {
                 targetCard = ComputerUtilCard.getWorstCreatureAI(hPlay);
             }
 
@@ -531,7 +535,7 @@ public class DamageDealAi extends DamageAiBase {
 
         if ("PowerDmg".equals(logic)) {
             // check if it is better to target the player instead, the original target is already set in PumpAi.pumpTgtAI()
-            if (tgt.canTgtCreatureAndPlayer() && shouldTgtP(ai, sa, dmg, noPrevention)){
+            if (tgt.canTgtCreatureAndPlayer() && shouldTgtP(ai, sa, dmg, noPrevention)) {
                 sa.resetTargets();
                 sa.getTargets().add(enemy);
             }
@@ -715,7 +719,6 @@ public class DamageDealAi extends DamageAiBase {
                         break;
                     }
                 }
-
             } else if (tgt.canTgtCreature() || tgt.canTgtPlaneswalker()) {
                 final Card c = dealDamageChooseTgtC(ai, sa, dmg, noPrevention, enemy, mandatory);
                 if (c != null) {
@@ -727,7 +730,13 @@ public class DamageDealAi extends DamageAiBase {
                     }
                     tcs.add(c);
                     if (divided) {
-                        final int assignedDamage = ComputerUtilCombat.getEnoughDamageToKill(c, dmg, source, false, noPrevention);
+                        // if only other legal targets hurt own stuff just dump all dmg into this
+                        final Card nextTarget = dealDamageChooseTgtC(ai, sa, dmg, noPrevention, enemy, mandatory);
+                        boolean dump = false;
+                        if (nextTarget != null && nextTarget.getController().equals(ai)) {
+                            dump = true;
+                        }
+                        final int assignedDamage = dump ? dmg : ComputerUtilCombat.getEnoughDamageToKill(c, dmg, source, false, noPrevention);
                         if (assignedDamage <= dmg) {
                             sa.addDividedAllocation(c, assignedDamage);
                         } else {

@@ -274,16 +274,19 @@ public class GameAction {
 
                 if (zoneTo.is(ZoneType.Stack)) {
                     // when moving to stack, copy changed card information
-                    copied.setChangedCardColors(c.getChangedCardColorsMap());
-                    copied.setChangedCardColorsCharacterDefining(c.getChangedCardColorsCharacterDefiningMap());
+                    copied.setChangedCardColors(c.getChangedCardColorsTable());
+                    copied.setChangedCardColorsCharacterDefining(c.getChangedCardColorsCharacterDefiningTable());
                     copied.setChangedCardKeywords(c.getChangedCardKeywords());
-                    copied.setChangedCardTypes(c.getChangedCardTypesMap());
-                    copied.setChangedCardTypesCharacterDefining(c.getChangedCardTypesCharacterDefiningMap());
+                    copied.setChangedCardTypes(c.getChangedCardTypesTable());
+                    copied.setChangedCardTypesCharacterDefining(c.getChangedCardTypesCharacterDefiningTable());
                     copied.setChangedCardNames(c.getChangedCardNames());
                     copied.setChangedCardTraits(c.getChangedCardTraits());
 
                     copied.copyChangedTextFrom(c);
                     copied.setTimestamp(c.getTimestamp());
+
+                    // clean up changes that come from its own static abilities
+                    copied.cleanupCopiedChangesFrom(c);
 
                     // copy exiled properties when adding to stack
                     // will be cleanup later in MagicStack
@@ -1501,6 +1504,9 @@ public class GameAction {
 
     private boolean stateBasedAction903_9a(Card c) {
         if (c.isRealCommander() && c.canMoveToCommandZone()) {
+            // FIXME: need to flush the tracker to make sure the Commander is properly updated
+            c.getGame().getTracker().flush();
+
             c.setMoveToCommandZone(false);
             if (c.getOwner().getController().confirmAction(c.getSpellPermanent(), PlayerActionConfirmMode.ChangeZoneToAltDestination, c.getName() + ": If a commander is in a graveyard or in exile and that card was put into that zone since the last time state-based actions were checked, its owner may put it into the command zone.")) {
                 moveTo(c.getOwner().getZone(ZoneType.Command), c, null);

@@ -259,8 +259,7 @@ public class CardView extends GameEntityView {
                 //store alternate type for oathbreaker or signature spell for display in card text
                 if (c.getPaperCard().getRules().canBeSignatureSpell()) {
                     set(TrackableProperty.CommanderAltType, "Signature Spell");
-                }
-                else {
+                } else {
                     set(TrackableProperty.CommanderAltType, "Oathbreaker");
                 }
             } else {
@@ -486,7 +485,7 @@ public class CardView extends GameEntityView {
         });
     }
 
-    private boolean canBeShownTo(final PlayerView viewer) {
+    public boolean canBeShownTo(final PlayerView viewer) {
         if (viewer == null) { return false; }
 
         ZoneType zone = getZone();
@@ -768,7 +767,7 @@ public class CardView extends GameEntityView {
         Set<String> cantHaveKeyword = this.getCantHaveKeyword();
         if (cantHaveKeyword != null && !cantHaveKeyword.isEmpty()) {
             sb.append("\r\n\r\n");
-            for(String k : cantHaveKeyword) {
+            for (String k : cantHaveKeyword) {
                 sb.append("CARDNAME can't have or gain ".replaceAll("CARDNAME", getName()));
                 sb.append(k);
                 sb.append(".");
@@ -853,16 +852,6 @@ public class CardView extends GameEntityView {
     }
     public void updateNeedsTransformAnimation(boolean value) {
         set(TrackableProperty.NeedsTransformAnimation, value);
-    }
-    public Float getTargetingOriginVectorX() {
-        return get(TrackableProperty.TargetingOriginVectorX);
-    }
-    public Float getTargetingOriginVectorY() {
-        return get(TrackableProperty.TargetingOriginVectorY);
-    }
-    public void setTargetingOriginVector(float x, float y) {
-        set(TrackableProperty.TargetingOriginVectorX, x);
-        set(TrackableProperty.TargetingOriginVectorY, y);
     }
     void updateState(Card c) {
         updateName(c);
@@ -955,8 +944,7 @@ public class CardView extends GameEntityView {
 
         if (alternateState == null) {
             set(TrackableProperty.AlternateState, null);
-        }
-        else {
+        } else {
             CardStateView alternateStateView = alternateState.getView();
             if (getAlternateState() != alternateStateView) {
                 set(TrackableProperty.AlternateState, alternateStateView);

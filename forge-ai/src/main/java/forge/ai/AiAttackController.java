@@ -473,7 +473,7 @@ public class AiAttackController {
         if (totalAttack > 0 && ai.getLife() <= totalAttack && !ai.cantLoseForZeroOrLessLife()) {
             return true;
         }
-        return ai.getPoisonCounters() + totalPoison > 9;
+        return ai.canReceiveCounters(CounterEnumType.POISON) && ai.getPoisonCounters() + totalPoison > 9;
     }
 
     private boolean doAssault(final Player ai) {
@@ -1202,7 +1202,7 @@ public class AiAttackController {
         }
 
         // look at the attacker in relation to the blockers to establish a
-        // number of factors about the attacking  context that will be relevant
+        // number of factors about the attacking context that will be relevant
         // to the attackers decision according to the selected strategy
         for (final Card defender : validBlockers) {
             // if both isWorthLessThanAllKillers and canKillAllDangerous are false there's nothing more to check
@@ -1468,7 +1468,7 @@ public class AiAttackController {
         if (artifact != null) {
             return artifact;
         }
-        return null;//should never get here
+        return null; //should never get here
     }
 
     private void doLightmineFieldAttackLogic(List<Card> attackersLeft, int numForcedAttackers, boolean playAggro) {
