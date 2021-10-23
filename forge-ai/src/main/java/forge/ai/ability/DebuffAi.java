@@ -66,14 +66,13 @@ public class DebuffAi extends SpellAbilityAi {
         }
 
         if (!sa.usesTargeting()) {
-            List<Card> cards = AbilityUtils.getDefinedCards(sa.getHostCard(), sa.getParam("Defined"), sa);
+            List<Card> cards = AbilityUtils.getDefinedCards(source, sa.getParam("Defined"), sa);
 
 
             final Combat combat = game.getCombat();
             return Iterables.any(cards, new Predicate<Card>() {
                 @Override
                 public boolean apply(final Card c) {
-
                     if (c.getController().equals(sa.getActivatingPlayer()) || combat == null)
                         return false;
 
@@ -136,7 +135,7 @@ public class DebuffAi extends SpellAbilityAi {
             return mandatory && debuffMandatoryTarget(ai, sa, mandatory);
         }
 
-        while (sa.getTargets().size() < tgt.getMaxTargets(sa.getHostCard(), sa)) {
+        while (sa.canAddMoreTarget()) {
             Card t = null;
 
             if (list.isEmpty()) {
@@ -199,8 +198,7 @@ public class DebuffAi extends SpellAbilityAi {
      */
     private boolean debuffMandatoryTarget(final Player ai, final SpellAbility sa, final boolean mandatory) {
         final TargetRestrictions tgt = sa.getTargetRestrictions();
-        CardCollection list = CardLists.getValidCards(ai.getGame().getCardsIn(ZoneType.Battlefield), tgt.getValidTgts(),
-                sa.getActivatingPlayer(), sa.getHostCard(), sa);
+        CardCollection list = CardLists.getTargetableCards(ai.getGame().getCardsIn(ZoneType.Battlefield), sa);
 
         if (list.size() < tgt.getMinTargets(sa.getHostCard(), sa)) {
             sa.resetTargets();
@@ -216,24 +214,17 @@ public class DebuffAi extends SpellAbilityAi {
         final CardCollection forced = CardLists.filterControlledBy(list, ai);
         final Card source = sa.getHostCard();
 
-        while (sa.getTargets().size() < tgt.getMaxTargets(source, sa)) {
+        while (sa.canAddMoreTarget()) {
             if (pref.isEmpty()) {
                 break;
             }
 
-            Card c;
-            if (CardLists.getNotType(pref, "Creature").size() == 0) {
-                c = ComputerUtilCard.getBestCreatureAI(pref);
-            } else {
-                c = ComputerUtilCard.getMostExpensivePermanentAI(pref, sa, true);
-            }
-
+            Card c = ComputerUtilCard.getBestAI(pref);
             pref.remove(c);
-
             sa.getTargets().add(c);
         }
 
-        while (sa.getTargets().size() < tgt.getMinTargets(sa.getHostCard(), sa)) {
+        while (sa.getTargets().size() < tgt.getMinTargets(source, sa)) {
             if (forced.isEmpty()) {
                 break;
             }
@@ -243,7 +234,7 @@ public class DebuffAi extends SpellAbilityAi {
             if (CardLists.getNotType(forced, "Creature").size() == 0) {
                 c = ComputerUtilCard.getWorstCreatureAI(forced);
             } else {
-                c = ComputerUtilCard.getCheapestPermanentAI(forced, sa, true);
+                c = ComputerUtilCard.getCheapestPermanentAI(forced, sa, false);
             }
 
             forced.remove(c);
@@ -251,7 +242,7 @@ public class DebuffAi extends SpellAbilityAi {
             sa.getTargets().add(c);
         }
 
-        if (sa.getTargets().size() < tgt.getMinTargets(sa.getHostCard(), sa)) {
+        if (sa.getTargets().size() < tgt.getMinTargets(source, sa)) {
             sa.resetTargets();
             return false;
         }

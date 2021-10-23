@@ -56,6 +56,7 @@ import forge.game.replacement.ReplacementType;
 import forge.game.spellability.*;
 import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityCantAttackBlock;
+import forge.game.staticability.StaticAbilityCantTransform;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.Zone;
@@ -576,7 +577,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         // Proof: Morph cards never have ability that makes them flip, Ixidron does not suppose cards to be turned face up again,
         // Illusionary Mask affects cards in hand.
         if (mode.equals("Transform") && (isDoubleFaced() || hasMergedCard())) {
-            if (!canTransform()) {
+            if (!canTransform(cause)) {
                 return false;
             }
 
@@ -606,9 +607,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             // Clear old dfc trigger from the trigger handler
             getGame().getTriggerHandler().clearActiveTriggers(this, null);
             getGame().getTriggerHandler().registerActiveTrigger(this, false);
-            final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
-            runParams.put(AbilityKey.Transformer, this);
-            getGame().getTriggerHandler().runTrigger(TriggerType.Transformed, runParams, false);
+
+            if (cause == null || !cause.hasParam("ETB")) {
+                final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(this);
+                getGame().getTriggerHandler().runTrigger(TriggerType.Transformed, runParams, false);
+            }
             incrementTransformedTimestamp();
 
             return retResult;
@@ -761,7 +764,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return false;
     }
 
-    public boolean canTransform() {
+    public boolean canTransform(SpellAbility cause) {
         if (isFaceDown()) {
             return false;
         }
@@ -794,7 +797,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return false;
         }
 
-        return !hasKeyword("CARDNAME can't transform");
+        return !StaticAbilityCantTransform.cantTransform(this, cause);
     }
 
     public int getHiddenId() {
@@ -2082,7 +2085,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         || keyword.equals("Suspend") // for the ones without amount
                         || keyword.equals("Foretell") // for the ones without cost
                         || keyword.equals("Hideaway") || keyword.equals("Ascend") || keyword.equals("Totem armor")
-                        || keyword.equals("Battle cry") || keyword.equals("Devoid") || keyword.equals("Riot")) {
+                        || keyword.equals("Battle cry") || keyword.equals("Devoid") || keyword.equals("Riot")
+                        || keyword.equals("Daybound") || keyword.equals("Nightbound")
+                        || keyword.equals("Friends forever")) {
                     sbLong.append(keyword).append(" (").append(inst.getReminderText()).append(")");
                 } else if (keyword.startsWith("Partner:")) {
                     final String[] k = keyword.split(":");
@@ -2221,12 +2226,12 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     public String getAbilityText(final CardState state) {
         final String linebreak = "\r\n\r\n";
-        final String grayTag = "<span style=\"color:gray;\">";
-        final String endTag = "</span>";
         boolean useGrayTag = true;
-        if (getGame() != null && getController() != null && game.getAge() != GameStage.Play) {
+        if (getGame() != null) {
             useGrayTag = game.getRules().useGrayText();
         }
+        final String grayTag = useGrayTag ? "<span style=\"color:gray;\">" : "";
+        final String endTag = useGrayTag ? "</span>" : "";
         final CardTypeView type = state.getType();
 
         final StringBuilder sb = new StringBuilder();
@@ -2326,7 +2331,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         // Triggered abilities
         for (final Trigger trig : state.getTriggers()) {
             if (!trig.isSecondary() && !trig.isClassAbility()) {
-                boolean disabled = false;
+                boolean disabled;
                 // Disable text of other rooms
                 if (type.isDungeon()) {
                     disabled = !trig.getOverridingAbility().getParam("RoomName").equals(getCurrentRoom());
@@ -2334,9 +2339,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                     disabled = getGame() != null && !trig.requirementsCheck(getGame());
                 }
                 String trigStr = trig.replaceAbilityText(trig.toString(), state);
-                if (disabled && useGrayTag) sb.append(grayTag);
+                if (disabled) sb.append(grayTag);
                 sb.append(trigStr.replaceAll("\\\\r\\\\n", "\r\n"));
-                if (disabled && useGrayTag) sb.append(endTag);
+                if (disabled) sb.append(endTag);
                 sb.append(linebreak);
             }
         }
@@ -2350,9 +2355,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 final String stAbD = stAb.toString();
                 if (!stAbD.equals("")) {
                     boolean disabled = getGame() != null && getController() != null && game.getAge() != GameStage.Play && !stAb.checkConditions();
-                    if (disabled && useGrayTag) sb.append(grayTag);
+                    if (disabled) sb.append(grayTag);
                     sb.append(stAbD);
-                    if (disabled && useGrayTag) sb.append(endTag);
+                    if (disabled) sb.append(endTag);
                     sb.append(linebreak);
                 }
             }
@@ -2453,9 +2458,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 // Class second part is a static ability that grants the other abilities
                 for (final StaticAbility st : state.getStaticAbilities()) {
                     if (st.isClassLevelNAbility(level) && !st.isSecondary()) {
-                        if (disabled && useGrayTag) sb.append(grayTag);
+                        if (disabled) sb.append(grayTag);
                         sb.append(st.toString());
-                        if (disabled && useGrayTag) sb.append(endTag);
+                        if (disabled) sb.append(endTag);
                         sb.append(linebreak);
                     }
                 }

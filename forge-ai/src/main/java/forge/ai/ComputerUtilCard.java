@@ -205,7 +205,6 @@ public class ComputerUtilCard {
         List<Card> all = CardLists.filter(list, CardPredicates.Presets.ENCHANTMENTS);
         if (targeted) {
             all = CardLists.filter(all, new Predicate<Card>() {
-    
                 @Override
                 public boolean apply(final Card c) {
                     return c.canBeTargetedBy(spell);
@@ -360,7 +359,6 @@ public class ComputerUtilCard {
         }
     
         return cheapest;
-    
     }
 
     // returns null if list.size() == 0
@@ -752,7 +750,6 @@ public class ComputerUtilCard {
     
         for (final Entry<String, Integer> entry : map.entrySet()) {
             final String type = entry.getKey();
-            // Log.debug(type + " - " + entry.getValue());
     
             if (max < entry.getValue()) {
                 max = entry.getValue();
@@ -777,7 +774,6 @@ public class ComputerUtilCard {
     public static String getMostProminentCreatureType(final CardCollectionView list) {
         return getMostProminentType(list, CardType.getAllCreatureTypes());
     }
-
     public static String getMostProminentType(final CardCollectionView list, final Collection<String> valid) {
         if (list.size() == 0) {
             return "";
@@ -787,7 +783,6 @@ public class ComputerUtilCard {
 
         // TODO JAVA 8 use getOrDefault
         for (final Card c : list) {
-
             // Changeling are all creature types, they are not interesting for
             // counting creature types
             if (c.hasStartOfKeyword(Keyword.CHANGELING.toString())) {
@@ -865,7 +860,6 @@ public class ComputerUtilCard {
     
         for (final Entry<String, Integer> entry : typesInDeck.entrySet()) {
             final String type = entry.getKey();
-            // Log.debug(type + " - " + entry.getValue());
 
             if (max < entry.getValue()) {
                 max = entry.getValue();
@@ -1504,7 +1498,7 @@ public class ComputerUtilCard {
                     }
                     if (c.hasKeyword(Keyword.TRAMPLE) || keywords.contains("Trample")) {
                        for (Card b : combat.getBlockers(c)) {
-                           pumpedDmg -= ComputerUtilCombat.getDamageToKill(b);
+                           pumpedDmg -= ComputerUtilCombat.getDamageToKill(b, false);
                        }
                     } else {
                         pumpedDmg = 0;
@@ -1532,7 +1526,7 @@ public class ComputerUtilCard {
                             if (combat.isBlocked(atk)) {
                                 // consider Trample damage properly for a blocked creature
                                 for (Card blk : combat.getBlockers(atk)) {
-                                    totalPowerUnblocked -= ComputerUtilCombat.getDamageToKill(blk);
+                                    totalPowerUnblocked -= ComputerUtilCombat.getDamageToKill(blk, false);
                                 }
                             }
                         }
@@ -1832,10 +1826,6 @@ public class ComputerUtilCard {
             return true;
         }
         return false;
-    }
-
-    public static boolean isPresentOnBattlefield(final Game game, final String cardName) {
-        return Iterables.any(game.getCardsIn(ZoneType.Battlefield), CardPredicates.nameEquals(cardName));
     }
 
     public static int getMaxSAEnergyCostOnBattlefield(final Player ai) {

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import forge.game.event.GameEventDayTimeChanged;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Predicate;
@@ -128,6 +129,8 @@ public class Game {
     private Player monarchBeginTurn = null;
 
     private Direction turnOrder = Direction.getDefaultDirection();
+
+    private Boolean daytime = null;
 
     private long timestamp = 0;
     public final GameAction action;
@@ -550,13 +553,12 @@ public class Game {
         if (zone == ZoneType.Stack) {
             return getStackZone().getCards();
         }
-        else {
-            CardCollection cards = new CardCollection();
-            for (final Player p : getPlayers()) {
-                cards.addAll(p.getCardsIncludePhasingIn(zone));
-            }
-            return cards;
+
+        CardCollection cards = new CardCollection();
+        for (final Player p : getPlayers()) {
+            cards.addAll(p.getCardsIncludePhasingIn(zone));
         }
+        return cards;
     }
 
     public CardCollectionView getCardsIn(final Iterable<ZoneType> zones) {
@@ -580,21 +582,11 @@ public class Game {
     }
 
     public boolean isCardInPlay(final String cardName) {
-        for (final Player p : getPlayers()) {
-            if (p.isCardInPlay(cardName)) {
-                return true;
-            }
-        }
-        return false;
+        return Iterables.any(getCardsIn(ZoneType.Battlefield), CardPredicates.nameEquals(cardName));
     }
 
     public boolean isCardInCommand(final String cardName) {
-        for (final Player p : getPlayers()) {
-            if (p.isCardInCommand(cardName)) {
-                return true;
-            }
-        }
-        return false;
+        return Iterables.any(getCardsIn(ZoneType.Command), CardPredicates.nameEquals(cardName));
     }
 
     public CardCollectionView getColoredCardsInPlay(final String color) {
@@ -629,7 +621,6 @@ public class Game {
     public Card getCardState(final Card card) {
         return getCardState(card, card);
     }
-
     public Card getCardState(final Card card, final Card notFound) {
         CardStateVisitor visit = new CardStateVisitor(card);
         this.forEachCardInGame(visit);
@@ -837,6 +828,11 @@ public class Game {
                         getAction().controllerChangeZoneCorrection(c);
                     }
                     c.removeTempController(p);
+                    // return stolen spells
+                    if (c.isInZone(ZoneType.Stack)) {
+                        SpellAbilityStackInstance si = getStack().getInstanceFromSpellAbility(c.getCastSA());
+                        si.setActivatingPlayer(c.getController());
+                    }
                     if (c.getController().equals(p)) {
                         getAction().exile(c, null);
                     }
@@ -1163,5 +1159,30 @@ public class Game {
     }
     public void addFacedownWhileCasting(Card c, int numDrawn) {
         facedownWhileCasting.put(c, Integer.valueOf(numDrawn));
+    }
+
+    public boolean isDay() {
+        return this.daytime != null && this.daytime == false;
+    }
+    public boolean isNight() {
+        return this.daytime != null && this.daytime == true;
+    }
+    public boolean isNeitherDayNorNight() {
+        return this.daytime == null;
+    }
+
+    public Boolean getDayTime() {
+        return this.daytime;
+    }
+    public void setDayTime(Boolean value) {
+        Boolean previous = this.daytime;
+        this.daytime = value;
+
+        if (previous != null && value != null && previous != value) {
+            Map<AbilityKey, Object> params = AbilityKey.newMap();
+            this.getTriggerHandler().runTrigger(TriggerType.DayTimeChanges, params, false);
+        }
+        if (!isNeitherDayNorNight())
+            fireEvent(new GameEventDayTimeChanged(isDay()));
     }
 }

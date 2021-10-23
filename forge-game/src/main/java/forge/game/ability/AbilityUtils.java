@@ -45,7 +45,6 @@ import forge.game.card.CardPredicates;
 import forge.game.card.CardState;
 import forge.game.card.CardUtil;
 import forge.game.card.CounterType;
-import forge.game.card.CardPredicates.Presets;
 import forge.game.cost.Cost;
 import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
@@ -1483,7 +1482,7 @@ public class AbilityUtils {
         final Card source = sa.getHostCard();
 
         // The player who has the chance to cancel the ability
-        final String pays = sa.hasParam("UnlessPayer") ? sa.getParam("UnlessPayer") : "TargetedController";
+        final String pays = sa.getParamOrDefault("UnlessPayer", "TargetedController");
         final FCollectionView<Player> allPayers = getDefinedPlayers(sa.getHostCard(), pays, sa);
         final String  resolveSubs = sa.getParam("UnlessResolveSubs"); // no value means 'Always'
         final boolean execSubsWhenPaid = "WhenPaid".equals(resolveSubs) || StringUtils.isBlank(resolveSubs);
@@ -1566,7 +1565,7 @@ public class AbilityUtils {
                     " ", ""), sa);
             //Check for XColor
             ManaCostBeingPaid toPay = new ManaCostBeingPaid(ManaCost.ZERO);
-            byte xColor = ManaAtom.fromName(sa.hasParam("UnlessXColor") ? sa.getParam("UnlessXColor") : "1");
+            byte xColor = ManaAtom.fromName(sa.getParamOrDefault("UnlessXColor", "1"));
             toPay.increaseShard(ManaCostShard.valueOf(xColor), xCost);
             cost = new Cost(toPay.toManaCost(), true);
         }
@@ -2013,6 +2012,9 @@ public class AbilityUtils {
         if (sq[0].startsWith("AltCost")) {
             return doXMath(calculateAmount(c, sq[c.isOptionalCostPaid(OptionalCost.AltCost) ? 1 : 2], ctb), expr, c, ctb);
         }
+        if (sq[0].startsWith("OptionalGenericCostPaid")) {
+            return doXMath(calculateAmount(c, sq[c.isOptionalCostPaid(OptionalCost.Generic) ? 1 : 2], ctb), expr, c, ctb);
+        }
         if (sq[0].equals("ColorsColorIdentity")) {
             return doXMath(c.getController().getCommanderColorID().countColors(), expr, c, ctb);
         }
@@ -2040,7 +2042,7 @@ public class AbilityUtils {
             } else {
                 ce = c;
             }
-            return doXMath(getNumberOfTypes(ce), expr, c, ctb);
+            return doXMath(ce == null ? 0 : getNumberOfTypes(ce), expr, c, ctb);
         }
 
         if (sq[0].contains("CardNumColors")) {
@@ -2275,6 +2277,10 @@ public class AbilityUtils {
             return doXMath(player.getSpellsCastThisGame(), expr, c, ctb);
         }
 
+        if (sq[0].equals("Night")) {
+            return doXMath(calculateAmount(c, sq[game.isNight() ? 1 : 2], ctb), expr, c, ctb);
+        }
+
         if (sq[0].contains("CardControllerTypes")) {
             return doXMath(getCardTypesFromList(player.getCardsIn(ZoneType.listValueOf(sq[1]))), expr, c, ctb);
         }
@@ -2396,7 +2402,7 @@ public class AbilityUtils {
         if (sq[0].startsWith("Domain")) {
             int n = 0;
             Player neededPlayer = sq[0].equals("DomainActivePlayer") ? game.getPhaseHandler().getPlayerTurn() : player;
-            CardCollection someCards = CardLists.filter(neededPlayer.getCardsIn(ZoneType.Battlefield), Presets.LANDS);
+            CardCollection someCards = neededPlayer.getLandsInPlay();
             for (String basic : MagicColor.Constant.BASIC_LANDS) {
                 if (!CardLists.getType(someCards, basic).isEmpty()) {
                     n++;
@@ -3686,14 +3692,14 @@ public class AbilityUtils {
             }
         }
 
-        //  Count$InTargetedHand (targeted player's cards in hand)
+        //  Count$InTargetedLibrary (targeted player's cards in hand)
         if (sq[0].contains("InTargetedLibrary")) {
             for (Player tgtP : getDefinedPlayers(c, "TargetedPlayer", ctb)) {
                 someCards.addAll(tgtP.getCardsIn(ZoneType.Library));
             }
         }
 
-        //  Count$InTargetedHand (targeted player's cards in hand)
+        //  Count$InEnchantedHand (targeted player's cards in hand)
         if (sq[0].contains("InEnchantedHand")) {
             GameEntity o = c.getEntityAttachedTo();
             Player controller = null;

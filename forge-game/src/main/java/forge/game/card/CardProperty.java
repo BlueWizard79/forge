@@ -114,6 +114,14 @@ public class CardProperty {
             if (!card.isDoubleFaced()) {
                 return false;
             }
+        } else if (property.equals("FrontSide")) {
+            if (card.isBackSide()) {
+                return false;
+            }
+        } else if (property.equals("BackSide")) {
+            if (!card.isBackSide()) {
+                return false;
+            }
         } else if (property.equals("Flip")) {
             if (!card.isFlipCard()) {
                 return false;
@@ -593,6 +601,12 @@ public class CardProperty {
             }
         } else if (property.startsWith("TopLibrary")) {
             final CardCollectionView cards = card.getOwner().getCardsIn(ZoneType.Library);
+            if (cards.isEmpty() || !card.equals(cards.get(0))) {
+                return false;
+            }
+        } else if (property.startsWith("BottomLibrary")) {
+            final CardCollection cards = new CardCollection(card.getOwner().getCardsIn(ZoneType.Library));
+            Collections.reverse(cards);
             if (cards.isEmpty() || !card.equals(cards.get(0))) {
                 return false;
             }
@@ -1471,7 +1485,7 @@ public class CardProperty {
             if (StringUtils.isEmpty(what)) return combat.isBlocking(card);
             if (what.startsWith("Source")) return combat.isBlocking(card, source);
             if (what.startsWith("CreatureYouCtrl")) {
-                for (final Card c : CardLists.filter(sourceController.getCardsIn(ZoneType.Battlefield), Presets.CREATURES))
+                for (final Card c : sourceController.getCreaturesInPlay())
                     if (combat.isBlocking(card, c))
                         return true;
                 return false;

@@ -958,6 +958,7 @@ public class CardFactoryUtil {
             final Trigger conspireTrigger = TriggerHandler.parseTrigger(trigScript, card, intrinsic);
             conspireTrigger.setOverridingAbility(AbilityFactory.getAbility(abString, card));
             conspireTrigger.setSVar("Conspire", "0");
+
             inst.addTrigger(conspireTrigger);
         } else if (keyword.startsWith("Cumulative upkeep")) {
             final String[] k = keyword.split(":");
@@ -976,6 +977,23 @@ public class CardFactoryUtil {
 
             final Trigger trigger = TriggerHandler.parseTrigger(upkeepTrig, card, intrinsic);
             trigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
+
+            inst.addTrigger(trigger);
+        } else if (keyword.equals("Daybound")) {
+            // Set Day when it's Neither
+            final String setDayTrig = "Mode$ Always | TriggerZones$ Battlefield | Static$ True | DayTime$ Neither | Secondary$ True | TriggerDescription$ Any time a player controls a permanent with daybound, if it’s neither day nor night, it becomes day.";
+            String setDayEff = "DB$ DayTime | Value$ Day";
+
+            Trigger trigger = TriggerHandler.parseTrigger(setDayTrig, card, intrinsic);
+            trigger.setOverridingAbility(AbilityFactory.getAbility(setDayEff, card));
+
+            inst.addTrigger(trigger);
+
+            final String transformTrig = "Mode$ Always | TriggerZones$ Battlefield | Static$ True | DayTime$ Night | IsPresent$ Card.Self+FrontSide | Secondary$ True | TriggerDescription$ As it becomes night, if this permanent is front face up, transform it.";
+            String transformEff = "DB$ SetState | Mode$ Transform | Daybound$ True";
+
+            trigger = TriggerHandler.parseTrigger(transformTrig, card, intrinsic);
+            trigger.setOverridingAbility(AbilityFactory.getAbility(transformEff, card));
 
             inst.addTrigger(trigger);
         } else if (keyword.equals("Decayed")) {
@@ -1507,6 +1525,23 @@ public class CardFactoryUtil {
 
             parsedTrigger.setOverridingAbility(repeatSA);
             inst.addTrigger(parsedTrigger);
+        } else if (keyword.equals("Nightbound")) {
+            // Set Night when it's Neither
+            final String setDayTrig = "Mode$ Always | TriggerZones$ Battlefield | Static$ True | DayTime$ Neither | IsPresent$ Card.Daybound | PresentCompare$ EQ0 | Secondary$ True | TriggerDescription$ Any time a player controls a permanent with nightbound, if it’s neither day nor night and there are no permanents with daybound on the battlefield, it becomes night.";
+            String setDayEff = "DB$ DayTime | Value$ Night";
+
+            Trigger trigger = TriggerHandler.parseTrigger(setDayTrig, card, intrinsic);
+            trigger.setOverridingAbility(AbilityFactory.getAbility(setDayEff, card));
+
+            inst.addTrigger(trigger);
+
+            final String transformTrig = "Mode$ Always | TriggerZones$ Battlefield | Static$ True | DayTime$ Day | IsPresent$ Card.Self+BackSide | Secondary$ True | TriggerDescription$ As it becomes day, if this permanent is back face up, transform it";
+            String transformEff = "DB$ SetState | Mode$ Transform | Nightbound$ True";
+
+            trigger = TriggerHandler.parseTrigger(transformTrig, card, intrinsic);
+            trigger.setOverridingAbility(AbilityFactory.getAbility(transformEff, card));
+
+            inst.addTrigger(trigger);
         } else if (keyword.startsWith("Partner:")) {
             // Partner With
             final String[] k = keyword.split(":");
@@ -1544,6 +1579,7 @@ public class CardFactoryUtil {
 
             final String effect = "DB$ Poison | Defined$ TriggeredTarget | Num$ " + n;
             parsedTrigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
+
             inst.addTrigger(parsedTrigger);
         } else if (keyword.startsWith("Presence")) {
             final String[] k = keyword.split(":");
@@ -2125,6 +2161,17 @@ public class CardFactoryUtil {
             re.setSVar("DredgeCheckLib", "Count$ValidLibrary Card.YouOwn");
 
             inst.addReplacement(re);
+        } else if (keyword.equals("Daybound")) {
+            final String actualRep = "Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | DayTime$ Night | Secondary$ True | Description$ If it is night, this permanent enters the battlefield transformed.";
+            final String abTransform = "DB$ SetState | Defined$ ReplacedCard | Mode$ Transform | ETB$ True | Daybound$ True";
+
+            ReplacementEffect re = ReplacementHandler.parseReplacement(actualRep, host, intrinsic, card);
+
+            SpellAbility saTransform = AbilityFactory.getAbility(abTransform, card);
+            setupETBReplacementAbility(saTransform);
+            re.setOverridingAbility(saTransform);
+
+            inst.addReplacement(re);
         } else if (keyword.startsWith("Devour")) {
             final String[] k = keyword.split(":");
             final String magnitude = k[1];
@@ -2192,16 +2239,7 @@ public class CardFactoryUtil {
                 }
             }
 
-            sb.append(" (");
-            if (host.hasStartOfKeyword("AlternateAdditionalCost")
-                    || !host.getFirstSpellAbility().getPayCosts().isOnlyManaCost()) {
-                String reminder = inst.getReminderText();
-                sb.append(reminder, 0, 65).append(" and any additional costs");
-                sb.append(reminder, 65, 81);
-            } else {
-                sb.append(inst.getReminderText());
-            }
-            sb.append(")");
+            sb.append(" (").append(inst.getReminderText()).append(")");
 
             String repeffstr = sb.toString();
 
@@ -2483,7 +2521,6 @@ public class CardFactoryUtil {
             ReplacementEffect re = ReplacementHandler.parseReplacement(rep, host, intrinsic, card);
             inst.addReplacement(re);
         }
-
         else if (keyword.startsWith("If CARDNAME would be put into a graveyard "
                 + "from anywhere, reveal CARDNAME and shuffle it into its owner's library instead.")) {
 
@@ -2559,7 +2596,6 @@ public class CardFactoryUtil {
                 newSA.setIntrinsic(intrinsic);
 
                 inst.addSpellAbility(newSA);
-
             }
         } else if (keyword.startsWith("Adapt")) {
             final String[] k = keyword.split(":");
@@ -2609,7 +2645,7 @@ public class CardFactoryUtil {
 
             final String awaken = "DB$ PutCounter | CounterType$ P1P1 | CounterNum$ "+ counters + " | "
                     + "ValidTgts$ Land.YouCtrl | TgtPrompt$ Select target land you control | Awaken$ True";
-            final String animate = "DB$ Animate | Defined$ Targeted | Power$ 0 | Toughness$ 0 | Types$"
+            final String animate = "DB$ Animate | Defined$ ParentTarget | Power$ 0 | Toughness$ 0 | Types$"
                     + " Creature,Elemental | Duration$ Permanent | Keywords$ Haste";
 
             final AbilitySub awakenSub = (AbilitySub) AbilityFactory.getAbility(awaken, card);
@@ -2799,9 +2835,9 @@ public class CardFactoryUtil {
             final SpellAbility newSA = sa.copyWithDefinedCost(evokedCost);
 
             final StringBuilder desc = new StringBuilder();
-            desc.append("Evoke ").append(evokedCost.toSimpleString()).append(" (");
-            desc.append(inst.getReminderText());
-            desc.append(")");
+            boolean onlyMana = evokedCost.isOnlyManaCost();
+            desc.append("Evoke").append(onlyMana ? " " : "—").append(evokedCost.toSimpleString());
+            desc.append(onlyMana ? "" : ".").append(" (").append(inst.getReminderText()).append(")");
 
             newSA.setDescription(desc.toString());
 
@@ -2867,7 +2903,6 @@ public class CardFactoryUtil {
             foretell.getRestrictions().setZone(ZoneType.Hand);
             foretell.setIntrinsic(intrinsic);
             inst.addSpellAbility(foretell);
-
         } else if (keyword.startsWith("Fortify")) {
             String[] k = keyword.split(":");
             // Get cost string
@@ -3044,7 +3079,6 @@ public class CardFactoryUtil {
             sa.setIntrinsic(intrinsic);
             sa.setAlternativeCost(AlternativeCost.Outlast);
             inst.addSpellAbility(sa);
-
         } else if (keyword.startsWith("Prowl")) {
             final String[] k = keyword.split(":");
             final Cost prowlCost = new Cost(k[1], false);
@@ -3101,7 +3135,6 @@ public class CardFactoryUtil {
             sa.setSVar("ScavengeX", "Exiled$CardPower");
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
-
         } else if (keyword.startsWith("Encore")) {
             final String[] k = keyword.split(":");
             final String manacost = k[1];
@@ -3147,7 +3180,6 @@ public class CardFactoryUtil {
 
             AbilitySub cleanupSA = (AbilitySub) AbilityFactory.getAbility(cleanupStr, card);
             delTrigSA.setSubAbility(cleanupSA);
-
         } else if (keyword.startsWith("Spectacle")) {
             final String[] k = keyword.split(":");
             final Cost cost = new Cost(k[1], false);
@@ -3161,7 +3193,6 @@ public class CardFactoryUtil {
 
             newSA.setIntrinsic(intrinsic);
             inst.addSpellAbility(newSA);
-
         } else if (keyword.startsWith("Surge")) {
             final String[] k = keyword.split(":");
             final Cost surgeCost = new Cost(k[1], false);
@@ -3175,7 +3206,6 @@ public class CardFactoryUtil {
 
             newSA.setIntrinsic(intrinsic);
             inst.addSpellAbility(newSA);
-
         } else if (keyword.startsWith("Suspend") && !keyword.equals("Suspend")) {
             // only add it if suspend has counter and cost
             final String[] k = keyword.split(":");
@@ -3273,7 +3303,6 @@ public class CardFactoryUtil {
             final SpellAbility sa = AbilityFactory.getAbility(effect, card);
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
-
         } else if (keyword.endsWith(" offering")) {
             final String offeringType = keyword.split(" ")[0];
             final SpellAbility sa = card.getFirstSpellAbility();
@@ -3290,7 +3319,6 @@ public class CardFactoryUtil {
             newSA.setDescription(sa.getDescription() + " (" + offeringType + " offering)");
             newSA.setIntrinsic(intrinsic);
             inst.addSpellAbility(newSA);
-
         } else if (keyword.startsWith("Crew")) {
             final String[] k = keyword.split(":");
             final String power = k[1];
@@ -3305,7 +3333,6 @@ public class CardFactoryUtil {
             final SpellAbility sa = AbilityFactory.getAbility(effect, card);
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
-
         } else if (keyword.startsWith("Cycling")) {
             final String[] k = keyword.split(":");
             final String manacost = k[1];
@@ -3323,7 +3350,6 @@ public class CardFactoryUtil {
             sa.setAlternativeCost(AlternativeCost.Cycling);
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
-
         } else if (keyword.startsWith("TypeCycling")) {
             final String[] k = keyword.split(":");
             final String type = k[1];
@@ -3349,7 +3375,6 @@ public class CardFactoryUtil {
             sa.setAlternativeCost(AlternativeCost.Cycling);
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
-
         }
     }
 
@@ -3438,6 +3463,8 @@ public class CardFactoryUtil {
             }
         } else if (keyword.startsWith("Dash")) {
             effect = "Mode$ Continuous | Affected$ Card.Self+dashed | AddKeyword$ Haste";
+        } else if (keyword.equals("Daybound")) {
+            effect = "Mode$ CantTransform | ValidCard$ Creature.Self | ExceptCause$ SpellAbility.Daybound | Secondary$ True | Description$ This permanent can’t be transformed except by its daybound ability.";
         } else if (keyword.equals("Decayed")) {
             effect = "Mode$ Continuous | Affected$ Card.Self | AddHiddenKeyword$ CARDNAME can't block. | " +
                     "Secondary$ True";
@@ -3490,6 +3517,8 @@ public class CardFactoryUtil {
         } else if (keyword.equals("Intimidate")) {
             effect = "Mode$ CantBlockBy | ValidAttacker$ Creature.Self | ValidBlocker$ Creature.nonArtifact+notSharesColorWith | Secondary$ True " +
                     " | Description$ Intimidate ( " + inst.getReminderText() + ")";
+        } else if (keyword.equals("Nightbound")) {
+            effect = "Mode$ CantTransform | ValidCard$ Creature.Self | ExceptCause$ SpellAbility.Nightbound | Secondary$ True | Description$ This permanent can’t be transformed except by its nightbound ability.";
         } else if (keyword.startsWith("Protection")) {
             String valid = getProtectionValid(keyword, false);
             effect = "Mode$ CantBlockBy | ValidAttacker$ Creature.Self ";

@@ -274,7 +274,7 @@ public class ComputerUtil {
             sa.setHostCard(game.getAction().moveToStack(source, sa));
         }
 
-        ai.getGame().getStack().add(sa);
+        game.getStack().add(sa);
     }
 
     public static final boolean playSpellAbilityWithoutPayingManaCost(final Player ai, final SpellAbility sa, final Game game) {
@@ -845,7 +845,7 @@ public class ComputerUtil {
         final int max = Math.min(remaining.size(), amount);
 
         if (exceptSelf && max < remaining.size()) {
-            removedSelf = remaining.remove(source.getHostCard());
+            removedSelf = remaining.remove(host);
         }
 
         for (int i = 0; i < max; i++) {
@@ -857,7 +857,7 @@ public class ComputerUtil {
         }
 
         if (sacrificed.isEmpty() && removedSelf) {
-            sacrificed.add(source.getHostCard());
+            sacrificed.add(host);
         }
 
         return sacrificed;
@@ -1254,7 +1254,7 @@ public class ComputerUtil {
             }
         }
         final CardCollectionView buffed = ai.getCardsIn(ZoneType.Battlefield);
-        boolean checkThreshold = sa.isSpell() && !ai.hasThreshold() && !sa.getHostCard().isInZone(ZoneType.Graveyard);
+        boolean checkThreshold = sa.isSpell() && !ai.hasThreshold() && !source.isInZone(ZoneType.Graveyard);
         for (Card buffedCard : buffed) {
             if (buffedCard.hasSVar("BuffedBy")) {
                 final String buffedby = buffedCard.getSVar("BuffedBy");
@@ -1687,7 +1687,7 @@ public class ComputerUtil {
                     }
 
                     if (saviourApi == ApiType.Pump || saviourApi == ApiType.PumpAll) {
-                        boolean canSave = ComputerUtilCombat.predictDamageTo(c, dmg - toughness, source, false) < ComputerUtilCombat.getDamageToKill(c);
+                        boolean canSave = ComputerUtilCombat.predictDamageTo(c, dmg - toughness, source, false) < ComputerUtilCombat.getDamageToKill(c, false);
                         if ((!topStack.usesTargeting() && !grantIndestructible && !canSave)
                                 || (!grantIndestructible && !grantShroud && !canSave)) {
                             continue;
@@ -1695,14 +1695,14 @@ public class ComputerUtil {
                     }
 
                     if (saviourApi == ApiType.PutCounter || saviourApi == ApiType.PutCounterAll) {
-                        boolean canSave = ComputerUtilCombat.predictDamageTo(c, dmg - toughness, source, false) < ComputerUtilCombat.getDamageToKill(c);
+                        boolean canSave = ComputerUtilCombat.predictDamageTo(c, dmg - toughness, source, false) < ComputerUtilCombat.getDamageToKill(c, false);
                         if (!canSave) {
                             continue;
                         }
                     }
 
                     // cannot protect against source
-                    if (saviourApi == ApiType.Protection && (ProtectAi.toProtectFrom(source, saviour) == null)) {
+                    if (saviourApi == ApiType.Protection && ProtectAi.toProtectFrom(source, saviour) == null) {
                         continue;
                     }
 
@@ -1712,7 +1712,7 @@ public class ComputerUtil {
                         continue;
                     }
 
-                    if (ComputerUtilCombat.predictDamageTo(c, dmg, source, false) >= ComputerUtilCombat.getDamageToKill(c)) {
+                    if (ComputerUtilCombat.predictDamageTo(c, dmg, source, false) >= ComputerUtilCombat.getDamageToKill(c, false)) {
                         threatened.add(c);
                     }
                 } else if (o instanceof Player) {
@@ -1739,7 +1739,7 @@ public class ComputerUtil {
                 if (o instanceof Card) {
                     final Card c = (Card) o;
                     final boolean canRemove = (c.getNetToughness() <= dmg)
-                            || (!c.hasKeyword(Keyword.INDESTRUCTIBLE) && c.getShieldCount() == 0 && (dmg >= ComputerUtilCombat.getDamageToKill(c)));
+                            || (!c.hasKeyword(Keyword.INDESTRUCTIBLE) && c.getShieldCount() == 0 && (dmg >= ComputerUtilCombat.getDamageToKill(c, false)));
                     if (!canRemove) {
                         continue;
                     }
@@ -1747,7 +1747,7 @@ public class ComputerUtil {
                     if (saviourApi == ApiType.Pump || saviourApi == ApiType.PumpAll) {
                         final boolean cantSave = c.getNetToughness() + toughness <= dmg
                                 || (!c.hasKeyword(Keyword.INDESTRUCTIBLE) && c.getShieldCount() == 0 && !grantIndestructible
-                                        && (dmg >= toughness + ComputerUtilCombat.getDamageToKill(c)));
+                                        && (dmg >= toughness + ComputerUtilCombat.getDamageToKill(c, false)));
                         if (cantSave && (!topStack.usesTargeting() || !grantShroud)) {
                             continue;
                         }
@@ -1910,11 +1910,7 @@ public class ComputerUtil {
      * @return true if the creature dies according to current board position.
      */
     public static boolean predictCreatureWillDieThisTurn(final Player ai, final Card creature, final SpellAbility excludeSa) {
-        final Game game = creature.getGame();
-
-        // a creature will die as a result of combat
-        boolean willDieInCombat = game.getPhaseHandler().inCombat()
-                && ComputerUtilCombat.combatantWouldBeDestroyed(creature.getController(), creature, game.getCombat());
+        final Game game = ai.getGame();
 
         // a creature will [hopefully] die from a spell on stack
         boolean willDieFromSpell = false;
@@ -1932,6 +1928,10 @@ public class ComputerUtil {
             }
         }
         willDieFromSpell = !noStackCheck && predictThreatenedObjects(creature.getController(), excludeSa).contains(creature);
+
+        // a creature will die as a result of combat
+        boolean willDieInCombat = !willDieFromSpell && game.getPhaseHandler().inCombat()
+                && ComputerUtilCombat.combatantWouldBeDestroyed(creature.getController(), creature, game.getCombat());
 
         return willDieInCombat || willDieFromSpell;
     }
@@ -2239,7 +2239,7 @@ public class ComputerUtil {
             if (validString.contains("Creature") && !validString.contains("nonCreature")) {
                 final Card c = ComputerUtilCard.getBestCreatureAI(goodChoices);
                 if (c != null) {
-                    dChoices.add(ComputerUtilCard.getBestCreatureAI(goodChoices));
+                    dChoices.add(c);
                 }
             }
         }
@@ -2405,12 +2405,12 @@ public class ComputerUtil {
             List<ZoneType> graceZones = new ArrayList<ZoneType>();
             graceZones.add(ZoneType.Battlefield);
             graceZones.add(ZoneType.Graveyard);
-            CardCollection graceCreatures = CardLists.getType(sa.getHostCard().getGame().getCardsIn(graceZones), "Creature");
+            CardCollection graceCreatures = CardLists.getType(game.getCardsIn(graceZones), "Creature");
             int humanGrace = CardLists.filterControlledBy(graceCreatures, ai.getOpponents()).size();
             int aiGrace = CardLists.filterControlledBy(graceCreatures, ai).size();
             return aiGrace > humanGrace ? "Grace" : "Condemnation";
         case "CarnageOrHomage":
-            CardCollection cardsInPlay = CardLists.getNotType(sa.getHostCard().getGame().getCardsIn(ZoneType.Battlefield), "Land");
+            CardCollection cardsInPlay = CardLists.getNotType(game.getCardsIn(ZoneType.Battlefield), "Land");
             CardCollection humanlist = CardLists.filterControlledBy(cardsInPlay, ai.getOpponents());
             CardCollection computerlist = ai.getCreaturesInPlay();
             return (ComputerUtilCard.evaluatePermanentList(computerlist) + 3) < ComputerUtilCard.evaluatePermanentList(humanlist) ? "Carnage" : "Homage";
@@ -2434,7 +2434,7 @@ public class ComputerUtil {
                         restrictedToColors.add((String) o);
                         }
                     }
-                CardCollection lists = CardLists.filterControlledBy(ai.getGame().getCardsInGame(), ai.getOpponents());
+                CardCollection lists = CardLists.filterControlledBy(game.getCardsInGame(), ai.getOpponents());
                 return StringUtils.capitalize(ComputerUtilCard.getMostProminentColor(lists, restrictedToColors));
             } else {
                 return Iterables.getFirst(votes.keySet(), null);
@@ -2764,7 +2764,8 @@ public class ComputerUtil {
                 || (type.is(CounterEnumType.TIME) && (!c.isInPlay() || "Chronozoa".equals(c.getName())))
                 || type.is(CounterEnumType.GOLD) || type.is(CounterEnumType.MUSIC) || type.is(CounterEnumType.PUPA)
                 || type.is(CounterEnumType.PARALYZATION) || type.is(CounterEnumType.SHELL) || type.is(CounterEnumType.SLEEP)
-                || type.is(CounterEnumType.SLUMBER) || type.is(CounterEnumType.SLEIGHT) || type.is(CounterEnumType.WAGE);
+                || type.is(CounterEnumType.SLUMBER) || type.is(CounterEnumType.SLEIGHT) || type.is(CounterEnumType.WAGE)
+                || type.is(CounterEnumType.INCARNATION) || type.is(CounterEnumType.RUST);
     }
 
     // this countertypes has no effect
@@ -2772,7 +2773,7 @@ public class ComputerUtil {
         // Quest counter on a card without MaxQuestEffect are useless
         if (type.is(CounterEnumType.QUEST)) {
             int e = 0;
-            if ( c.hasSVar("MaxQuestEffect")) {
+            if (c.hasSVar("MaxQuestEffect")) {
                 e = Integer.parseInt(c.getSVar("MaxQuestEffect"));
             }
             return c.getCounters(type) > e;
@@ -2892,6 +2893,8 @@ public class ComputerUtil {
     public static boolean targetPlayableSpellCard(final Player ai, CardCollection options, final SpellAbility sa, final boolean withoutPayingManaCost, boolean mandatory) {
         // determine and target a card with a SA that the AI can afford and will play
         AiController aic = ((PlayerControllerAi) ai.getController()).getAi();
+        sa.resetTargets();
+
         CardCollection targets = new CardCollection();
         for (Card c : options) {
             if (withoutPayingManaCost && c.getManaCost() != null && c.getManaCost().countX() > 0) {
@@ -2917,6 +2920,7 @@ public class ComputerUtil {
                 }
             }
         }
+
         if (targets.isEmpty()) {
             if (mandatory && !options.isEmpty()) {
                 targets = options;
@@ -2924,6 +2928,7 @@ public class ComputerUtil {
                 return false;
             }
         }
+
         sa.getTargets().add(ComputerUtilCard.getBestAI(targets));
         return true;
     }
@@ -3010,6 +3015,7 @@ public class ComputerUtil {
     // call this to determine if it's safe to use a life payment spell
     // or trigger "emergency" strategies such as holding mana for Spike Weaver of Counterspell.
     public static boolean aiLifeInDanger(Player ai, boolean serious, int payment) {
+        // TODO should also consider them as teams
         for (Player opponent: ai.getOpponents()) {
             // test whether the human can kill the ai next turn
             Combat combat = new Combat(opponent);
@@ -3030,10 +3036,10 @@ public class ComputerUtil {
             // examples : Black Vise, The Rack, known direct damage spells in enemy hand, etc
             // If added, might need a parameter to define whether we want to check all threats or combat threats.
 
-            if ((serious) && (ComputerUtilCombat.lifeInSeriousDanger(ai, combat, payment))) {
+            if (serious && ComputerUtilCombat.lifeInSeriousDanger(ai, combat, payment)) {
                 return true;
             }
-            if ((!serious) && (ComputerUtilCombat.lifeInDanger(ai, combat, payment))) {
+            if (!serious && ComputerUtilCombat.lifeInDanger(ai, combat, payment)) {
                 return true;
             }
         }
