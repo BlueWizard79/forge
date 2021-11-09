@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import forge.card.mana.ManaCost;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -40,7 +41,6 @@ import forge.game.card.CardFactory;
 import forge.game.card.CardFactoryUtil;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
-import forge.game.card.CardUtil;
 import forge.game.card.CounterEnumType;
 import forge.game.card.CounterType;
 import forge.game.combat.Combat;
@@ -905,7 +905,7 @@ public class ComputerUtilCard {
         }
 
         for (final Card crd : list) {
-            ColorSet color = CardUtil.getColors(crd);
+            ColorSet color = crd.getColor();
             if (color.hasWhite()) map.get(0).setValue(Integer.valueOf(map.get(0).getValue()+1));
             if (color.hasBlue()) map.get(1).setValue(Integer.valueOf(map.get(1).getValue()+1));
             if (color.hasBlack()) map.get(2).setValue(Integer.valueOf(map.get(2).getValue()+1));
@@ -1677,7 +1677,7 @@ public class ComputerUtilCard {
             }
         }
 
-        pumped.addNewPT(c.getCurrentPower(), c.getCurrentToughness(), timestamp);
+        pumped.addNewPT(c.getCurrentPower(), c.getCurrentToughness(), timestamp, 0);
         pumped.setPTBoost(c.getPTBoostTable());
         pumped.addPTBoost(power + berserkPower, toughness, timestamp, 0);
 
@@ -1746,12 +1746,12 @@ public class ComputerUtilCard {
                 int att = 0;
                 if (stAb.hasParam("AddPower")) {
                     String addP = stAb.getParam("AddPower");
-                    att = AbilityUtils.calculateAmount(addP.startsWith("Affected") ? vCard : c, addP, stAb, true);
+                    att = AbilityUtils.calculateAmount(addP.contains("Affected") ? vCard : c, addP, stAb, true);
                 }
                 int def = 0;
                 if (stAb.hasParam("AddToughness")) {
                     String addT = stAb.getParam("AddToughness");
-                    def = AbilityUtils.calculateAmount(addT.startsWith("Affected") ? vCard : c, addT, stAb, true);
+                    def = AbilityUtils.calculateAmount(addT.contains("Affected") ? vCard : c, addT, stAb, true);
                 }
                 vCard.addPTBoost(att, def, c.getTimestamp(), stAb.getId());
             }
@@ -1970,6 +1970,19 @@ public class ComputerUtilCard {
         }
 
         return AiPlayDecision.WillPlay;
+    }
+
+    public static Cost getTotalWardCost(Card c) {
+        Cost totalCost = new Cost(ManaCost.NO_COST, false);
+        for (final KeywordInterface inst : c.getKeywords()) {
+            if (inst.getKeyword() == Keyword.WARD) {
+                final String keyword = inst.getOriginal();
+                final String[] k = keyword.split(":");
+                final Cost wardCost = new Cost(k[1], false);
+                totalCost = totalCost.add(wardCost);
+            }
+        }
+        return totalCost;
     }
 
     // Determine if the AI has an AI:RemoveDeck:All or an AI:RemoveDeck:Random hint specified.

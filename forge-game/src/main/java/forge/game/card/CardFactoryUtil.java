@@ -256,7 +256,8 @@ public class CardFactoryUtil {
      * @return a boolean.
      */
     public static boolean isCounterable(final Card c) {
-        return !c.hasKeyword("CARDNAME can't be countered.") && c.getCanCounter();
+        return !(c.hasKeyword("CARDNAME can't be countered.") || c.hasKeyword("This spell can't be countered."))
+                && c.getCanCounter();
     }
 
     /**
@@ -338,7 +339,7 @@ public class CardFactoryUtil {
         }
 
         for (final Card crd : list) {
-            ColorSet color = CardUtil.getColors(crd);
+            ColorSet color = crd.getColor();
             for (int i = 0; i < cntColors; i++) {
                 if (color.hasAnyColor(MagicColor.WUBRG[i]))
                     map[i]++;
@@ -376,7 +377,7 @@ public class CardFactoryUtil {
         }
 
         for (final Card crd : list) {
-            ColorSet color = CardUtil.getColors(crd);
+            ColorSet color = crd.getColor();
             for (int i = 0; i < cntColors; i++) {
                 if (color.hasAnyColor(MagicColor.WUBRG[i]))
                     map[i]++;
@@ -407,7 +408,7 @@ public class CardFactoryUtil {
         }
 
         for (final Card crd : list) {
-            ColorSet color = CardUtil.getColors(crd);
+            ColorSet color = crd.getColor();
             for (int i = 0; i < cntColors; i++) {
                 if (color.hasAnyColor(colorRestrictions.get(i))) {
                     map[i]++;
@@ -1095,7 +1096,7 @@ public class CardFactoryUtil {
         } else if (keyword.equals("Exploit")) {
             final String trigStr = "Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Any | Destination$ Battlefield | Secondary$ True"
                     + " | TriggerDescription$ Exploit (" + inst.getReminderText() + ")";
-            final String effect = "DB$ Sacrifice | SacValid$ Creature | Exploit$ True | Optional$ True";
+            final String effect = "DB$ Sacrifice | SacValid$ Creature | SacMessage$ creature | Exploit$ True | Optional$ True";
 
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
 
@@ -1842,7 +1843,7 @@ public class CardFactoryUtil {
             if (card.isPermanent()) {
                 final String abPump = "DB$ Pump | Defined$ Remembered | KW$ Haste | PumpZone$ Stack "
                         + "| ConditionDefined$ Remembered | ConditionPresent$ Creature | Duration$ UntilLoseControlOfHost";
-                final AbilitySub saPump = (AbilitySub)AbilityFactory.getAbility(abPump, card);
+                final AbilitySub saPump = (AbilitySub) AbilityFactory.getAbility(abPump, card);
 
                 String dbClean = "DB$ Cleanup | ClearRemembered$ True";
                 final AbilitySub saCleanup = (AbilitySub) AbilityFactory.getAbility(dbClean, card);
@@ -1856,6 +1857,21 @@ public class CardFactoryUtil {
 
             inst.addTrigger(parsedUpkeepTrig);
             inst.addTrigger(parsedPlayTrigger);
+        } else if (keyword.equals("Training")) {
+            final String trigStr = "Mode$ Attacks | ValidCard$ Card.Self | Secondary$ True | " +
+                    "IsPresent$ Creature.attacking+Other+powerGTX | TriggerDescription$ Training (" +
+                    inst.getReminderText() + ")";
+
+            final String effect = "DB$ PutCounter | CounterType$ P1P1 | CounterNum$ 1 | Defined$ Self | Training$ True";
+            final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
+
+            SpellAbility sa = AbilityFactory.getAbility(effect, card);
+            trigger.setSVar("X", "Count$CardPower");
+            sa.setIntrinsic(intrinsic);
+            trigger.setOverridingAbility(sa);
+
+            inst.addTrigger(trigger);
+
         } else if (keyword.startsWith("Tribute")) {
             // use hardcoded ability name
             final String abStr = "TrigNotTribute";

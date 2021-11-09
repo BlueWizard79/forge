@@ -16,6 +16,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Tooltip;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Disposable;
+import forge.Forge;
 import forge.adventure.scene.RewardScene;
 import forge.adventure.scene.Scene;
 import forge.assets.FSkin;
@@ -46,6 +47,7 @@ public class RewardActor extends Actor implements Disposable, ImageFetcher.Callb
 
         if(needsToBeDisposed)
             image.dispose();
+
     }
 
     public Reward getReward() {
@@ -54,18 +56,9 @@ public class RewardActor extends Actor implements Disposable, ImageFetcher.Callb
 
     @Override
     public void onImageFetched() {
-        if(ImageCache.imageKeyFileExists(reward.getCard().getImageKey(false)))
-        {
-            setCardImage(ImageCache.getImage(reward.getCard().getImageKey(false),false));
-        }
+        setCardImage(ImageCache.getImage(reward.getCard().getImageKey(false),false));
     }
 
-    public enum Type
-    {
-        Shop,
-        Loot
-
-    }
     public RewardActor(Reward reward,boolean flippable)
     {
 
@@ -144,7 +137,8 @@ public class RewardActor extends Actor implements Disposable, ImageFetcher.Callb
 
     private void setCardImage(Texture img) {
         image=img;
-        image.setFilter(Texture.TextureFilter.Linear,Texture.TextureFilter.Linear);
+        if(Forge.isTextureFilteringEnabled())
+        image.setFilter(Texture.TextureFilter.MipMapLinearLinear,Texture.TextureFilter.Linear);
         TextureRegionDrawable drawable=new TextureRegionDrawable(new TextureRegion(image));
         drawable.setMinSize((Scene.GetIntendedHeight()/ RewardScene.CARD_WIDTH_TO_HEIGHT)*0.95f,Scene.GetIntendedHeight()*0.95f);
         toolTipImage=new Image(drawable);

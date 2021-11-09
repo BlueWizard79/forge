@@ -289,7 +289,7 @@ public class ComputerUtil {
 
         final Card source = newSA.getHostCard();
         if (newSA.isSpell() && !source.isCopiedSpell()) {
-            newSA.setHostCard(game.getAction().moveToStack(source, sa));
+            newSA.setHostCard(game.getAction().moveToStack(source, newSA));
 
             if (newSA.getApi() == ApiType.Charm && !newSA.isWrapper()) {
                 if (!CharmEffect.makeChoices(newSA)) {
@@ -452,7 +452,7 @@ public class ComputerUtil {
                 int mana = ComputerUtilMana.getAvailableManaEstimate(ai, false);
 
                 boolean cantAffordSoon = activate.getCMC() > mana + 1;
-                boolean wrongColor = !activate.determineColor().hasNoColorsExcept(ColorSet.fromNames(ComputerUtilCost.getAvailableManaColors(ai, ImmutableList.of())).getColor());
+                boolean wrongColor = !activate.getColor().hasNoColorsExcept(ColorSet.fromNames(ComputerUtilCost.getAvailableManaColors(ai, ImmutableList.of())).getColor());
 
                 // Only do this for spells, not activated abilities
                 // We can't pay for this spell even if we play another land, or have wrong colors

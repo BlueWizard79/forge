@@ -253,9 +253,8 @@ public class ComputerUtilCombat {
                 poison += pd;
             }
         }
-        if (attacker.hasKeyword(Keyword.POISONOUS) && damage > 0) {
-            // TODO need to check for magnitude 1, each of their triggers could be replaced to 0
-            poison += attacker.getKeywordMagnitude(Keyword.POISONOUS);
+        if (damage > 0) {
+            poison += predictPoisonFromTriggers(attacker, attacked, damage);
         }
         return poison;
     }
@@ -373,12 +372,11 @@ public class ComputerUtilCombat {
                 unblocked.add(attacker);
             } else if (attacker.hasKeyword(Keyword.TRAMPLE)
                     && (getAttack(attacker) > totalShieldDamage(attacker, blockers))) {
+                int trampleDamage = getAttack(attacker) - totalShieldDamage(attacker, blockers);
                 if (attacker.hasKeyword(Keyword.INFECT)) {
-                    poison += getAttack(attacker) - totalShieldDamage(attacker, blockers);
+                    poison += trampleDamage;
                 }
-                if (attacker.hasKeyword(Keyword.POISONOUS)) {
-                    poison += attacker.getKeywordMagnitude(Keyword.POISONOUS);
-                }
+                poison += predictPoisonFromTriggers(attacker, ai, trampleDamage);
             }
         }
 
@@ -1478,7 +1476,7 @@ public class ComputerUtilCombat {
 
             // DealDamage triggers
             if (ApiType.DealDamage.equals(sa.getApi())) {
-                if ("TriggeredAttacker".equals(sa.getParam("Defined"))) {
+                if (!sa.hasParam("Defined") || !sa.getParam("Defined").startsWith("TriggeredAttacker")) {
                     continue;
                 }
                 int damage = AbilityUtils.calculateAmount(source, sa.getParam("NumDmg"), sa);
@@ -2474,5 +2472,52 @@ public class ComputerUtilCombat {
         }
 
         return false;
+    }
+
+    public static int predictPoisonFromTriggers(Card attacker, Player attacked, int damage) {
+        int pd = 0, poison = 0;
+        int damageAfterRepl = predictDamageTo(attacked, damage, attacker, true);
+        if (damageAfterRepl > 0) {
+            CardCollectionView trigCards = attacker.getController().getCardsIn(ZoneType.Battlefield);
+            for (Card c : trigCards) {
+                for (Trigger t : c.getTriggers()) {
+                    if (t.getMode() == TriggerType.DamageDone && "True".equals(t.getParam("CombatDamage")) && t.matchesValidParam("ValidSource", attacker)) {
+                        SpellAbility ab = t.getOverridingAbility();
+                        if (ab.getApi() == ApiType.Poison && "TriggeredTarget".equals(ab.getParam("Defined"))) {
+                            pd += AbilityUtils.calculateAmount(attacker, ab.getParam("Num"), ab);
+                        }
+                    }
+                }
+                poison += pd;
+                if (pd > 0 && attacker.hasKeyword(Keyword.DOUBLE_STRIKE)) {
+                    poison += pd;
+                }
+                // TODO: Predict replacement effects for counters (doubled, reduced, additional counters, etc.)
+            }
+        }
+        return poison;
+    }
+
+    public static GameEntity addAttackerToCombat(SpellAbility sa, Card attacker, FCollection<GameEntity> defenders) {
+        Combat combat = sa.getHostCard().getGame().getCombat();
+        if (combat != null) {
+            // 1. If the card that spawned the attacker was sent at a planeswalker, attack the same. Consider improving.
+            GameEntity def = combat.getDefenderByAttacker(sa.getHostCard());
+            if (def != null && def instanceof Card) {
+                if (((Card)def).isPlaneswalker()) {
+                    return def;
+                }
+            }
+            // 2. Otherwise, go through the list of options one by one, choose the first one that can't be blocked profitably.
+            for (GameEntity p : defenders) {
+                if (p instanceof Player && !ComputerUtilCard.canBeBlockedProfitably((Player)p, attacker)) {
+                    return p;
+                }
+                if (p instanceof Card && !ComputerUtilCard.canBeBlockedProfitably(((Card)p).getController(), attacker)) {
+                    return p;
+                }
+            }
+        }
+        return Iterables.getFirst(defenders, null);
     }
 }

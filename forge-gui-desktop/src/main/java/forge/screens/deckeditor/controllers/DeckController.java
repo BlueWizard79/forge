@@ -86,22 +86,25 @@ public class DeckController<T extends DeckBase> {
     /**
      * Load deck from file or clipboard
      */
-    public void loadDeck(Deck deck){
+    public void loadDeck(Deck deck) {
         this.loadDeck(deck, true);
     }
-
     public void loadDeck(Deck deck, boolean substituteCurrentDeck) {
+        boolean isStored;
         if (view.getCatalogManager().isInfinite()) {
             Deck currentDeck = view.getHumanDeck();
             if (substituteCurrentDeck || currentDeck.isEmpty()) {
                 newModel();
-            }
+                isStored = false;
+            } else
+                isStored = !this.modelPath.equals("");
         } else {
             CardPool catalogClone = new CardPool(view.getInitialCatalog());
             deck = pickFromCatalog(deck, catalogClone);
             ItemPool<PaperCard> catalogPool = view.getCatalogManager().getPool();
             catalogPool.clear();
             catalogPool.addAll(catalogClone);
+            isStored = false;
         }
 
         Deck currentDeck = view.getHumanDeck();
@@ -112,9 +115,17 @@ public class DeckController<T extends DeckBase> {
             }
         }
         // Allow to specify the name of Deck in DeckImporter
-        if ((deck.hasName()) && (!currentDeck.hasName()))
-            view.getHumanDeck().setName(deck.getName());
-        onModelChanged(false);
+        if (deck.hasName())
+            currentDeck.setName(deck.getName());
+        this.setModel((T) currentDeck, isStored);
+    }
+
+    public Deck getCurrentDeckInEditor(){
+        try{
+            return this.getModel().getHumanDeck();
+        } catch (NullPointerException npe){
+            return null;
+        }
     }
 
     private Deck pickFromCatalog(Deck deck, CardPool catalog) {
@@ -155,7 +166,6 @@ public class DeckController<T extends DeckBase> {
     }
 
     private void pickFromCatalog(Map<String, Integer> countByName, CardPool catalog, CardPool targetSection) {
-
         CardPool catalogClone = new CardPool(catalog); // clone to iterate modified collection
         for (Map.Entry<PaperCard, Integer> entry : catalogClone) {
             PaperCard availableCard = entry.getKey();
@@ -180,8 +190,7 @@ public class DeckController<T extends DeckBase> {
             if (card == null)
                 continue;
             int countToAdd = countByName.get(cardName);
-            card = StaticData.instance().getAlternativeCardPrint(card, referenceReleaseDate,
-                                        true, true);
+            card = StaticData.instance().getAlternativeCardPrint(card, referenceReleaseDate);
             if (card != null)
                 targetSection.add(card.getName(), card.getEdition(), countToAdd);
         }
@@ -214,7 +223,6 @@ public class DeckController<T extends DeckBase> {
     public void setModel(final T document) {
         setModel(document, false);
     }
-
     private void setModel(final T document, final boolean isStored) {
         model = document;
         onModelChanged(isStored);
@@ -230,21 +238,24 @@ public class DeckController<T extends DeckBase> {
         if (isStored) {
             if (isModelInSyncWithFolder()) {
                 setSaved(true);
-            }
-            else {
+            } else {
                 notifyModelChanged();
             }
         } else { //TODO: Make this smarter
             currentFolder = rootFolder;
             modelPath = "";
-            setSaved(true);
+            setSaved(this.model.isEmpty());
         }
     }
 
+    private Boolean isInSyncCacheResult = null;
+    private T syncModelCache = null;
     private boolean isModelInSyncWithFolder() {
-        if (model.getName().isEmpty()) {
+        if (syncModelCache != null && model == syncModelCache)
+            return isInSyncCacheResult;
+
+        if (model.getName().isEmpty())
             return true;
-        }
 
         final T modelStored = currentFolder.get(model.getName());
         // checks presence in dictionary only.
@@ -254,8 +265,9 @@ public class DeckController<T extends DeckBase> {
         if (modelStored == null) {
             return false;
         }
-
-        return modelStored.equals(model);
+        syncModelCache = model;
+        isInSyncCacheResult = modelStored.equals(model);
+        return isInSyncCacheResult;
     }
 
     /**
@@ -313,8 +325,7 @@ public class DeckController<T extends DeckBase> {
         final T newModel = currentFolder.get(name);
         if (newModel != null) {
             setModel((T) newModel.copyTo(name), true);
-        }
-        else {
+        } else {
             setSaved(true);
         }
     }

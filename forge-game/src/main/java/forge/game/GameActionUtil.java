@@ -105,10 +105,11 @@ public final class GameActionUtil {
                 lkicheck = true;
             }
 
+            // 601.3e
             if (lkicheck) {
                 // double freeze tracker, so it doesn't update view
                 game.getTracker().freeze();
-                source.clearChangedCardKeywords(false);
+                source.clearStaticChangedCardKeywords(false);
                 CardCollection preList = new CardCollection(source);
                 game.getAction().checkStaticAbilities(false, Sets.newHashSet(source), preList);
             }
@@ -177,7 +178,13 @@ public final class GameActionUtil {
                         final String[] k = keyword.split(":");
                         final Cost disturbCost = new Cost(k[1], true);
 
-                        final SpellAbility newSA = sa.copyWithManaCostReplaced(activator, disturbCost);
+                        SpellAbility newSA;
+                        if (source.getAlternateState().getType().hasSubtype("Aura")) {
+                            newSA = source.getAlternateState().getFirstAbility().copyWithManaCostReplaced(activator,
+                                    disturbCost);
+                        } else {
+                            newSA = sa.copyWithManaCostReplaced(activator, disturbCost);
+                        }
                         newSA.setActivatingPlayer(activator);
 
                         newSA.putParam("PrecostDesc", "Disturb —");
@@ -361,7 +368,26 @@ public final class GameActionUtil {
         if (sa == null || !sa.isSpell()) {
             return costs;
         }
-        final Card source = sa.getHostCard();
+
+        Card source = sa.getHostCard();
+        final Game game = source.getGame();
+        boolean lkicheck = false;
+
+        Card newHost = ((Spell)sa).getAlternateHost(source);
+        if (newHost != null) {
+            source = newHost;
+            lkicheck = true;
+        }
+
+        // 601.3e
+        if (lkicheck) {
+            // double freeze tracker, so it doesn't update view
+            game.getTracker().freeze();
+            source.clearStaticChangedCardKeywords(false);
+            CardCollection preList = new CardCollection(source);
+            game.getAction().checkStaticAbilities(false, Sets.newHashSet(source), preList);
+        }
+
         for (KeywordInterface inst : source.getKeywords()) {
             final String keyword = inst.getOriginal();
             if (keyword.startsWith("Buyback")) {
@@ -404,6 +430,16 @@ public final class GameActionUtil {
 
             // Surge while having OptionalCost is none of them
         }
+
+        // reset static abilities
+        if (lkicheck) {
+            game.getAction().checkStaticAbilities(false);
+            // clear delayed changes, this check should not have updated the view
+            game.getTracker().clearDelayed();
+            // need to unfreeze tracker
+            game.getTracker().unfreeze();
+        }
+
         return costs;
     }
 
@@ -698,7 +734,7 @@ public final class GameActionUtil {
             return list;
         }
         CardCollection completeList = new CardCollection();
-        PlayerCollection players = game.getPlayers();
+        PlayerCollection players = new PlayerCollection(game.getPlayers());
         // CR 613.7k use APNAP
         int indexAP = players.indexOf(game.getPhaseHandler().getPlayerTurn());
         if (indexAP != -1) {

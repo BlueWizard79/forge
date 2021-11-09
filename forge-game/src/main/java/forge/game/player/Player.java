@@ -1604,11 +1604,12 @@ public class Player extends GameEntity implements Comparable<Player> {
         return numTokenCreatedThisTurn;
     }
 
-    public final void addTokensCreatedThisTurn() {
+    public final void addTokensCreatedThisTurn(Card token) {
         numTokenCreatedThisTurn++;
         final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
         runParams.put(AbilityKey.Player, this);
         runParams.put(AbilityKey.Num, numTokenCreatedThisTurn);
+        runParams.put(AbilityKey.Card, token);
         game.getTriggerHandler().runTrigger(TriggerType.TokenCreated, runParams, false);
     }
 
@@ -1773,6 +1774,10 @@ public class Player extends GameEntity implements Comparable<Player> {
         if (land.isFaceDown()) {
             land.turnFaceUp(null);
         }
+
+        Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(land);
+        runParams.put(AbilityKey.Origin, land.getZone().getZoneType().name());
+
         game.copyLastState();
         final Card c = game.getAction().moveTo(getZone(ZoneType.Battlefield), land, cause);
         game.updateLastStateForCard(c);
@@ -1781,7 +1786,6 @@ public class Player extends GameEntity implements Comparable<Player> {
         game.fireEvent(new GameEventLandPlayed(this, land));
 
         // Run triggers
-        Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(land);
         runParams.put(AbilityKey.SpellAbility, cause);
         game.getTriggerHandler().runTrigger(TriggerType.LandPlayed, runParams, false);
         game.getStack().unfreezeStack();

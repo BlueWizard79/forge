@@ -61,9 +61,7 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
     private static final long serialVersionUID = -5837776824284093004L;
 
     private final FTextArea txtInput = new FTextArea();
-    // FIXME: review colours!
-    // FIXME: Background colour: #3e4f63
-
+    // Memo: Background colour: #3e4f63
     // UN-USED COLOUR TO USE "#E1E35F;";
 
     public static final String OK_CARD_IMPORT_COLOUR = "#89DC9F;";
@@ -203,6 +201,9 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
     private final FCheckBox cardArtPrefHasFilterCheckBox = new FCheckBox(Localizer.getInstance()
             .getMessage("lblPrefArtExpansionOnly"), false);
 
+    // Smart Card Art Optimisation
+    private final FCheckBox smartCardArtCheckBox = new FCheckBox(Localizer.getInstance().getMessage("lblUseSmartCardArt"), false);
+
     // Format Filter
     private final FCheckBox includeBnRCheck = new FCheckBox(Localizer.getInstance().getMessage("lblIgnoreBnR"), false);
 
@@ -216,6 +217,8 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
 
     private final String IMPORT_CARDS_CMD_LABEL = Localizer.getInstance().getMessage("lblImportCardsCmd");
     private final String CREATE_NEW_DECK_CMD_LABEL = Localizer.getInstance().getMessage("lblCreateNewCmd");
+    private final String SMART_CARDART_TT_NO_DECK = Localizer.getInstance().getMessage("ttUseSmartCardArtNoDeck");
+    private final String SMART_CARDART_TT_WITH_DECK = Localizer.getInstance().getMessage("ttUseSmartCardArtWithDeck");
     private final String currentGameType;
     private final VStatisticsImporter statsView;
     private final CStatisticsImporter cStatsView;
@@ -226,6 +229,8 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
         GameType currentGameType = g.getGameType();
         this.controller = new DeckImportController(dateTimeCheck, monthDropdown, yearDropdown, currentDeckIsNotEmpty);
         this.controller.setGameFormat(currentGameType);
+        if (currentDeckIsNotEmpty)
+            this.controller.setCurrentDeckInEditor(this.host.getDeckController().getCurrentDeckInEditor());
         // Get the list of allowed Sections
         List<DeckSection> supportedSections = new ArrayList<>();
         for (DeckSection section : EnumSet.allOf(DeckSection.class)) {
@@ -382,6 +387,7 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
         optionsPanel.add(dateFilterPanel, "cell 0 0, w 90%, left");
 
         // B2. Card Art Preference Filter
+
         final String latestOpt = Localizer.getInstance().getMessage("latestArtOpt");
         final String originalOpt = Localizer.getInstance().getMessage("originalArtOpt");
         final String [] choices = {latestOpt, originalOpt};
@@ -395,6 +401,10 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
         artPrefInfoLabel.setFont(FSkin.getItalicFont());
         artPrefInfoLabel.setForeground(FSkin.getColor(FSkin.Colors.CLR_TEXT));
 
+        // Smart Art Checkbox
+        this.smartCardArtCheckBox.setToolTipText(currentDeckIsNotEmpty ? SMART_CARDART_TT_WITH_DECK : SMART_CARDART_TT_NO_DECK);
+        this.smartCardArtCheckBox.setSelected(StaticData.instance().isEnabledCardArtSmartSelection());
+
         this.cardArtPrefHasFilterCheckBox.setSelected(StaticData.instance().isCoreExpansionOnlyFilterSet());
         this.cardArtPrefHasFilterCheckBox.setToolTipText(Localizer.getInstance().getMessage("nlPrefArtExpansionOnly"));
 
@@ -403,7 +413,8 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
         cardArtPanel.add(this.cardArtPrefsLabel,    "cell 0 0, w 25%, left, split 2");
         cardArtPanel.add(this.cardArtPrefsComboBox, "cell 0 0, w 10%, left, split 2");
         cardArtPanel.add(this.cardArtPrefHasFilterCheckBox,    "cell 0 1, w 15%, left, gaptop 5");
-        cardArtPanel.add(artPrefInfoLabel, "cell 0 2, w 90%, left");
+        cardArtPanel.add(this.smartCardArtCheckBox,    "cell 0 2, w 15%, left, gaptop 5");
+        cardArtPanel.add(artPrefInfoLabel, "cell 0 3, w 90%, left");
 
         // Action Listeners
         // ----------------
@@ -421,6 +432,15 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
         };
         this.cardArtPrefsComboBox.addItemListener(updateCardArtPreference);
         this.cardArtPrefHasFilterCheckBox.addItemListener(updateCardArtPreference);
+
+        this.smartCardArtCheckBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                boolean enableSmartCardArt = smartCardArtCheckBox.isSelected();
+                controller.setSmartCardArtOptimisation(enableSmartCardArt);
+                parseAndDisplay();
+            }
+        });
 
         optionsPanel.add(cardArtPanel,     "cell 1 0, w 100%, left");
 
@@ -533,6 +553,9 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
                     controller.setCreateNewDeck(createNewDeck);
                     String cmdAcceptLabel = createNewDeck ? CREATE_NEW_DECK_CMD_LABEL : IMPORT_CARDS_CMD_LABEL;
                     cmdAcceptButton.setText(cmdAcceptLabel);
+                    String smartCardArtChboxTooltip = createNewDeck ? SMART_CARDART_TT_NO_DECK : SMART_CARDART_TT_WITH_DECK;
+                    smartCardArtCheckBox.setToolTipText(smartCardArtChboxTooltip);
+                    parseAndDisplay();
                 }
             });
         }
@@ -556,61 +579,73 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
             TokenKey tokenKey = TokenKey.fromString(keyString);
             if (tokenKey == null)
                 return;
-            StaticData data = StaticData.instance();
-            PaperCard card = data.fetchCard(tokenKey.cardName, tokenKey.setCode, tokenKey.collectorNumber);
+            PaperCard card = StaticData.instance().fetchCard(tokenKey.cardName, tokenKey.setCode,
+                                                                    tokenKey.collectorNumber);
             if (card != null) {
-                // no need to check for card that has Image because CardPicturePanel
-                // has automatic integration with cardFetch
-                StringBuilder statusLbl = new StringBuilder();
-                if ((tokenKey.tokenType == CARD_FROM_INVALID_SET) || (tokenKey.tokenType == CARD_FROM_NOT_ALLOWED_SET)
-                        || (tokenKey.tokenType == LIMITED_CARD)) {
-                    DeckRecognizer.Token dummy = null;
-                    switch (tokenKey.tokenType) {
-                        case CARD_FROM_INVALID_SET:
-                            dummy = DeckRecognizer.Token.CardInInvalidSet(card, 0);
-                            break;
-                        case CARD_FROM_NOT_ALLOWED_SET:
-                            dummy = DeckRecognizer.Token.NotAllowedCard(card, 0);
-                            break;
-                        case LIMITED_CARD:
-                            dummy = DeckRecognizer.Token.LimitedCard(card, 0, tokenKey.deckSection, tokenKey.limitedType);
-                            break;
-                    }
-                    String cssClass = getTokenCSSClass(tokenKey.tokenType);
-                    if (tokenKey.tokenType == LIMITED_CARD)
-                        cssClass = WARN_MSG_CLASS;
-                    String statusMsg = String.format("<span class=\"%s\" style=\"font-size: 9px;\">%s</span>", cssClass,
-                            getTokenStatusMessage(dummy));
-                    statusLbl.append(statusMsg);
-                }
-
-                CardEdition edition = data.getCardEdition(card.getEdition());
-                String editionName = edition != null ? String.format("%s ", edition.getName()) : "";
-                StringBuilder editionLbl = new StringBuilder("<span style=\"font-size: 9px;\">");
-                editionLbl.append(String.format("<b>%s</b>: \"%s\" (<code>%s</code>) - Collector Nr. %s",
-                        Localizer.getInstance().getMessage("lblSet"), editionName,
-                        tokenKey.setCode, card.getCollectorNumber()));
-                if ((tokenKey.tokenType == LEGAL_CARD) ||
-                        ((tokenKey.tokenType == LIMITED_CARD) && this.controller.importBannedAndRestrictedCards())){
-                    editionLbl.append(String.format(" - <b class=\"%s\">%s: %s</b>", OK_IMPORT_CLASS,
-                            Localizer.getInstance().getMessage("lblDeckSection"), tokenKey.deckSection));
-                }
-                editionLbl.append("</span>");
-                cardImagePreview.setItem(card);
-
-                if (tokenKey.tokenType == LEGAL_CARD ||
-                        (tokenKey.tokenType == LIMITED_CARD && this.controller.importBannedAndRestrictedCards()))
-                    cardImagePreview.showAsEnabled();
-                else
-                    cardImagePreview.showAsDisabled();
-                cardPreviewLabel.setText(String.format("<html>%s %s<br>%s</html>", STYLESHEET, editionLbl, statusLbl));
-
-                // set tooltip
-                String tooltip = String.format("%s [%s] #%s", card.getName(), card.getEdition(),
-                        card.getCollectorNumber());
-                cardImagePreview.setToolTipText(tooltip);
+                DeckRecognizer.Token mockToken = createMockTokenFromTokenKey(card, tokenKey);
+                setupCardImagePreviewPanel(card, mockToken);
             }
         }
+    }
+
+    private DeckRecognizer.Token createMockTokenFromTokenKey(PaperCard card, TokenKey tokenKey){
+        DeckRecognizer.Token mockToken;
+        switch (tokenKey.tokenType) {
+            case CARD_FROM_INVALID_SET:
+                mockToken = DeckRecognizer.Token.CardInInvalidSet(card, 0, true);
+                break;
+            case CARD_FROM_NOT_ALLOWED_SET:
+                mockToken = DeckRecognizer.Token.NotAllowedCard(card, 0, true);
+                break;
+            case LIMITED_CARD:
+                mockToken = DeckRecognizer.Token.LimitedCard(card, 0, tokenKey.deckSection, tokenKey.limitedType, true);
+                break;
+            case LEGAL_CARD:
+                mockToken = DeckRecognizer.Token.LegalCard(card, 0, tokenKey.deckSection, true);
+                break;
+            default:
+                mockToken = null;
+                break;
+        }
+        return mockToken;
+    }
+
+    private void setupCardImagePreviewPanel(PaperCard card, DeckRecognizer.Token token) {
+        StaticData data = StaticData.instance();
+        // no need to check for card that has Image because CardPicturePanel
+        // has automatic integration with cardFetch
+        StringBuilder statusLbl = new StringBuilder();
+        if (token != null && token.isCardToken()) {
+            String cssClass = getTokenCSSClass(token.getType());
+            if (token.getType() == LIMITED_CARD)
+                cssClass = WARN_MSG_CLASS;
+            String statusMsg = String.format("<span class=\"%s\" style=\"font-size: 9px;\">%s</span>", cssClass,
+                                                                                        getTokenStatusMessage(token));
+            statusLbl.append(statusMsg);
+        }
+
+        CardEdition edition = data.getCardEdition(card.getEdition());
+        String editionName = edition != null ? String.format("%s ", edition.getName()) : "";
+        StringBuilder editionLbl = new StringBuilder("<span style=\"font-size: 9px;\">");
+        editionLbl.append(String.format("<b>%s</b>: \"%s\" (<code>%s</code>) - Collector Nr. %s",
+                Localizer.getInstance().getMessage("lblSet"), editionName, card.getEdition(), card.getCollectorNumber()));
+        if ((token.getType() == LEGAL_CARD) || ((token.getType() == LIMITED_CARD) && this.controller.importBannedAndRestrictedCards())){
+            editionLbl.append(String.format(" - <b class=\"%s\">%s: %s</b>", OK_IMPORT_CLASS,
+                    Localizer.getInstance().getMessage("lblDeckSection"), token.getTokenSection()));
+        }
+        editionLbl.append("</span>");
+        cardImagePreview.setItem(card);
+
+        if (token.getType() == LEGAL_CARD || (token.getType() == LIMITED_CARD && this.controller.importBannedAndRestrictedCards()))
+            cardImagePreview.showAsEnabled();
+        else
+            cardImagePreview.showAsDisabled();
+        cardPreviewLabel.setText(String.format("<html>%s %s<br>%s</html>", STYLESHEET, editionLbl, statusLbl));
+
+        // set tooltip
+        String tooltip = String.format("%s [%s] #%s", card.getName(), card.getEdition(),
+                card.getCollectorNumber());
+        cardImagePreview.setToolTipText(tooltip);
     }
 
     private void resetCardImagePreviewPanel() {
@@ -643,7 +678,9 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
     }
 
     private void parseAndDisplay() {
-        final List<DeckRecognizer.Token> tokens = controller.parseInput(txtInput.getText());
+        List<DeckRecognizer.Token> tokens = controller.parseInput(txtInput.getText());
+        if (controller.isSmartCardArtEnabled())
+            tokens = controller.optimiseCardArtInTokens();
         displayTokens(tokens);
         updateSummaries(tokens);
     }
@@ -687,26 +724,38 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
             PaperCard cardDisplayed = (PaperCard) displayedCardInPanel;
             // this will return either the same card instance or its [un]foiled version
             // null will be returned if not found in card list anymore
-            cardDisplayed = this.controller.getCardFromDecklist(cardDisplayed);
-            if (cardDisplayed == null)
-                this.resetCardImagePreviewPanel(); // current displayed card is not in decklist
-            else {
-                if (this.controller.isTokenInListLegal(cardDisplayed)) {
-                    this.cardImagePreview.setItem(cardDisplayed);
-                    this.cardImagePreview.showAsEnabled();
-                } else if (this.controller.isTokenInListLimited(cardDisplayed)) {
-                    this.cardImagePreview.setItem(cardDisplayed);
-                    if (this.includeBnRCheck.isSelected())
-                        this.cardImagePreview.showAsEnabled();
-                    else
-                        this.cardImagePreview.showAsDisabled();
-                } else { // any other card token NOT legal nor limited
-                    this.cardImagePreview.setItem(cardDisplayed);
-                    this.cardImagePreview.showAsDisabled();
+            PaperCard cardFromDecklist = this.controller.getCardFromDecklist(cardDisplayed);
+            if (cardFromDecklist == null) {
+                cardFromDecklist = this.controller.getCardFromDecklistByName(cardDisplayed.getName());
+                if (cardFromDecklist == null)
+                    this.resetCardImagePreviewPanel(); // current displayed card is not in decklist
+                else {
+                    DeckRecognizer.Token cardToken = controller.getTokenFromCardInDecklist(cardFromDecklist);
+                    setupCardImagePreviewPanel(cardFromDecklist, cardToken);
                 }
+            }
+            else {
+                DeckRecognizer.Token cardToken = controller.getTokenFromCardInDecklist(cardFromDecklist);
+                setupCardImagePreviewPanel(cardFromDecklist, cardToken);
             }
         }
     }
+
+//    private void setupCardImagePreview(PaperCard cardDisplayed) {
+//        if (this.controller.isTokenInListLegal(cardDisplayed)) {
+//            this.cardImagePreview.setItem(cardDisplayed);
+//            this.cardImagePreview.showAsEnabled();
+//        } else if (this.controller.isTokenInListLimited(cardDisplayed)) {
+//            this.cardImagePreview.setItem(cardDisplayed);
+//            if (this.includeBnRCheck.isSelected())
+//                this.cardImagePreview.showAsEnabled();
+//            else
+//                this.cardImagePreview.showAsDisabled();
+//        } else { // any other card token NOT legal nor limited
+//            this.cardImagePreview.setItem(cardDisplayed);
+//            this.cardImagePreview.showAsDisabled();
+//        }
+//    }
 
     private String toHTML(final DeckRecognizer.Token token) {
         if (token == null)
@@ -716,7 +765,7 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
             return "";
         String tokenStatus = getTokenStatusMessage(token);
         String cssClass = getTokenCSSClass(token.getType());
-        if (tokenStatus == null)
+        if (tokenStatus.length() == 0)
             tokenMsg = padEndWithHTMLSpaces(tokenMsg, 2*PADDING_TOKEN_MSG_LENGTH+10);
         else {
             tokenMsg = padEndWithHTMLSpaces(tokenMsg, PADDING_TOKEN_MSG_LENGTH);
@@ -832,7 +881,7 @@ public class DeckImport<TModel extends DeckBase> extends FDialog {
             case LEGAL_CARD:
             case UNKNOWN_TEXT:
             default:
-                return null;
+                return "";
 
         }
 

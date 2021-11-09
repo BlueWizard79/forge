@@ -462,7 +462,7 @@ public abstract class SpellAbilityEffect {
         final Card eff = new Card(game.nextCardId(), game);
         eff.setTimestamp(game.getNextTimestamp());
         eff.setName(name);
-        eff.setColor(hostCard.determineColor().getColor());
+        eff.setColor(hostCard.getColor().getColor());
         // if name includes emblem then it should be one
         if (name.startsWith("Emblem")) {
             eff.setEmblem(true);
@@ -575,14 +575,14 @@ public abstract class SpellAbilityEffect {
             FCollection<GameEntity> defs = null;
             // important to update defenders here, maybe some PW got removed
             combat.initConstraints();
-            if ("True".equalsIgnoreCase(attacking)) {
-                defs = (FCollection<GameEntity>) combat.getDefenders();
-            } else if (sa.hasParam("ChoosePlayerOrPlaneswalker")) {
+            if (sa.hasParam("ChoosePlayerOrPlaneswalker")) {
                 PlayerCollection defendingPlayers = AbilityUtils.getDefinedPlayers(host, attacking, sa);
                 defs = new FCollection<>();
                 for (Player p : defendingPlayers) {
                     defs.addAll(game.getCombat().getDefendersControlledBy(p));
                 }
+            } else if ("True".equalsIgnoreCase(attacking)) {
+                defs = (FCollection<GameEntity>) combat.getDefenders();
             } else {
                 defs = AbilityUtils.getDefinedEntities(host, attacking, sa);
             }
@@ -593,8 +593,7 @@ public abstract class SpellAbilityEffect {
                 Player chooser;
                 if (sa.hasParam("Chooser")) {
                     chooser = Iterables.getFirst(AbilityUtils.getDefinedPlayers(host, sa.getParam("Chooser"), sa), null);
-                }
-                else {
+                } else {
                     chooser = controller;
                 }
                 defender = chooser.getController().chooseSingleEntityForEffect(defs, sa,

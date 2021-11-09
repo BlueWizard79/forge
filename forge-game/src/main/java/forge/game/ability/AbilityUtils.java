@@ -165,6 +165,15 @@ public class AbilityUtils {
                     c = sacrificed.getFirst().getEnchantingCard();
                 }
             }
+        } else if (defined.equals("TopOfGraveyard")) {
+            final CardCollectionView grave = hostCard.getController().getCardsIn(ZoneType.Graveyard);
+
+            if (grave.size() > 0) { // TopOfLibrary or BottomOfLibrary
+                c = grave.getLast();
+            } else {
+                // we don't want this to fall through and return the "Self"
+                return cards;
+            }
         }
         else if (defined.endsWith("OfLibrary")) {
             final CardCollectionView lib = hostCard.getController().getCardsIn(ZoneType.Library);
@@ -1789,7 +1798,7 @@ public class AbilityUtils {
                 if (sq[0].contains("HasNumChosenColors")) {
                     int sum = 0;
                     for (Card card : getDefinedCards(c, sq[1], sa)) {
-                        sum += CardUtil.getColors(card).getSharedColors(ColorSet.fromNames(c.getChosenColors())).countColors();
+                        sum += card.getColor().getSharedColors(ColorSet.fromNames(c.getChosenColors())).countColors();
                     }
                     return sum;
                 }
@@ -1990,7 +1999,7 @@ public class AbilityUtils {
 
         // Count$CardMulticolor.<numMC>.<numNotMC>
         if (sq[0].contains("CardMulticolor")) {
-            final boolean isMulti = CardUtil.getColors(c).isMulticolor();
+            final boolean isMulti = c.getColor().isMulticolor();
             return doXMath(Integer.parseInt(sq[isMulti ? 1 : 2]), expr, c, ctb);
         }
         // Count$Madness.<True>.<False>
@@ -2046,7 +2055,7 @@ public class AbilityUtils {
         }
 
         if (sq[0].contains("CardNumColors")) {
-            return doXMath(CardUtil.getColors(c).countColors(), expr, c, ctb);
+            return doXMath(c.getColor().countColors(), expr, c, ctb);
         }
         if (sq[0].contains("CardNumAttacksThisTurn")) {
             return doXMath(c.getDamageHistory().getCreatureAttacksThisTurn(), expr, c, ctb);
@@ -2356,6 +2365,20 @@ public class AbilityUtils {
             return doXMath(getCardTypesFromList(oppCards), expr, c, ctb);
         }
 
+        //Count$TypesSharedWith [defined]
+        if (sq[0].startsWith("TypesSharedWith")) {
+            Set<CardType.CoreType> thisTypes = Sets.newHashSet(c.getType().getCoreTypes());
+            Set<CardType.CoreType> matches = new HashSet<>();
+            for (Card c1 : AbilityUtils.getDefinedCards(ctb.getHostCard(), l[0].split(" ")[1], ctb)) {
+                for (CardType.CoreType type : Sets.newHashSet(c1.getType().getCoreTypes())) {
+                    if (thisTypes.contains(type)) {
+                        matches.add(type);
+                    }
+                }
+            }
+            return matches.size();
+        }
+
         // Count$TopOfLibraryCMC
         if (sq[0].equals("TopOfLibraryCMC")) {
             int cmc = player.getCardsIn(ZoneType.Library).isEmpty() ? 0 :
@@ -2369,7 +2392,7 @@ public class AbilityUtils {
             final CardCollection list = CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield), rest, player, c, ctb);
             byte n = 0;
             for (final Card card : list) {
-                n |= card.determineColor().getColor();
+                n |= card.getColor().getColor();
             }
             return doXMath(ColorSet.fromMask(n).countColors(), expr, c, ctb);
         }
@@ -2827,7 +2850,7 @@ public class AbilityUtils {
             final CardCollection list = CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield), rest, player, c, ctb);
             byte n = 0;
             for (final Card card : list) {
-                n |= card.determineColor().getColor();
+                n |= card.getColor().getColor();
             }
             return doXMath(ColorSet.fromMask(n).countColors(), expr, c, ctb);
         }
@@ -3766,7 +3789,7 @@ public class AbilityUtils {
             someCards = CardLists.filter(someCards, new Predicate<Card>() {
                 @Override
                 public boolean apply(final Card c) {
-                    return CardUtil.getColors(c).isMulticolor();
+                    return c.getColor().isMulticolor();
                 }
             });
         }
@@ -3775,7 +3798,7 @@ public class AbilityUtils {
             someCards = CardLists.filter(someCards, new Predicate<Card>() {
                 @Override
                 public boolean apply(final Card c) {
-                    return CardUtil.getColors(c).isMonoColor();
+                    return c.getColor().isMonoColor();
                 }
             });
         }

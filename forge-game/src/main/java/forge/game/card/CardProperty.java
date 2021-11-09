@@ -25,6 +25,7 @@ import forge.game.zone.ZoneType;
 import forge.item.PaperCard;
 import forge.util.Expressions;
 import forge.util.TextUtil;
+import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.StringUtils;
 
@@ -689,7 +690,7 @@ public class CardProperty {
                         break;
                     case "MostProminentColor":
                         byte mask = CardFactoryUtil.getMostProminentColors(game.getCardsIn(ZoneType.Battlefield));
-                        if (!CardUtil.getColors(card).hasAnyColor(mask))
+                        if (!card.getColor().hasAnyColor(mask))
                             return false;
                         break;
                     case "LastCastThisTurn":
@@ -703,7 +704,7 @@ public class CardProperty {
                         if (castSA == null) {
                             return false;
                         }
-                        if (!CardUtil.getColors(card).hasAnyColor(castSA.getPayingColors().getColor())) {
+                        if (!card.getColor().hasAnyColor(castSA.getPayingColors().getColor())) {
                             return false;
                         }
                         break;
@@ -824,6 +825,11 @@ public class CardProperty {
                             return false;
                         }
                 }
+            }
+        } else if (property.startsWith("sharesLandTypeWith")) {
+            final String restriction = property.split("sharesLandTypeWith ")[1];
+            if (!Iterables.any(AbilityUtils.getDefinedCards(source, restriction, spellAbility), CardPredicates.sharesLandTypeWith(card))) {
+                return false;
             }
         } else if (property.equals("sharesPermanentTypeWith")) {
             if (!card.sharesPermanentTypeWith(source)) {
@@ -1459,6 +1465,14 @@ public class CardProperty {
             if (property.equals("attackingOpponent")) {
                 Player defender = combat.getDefenderPlayerByAttacker(card);
                 if (!sourceController.isOpponentOf(defender)) {
+                    return false;
+                }
+            }
+            if (property.startsWith("attacking ")) { // generic "attacking [DefinedGameEntity]"
+                FCollection<GameEntity> defined = AbilityUtils.getDefinedEntities(source, property.split(" ")[1],
+                        spellAbility);
+                final GameEntity defender = combat.getDefenderByAttacker(card);
+                if (!defined.contains(defender)) {
                     return false;
                 }
             }

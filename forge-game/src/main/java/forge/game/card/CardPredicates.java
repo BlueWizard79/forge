@@ -197,6 +197,15 @@ public final class CardPredicates {
         };
     }
 
+    public static Predicate<Card> sharesLandTypeWith(final Card card) {
+        return new Predicate<Card>() {
+            @Override
+            public boolean apply(final Card c) {
+                return c.sharesLandTypeWith(card);
+            }
+        };
+    }
+
     public static final Predicate<Card> possibleBlockers(final Card attacker) {
         return new Predicate<Card>() {
             @Override
@@ -264,7 +273,7 @@ public final class CardPredicates {
         return new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
-                return CardUtil.getColors(c).hasAnyColor(color);
+                return c.getColor().hasAnyColor(color);
             }
         };
     } // getColor()
@@ -273,7 +282,7 @@ public final class CardPredicates {
         return new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
-                return CardUtil.getColors(c).hasExactlyColor(color);
+                return c.getColor().hasExactlyColor(color);
             }
         };
     }
@@ -282,7 +291,7 @@ public final class CardPredicates {
         return new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
-                return CardUtil.getColors(c).isColorless();
+                return c.getColor().isColorless();
             }
         };
     }
