@@ -128,19 +128,25 @@ public class CopyPermanentAi extends SpellAbilityAi {
         final String sourceName = ComputerUtilAbility.getAbilitySourceName(sa);
         final boolean canCopyLegendary = sa.hasParam("NonLegendary");
 
-        // ////
-        // Targeting
         if (sa.usesTargeting()) {
             sa.resetTargets();
 
             CardCollection list = new CardCollection(CardUtil.getValidCardsToTarget(sa.getTargetRestrictions(), sa));
 
-            list = CardLists.filter(list, Predicates.not(CardPredicates.isRemAIDeck()));
             //Nothing to target
             if (list.isEmpty()) {
             	return false;
             }
-            
+
+            CardCollection betterList = CardLists.filter(list, Predicates.not(CardPredicates.isRemAIDeck()));
+            if (betterList.isEmpty()) {
+                if (!mandatory) {
+                    return false;
+                }
+            } else {
+                list = betterList;
+            }
+
             // Saheeli Rai + Felidar Guardian combo support
             if ("Saheeli Rai".equals(sourceName)) {
                 CardCollection felidarGuardian = CardLists.filter(list, CardPredicates.nameEquals("Felidar Guardian"));
@@ -154,7 +160,7 @@ public class CopyPermanentAi extends SpellAbilityAi {
             // target loop
             while (sa.canAddMoreTarget()) {
                 if (list.isEmpty()) {
-                    if (!sa.isTargetNumberValid() || (sa.getTargets().size() == 0)) {
+                    if (!sa.isTargetNumberValid() || sa.getTargets().size() == 0) {
                         sa.resetTargets();
                         return false;
                     } else {
@@ -247,7 +253,7 @@ public class CopyPermanentAi extends SpellAbilityAi {
 
     @Override
     protected Player chooseSinglePlayer(Player ai, SpellAbility sa, Iterable<Player> options, Map<String, Object> params) {
-        if (params.containsKey("Attacker")) {
+        if (params != null && params.containsKey("Attacker")) {
             return (Player) ComputerUtilCombat.addAttackerToCombat(sa, (Card) params.get("Attacker"), new FCollection<GameEntity>(options));
         }
         final List<Card> cards = new PlayerCollection(options).getCreaturesInPlay();
@@ -257,7 +263,7 @@ public class CopyPermanentAi extends SpellAbilityAi {
 
     @Override
     protected GameEntity chooseSinglePlayerOrPlaneswalker(Player ai, SpellAbility sa, Iterable<GameEntity> options, Map<String, Object> params) {
-        if (params.containsKey("Attacker")) {
+        if (params != null && params.containsKey("Attacker")) {
             return ComputerUtilCombat.addAttackerToCombat(sa, (Card) params.get("Attacker"), new FCollection<GameEntity>(options));
         }
         // should not be reached

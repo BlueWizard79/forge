@@ -37,7 +37,7 @@ import java.util.Deque;
 import java.util.List;
 
 public class Forge implements ApplicationListener {
-    public static final String CURRENT_VERSION = "1.6.45.001";
+    public static final String CURRENT_VERSION = "1.6.46.001";
 
     private static ApplicationListener app = null;
     private static Clipboard clipboard;
@@ -48,7 +48,7 @@ public class Forge implements ApplicationListener {
     private static FrameRate frameRate;
     private static FScreen currentScreen;
     protected static SplashScreen splashScreen;
-    private static KeyInputAdapter keyInputAdapter;
+    public static KeyInputAdapter keyInputAdapter;
     private static boolean exited;
     private static int continuousRenderingCount = 1; //initialize to 1 since continuous rendering is the default
     private static final Deque<FScreen> Dscreens = new ArrayDeque<>();
