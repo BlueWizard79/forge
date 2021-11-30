@@ -137,6 +137,9 @@ public class ComputerUtil {
         }
         if (chooseTargets != null) {
             chooseTargets.run();
+            if (!sa.isTargetNumberValid()) {
+                return false;
+            }
         }
 
         final Cost cost = sa.getPayCosts();
@@ -1320,7 +1323,7 @@ public class ComputerUtil {
         } else if (sa.isPwAbility() && ai.getGame().getPhaseHandler().is(PhaseType.MAIN2)) {
             for (final CostPart part : abCost.getCostParts()) {
                 if (part instanceof CostPutCounter) {
-                    return true;
+                    return part.convertAmount() == null || part.convertAmount() > 0 || ai.isCardInPlay("Carth the Lion");
                 }
             }
         }
@@ -1483,6 +1486,7 @@ public class ComputerUtil {
                 if (sa.getApi() != ApiType.DealDamage) {
                     continue;
                 }
+                sa.setActivatingPlayer(ai);
                 final String numDam = sa.getParam("NumDmg");
                 int dmg = AbilityUtils.calculateAmount(sa.getHostCard(), numDam, sa);
                 if (dmg <= damage) {
