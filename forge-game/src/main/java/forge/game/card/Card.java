@@ -57,6 +57,7 @@ import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityCantAttackBlock;
 import forge.game.staticability.StaticAbilityCantPutCounter;
 import forge.game.staticability.StaticAbilityCantSacrifice;
+import forge.game.staticability.StaticAbilityCantTarget;
 import forge.game.staticability.StaticAbilityCantTransform;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
@@ -5269,8 +5270,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         Log.debug(this + " - was assigned " + assignedDamage0 + " damage, by " + sourceCard);
         if (!assignedDamageMap.containsKey(sourceCard)) {
             assignedDamageMap.put(sourceCard, assignedDamage0);
-        }
-        else {
+        } else {
             assignedDamageMap.put(sourceCard, assignedDamageMap.get(sourceCard) + assignedDamage0);
         }
         if (assignedDamage0 > 0) {
@@ -5432,13 +5432,13 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             excess = damageIn + getDamage() - getLethal();
         }
 
-        GameEventCardDamaged.DamageType damageType = DamageType.Normal;
+        DamageType damageType = DamageType.Normal;
         if (isPlaneswalker()) { // 120.3c
             subtractCounter(CounterType.get(CounterEnumType.LOYALTY), damageIn);
         }
         if (isCreature()) {
-            boolean wither = (game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.alwaysWither)
-                    || source.hasKeyword(Keyword.WITHER) || source.hasKeyword(Keyword.INFECT));
+            boolean wither = game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.alwaysWither)
+                    || source.hasKeyword(Keyword.WITHER) || source.hasKeyword(Keyword.INFECT);
 
             if (wither) { // 120.3d
                 addCounter(CounterType.get(CounterEnumType.M1M1), damageIn, source.getController(), null, true, counterTable);
@@ -5449,7 +5449,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 view.updateDamage(this);
             }
 
-            if (source.hasKeyword(Keyword.DEATHTOUCH) && isCreature()) {
+            if (source.hasKeyword(Keyword.DEATHTOUCH)) {
                 setHasBeenDealtDeathtouchDamage(true);
                 damageType = DamageType.Deathtouch;
             }
@@ -5960,12 +5960,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
 
         // CantTarget static abilities
-        for (final Card ca : getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CantTarget", this, sa)) {
-                    return false;
-                }
-            }
+        if (StaticAbilityCantTarget.cantTarget(this, sa)) {
+            return false;
         }
 
         // keywords don't work outside battlefield

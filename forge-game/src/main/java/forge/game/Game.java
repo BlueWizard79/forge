@@ -863,6 +863,7 @@ public class Game {
 
         if (p != null && p.isMonarch()) {
             // if the player who lost was the Monarch, someone else will be the monarch
+            // TODO need to check rules if it should try the next player if able
             if (p.equals(getPhaseHandler().getPlayerTurn())) {
                 getAction().becomeMonarch(getNextPlayerAfter(p), null);
             } else {
@@ -955,7 +956,6 @@ public class Game {
         Multimap<Player, Card> anteed = ArrayListMultimap.create();
 
         if (matchRarity) {
-
             boolean onePlayerHasTimeShifted = false;
 
             List<CardRarity> validRarities = new ArrayList<>(Arrays.asList(CardRarity.values()));
@@ -1018,7 +1018,6 @@ public class Game {
                 } else {
                     chooseRandomCardsForAnte(player, anteed);
                 }
-
             }
         }
         else {

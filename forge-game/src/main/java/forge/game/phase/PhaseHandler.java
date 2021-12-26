@@ -30,6 +30,7 @@ import forge.game.GameStage;
 import forge.game.GameType;
 import forge.game.GlobalRuleChange;
 import forge.game.ability.AbilityKey;
+import forge.game.ability.effects.AddTurnEffect;
 import forge.game.ability.effects.SkipPhaseEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
@@ -429,6 +430,7 @@ public class PhaseHandler implements java.io.Serializable {
                     for (Player player : game.getPlayers()) {
                         player.getController().autoPassCancel(); // autopass won't wrap to next turn
                     }
+                    // TODO can probably be removed now that onCleanupPhase is done for all Registered
                     for (Player player : game.getLostPlayers()) {
                         player.clearAssignedDamage();
                     }
@@ -898,7 +900,7 @@ public class PhaseHandler implements java.io.Serializable {
                 SkipPhaseEffect.createSkipPhaseEffect(extraTurn.getSkipUntapSA(), nextPlayer, null, null, "Untap");
             }
             if (extraTurn.isCantSetSchemesInMotion()) {
-                nextPlayer.addKeyword("Schemes can't be set in motion this turn.");
+                AddTurnEffect.createCantSetSchemesInMotionEffect(extraTurn.getCantSetSchemesInMotionSA());
             }
         }
         return nextPlayer;

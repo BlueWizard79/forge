@@ -264,7 +264,6 @@ public class AiCostDecision extends CostDecisionMakerBase {
         return res.isEmpty() ? null : PaymentDecision.card(res);
     }
 
-
     @Override
     public PaymentDecision visit(CostGainLife cost) {
         final List<Player> oppsThatCanGainLife = Lists.newArrayList();
@@ -282,7 +281,6 @@ public class AiCostDecision extends CostDecisionMakerBase {
         return PaymentDecision.players(oppsThatCanGainLife);
     }
 
-
     @Override
     public PaymentDecision visit(CostMill cost) {
         int c = cost.getAbilityAmount(ability);
@@ -299,7 +297,7 @@ public class AiCostDecision extends CostDecisionMakerBase {
     @Override
     public PaymentDecision visit(CostPayLife cost) {
         int c = cost.getAbilityAmount(ability);
-        if (!player.canPayLife(c, isEffect())) {
+        if (!player.canPayLife(c, isEffect(), ability)) {
             return null;
         }
         // activator.payLife(c, null);
@@ -680,7 +678,6 @@ public class AiCostDecision extends CostDecisionMakerBase {
             // also add a way for the AI to respond to the last Chapter ability to keep the Saga on the field if wanted
             toRemove += removeCounter(table, prefs, CounterEnumType.LORE, c - toRemove);
         }
-
 
         // TODO add logic to remove positive counters?
         if (c > toRemove && cost.counter != null) {

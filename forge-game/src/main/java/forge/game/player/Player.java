@@ -105,9 +105,12 @@ import forge.game.spellability.SpellAbility;
 import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityCantBeCast;
 import forge.game.staticability.StaticAbilityCantDiscard;
+import forge.game.staticability.StaticAbilityCantBecomeMonarch;
 import forge.game.staticability.StaticAbilityCantDraw;
 import forge.game.staticability.StaticAbilityCantGainLosePayLife;
 import forge.game.staticability.StaticAbilityCantPutCounter;
+import forge.game.staticability.StaticAbilityCantTarget;
+import forge.game.staticability.StaticAbilityCantSetSchemesInMotion;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerHandler;
 import forge.game.trigger.TriggerType;
@@ -173,6 +176,8 @@ public class Player extends GameEntity implements Comparable<Player> {
     private int numTokenCreatedThisTurn = 0;
     private int numForetoldThisTurn = 0;
     private int numCardsInHandStartedThisTurnWith = 0;
+
+    private int simultaneousDamage = 0;
 
     private int lastTurnNr = 0;
 
@@ -310,10 +315,8 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public void setSchemeInMotion() {
-        for (final Player p : game.getPlayers()) {
-            if (p.hasKeyword("Schemes can't be set in motion this turn.")) {
-                return;
-            }
+        if (StaticAbilityCantSetSchemesInMotion.any(getGame())) {
+            return;
         }
 
         // Replacement effects
@@ -332,7 +335,6 @@ public class Player extends GameEntity implements Comparable<Player> {
         runParams.put(AbilityKey.Scheme, activeScheme);
         game.getTriggerHandler().runTrigger(TriggerType.SetInMotion, runParams, false);
     }
-
 
     /**
      * returns all opponents.
@@ -533,8 +535,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             game.getTriggerHandler().runTrigger(TriggerType.LifeGained, runParams, false);
 
             game.fireEvent(new GameEventPlayerLivesChanged(this, oldLife, life));
-        }
-        else {
+        } else {
             System.out.println("Player - trying to gain negative or 0 life");
         }
         return newLifeSet;
@@ -612,15 +613,15 @@ public class Player extends GameEntity implements Comparable<Player> {
         return !hasLost() && !StaticAbilityCantGainLosePayLife.anyCantLoseLife(this);
     }
 
-    public final boolean canPayLife(final int lifePayment, final boolean effect) {
+    public final boolean canPayLife(final int lifePayment, final boolean effect, SpellAbility cause) {
         if (lifePayment > 0 && life < lifePayment) {
             return false;
         }
-        return (lifePayment <= 0) || !StaticAbilityCantGainLosePayLife.anyCantPayLife(this, effect);
+        return lifePayment <= 0 || !StaticAbilityCantGainLosePayLife.anyCantPayLife(this, effect, cause);
     }
 
-    public final boolean payLife(final int lifePayment, final Card source, final boolean effect) {
-        if (!canPayLife(lifePayment, effect)) {
+    public final boolean payLife(final int lifePayment, final SpellAbility cause, final boolean effect) {
+        if (!canPayLife(lifePayment, effect, cause)) {
             return false;
         }
 
@@ -663,7 +664,6 @@ public class Player extends GameEntity implements Comparable<Player> {
         if (amount <= 0 || hasLost()) {
             return 0;
         }
-        //String additionalLog = "";
 
         boolean infect = source.hasKeyword(Keyword.INFECT)
                 || hasKeyword("All damage is dealt to you as though its source had infect.");
@@ -673,7 +673,12 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
         else if (!hasKeyword("Damage doesn't cause you to lose life.")) {
             // rule 118.2. Damage dealt to a player normally causes that player to lose that much life.
-            loseLife(amount, true, false);
+            if (isCombat) {
+                // currently all abilities treat is as single event
+                simultaneousDamage += amount;
+            } else {
+                loseLife(amount, true, false);
+            }
         }
 
         //Oathbreaker, Tiny Leaders, and Brawl ignore commander damage rule
@@ -712,7 +717,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         runParams.put(AbilityKey.IsCombatDamage, isCombat);
         // Defending player at the time the damage was dealt
         runParams.put(AbilityKey.DefendingPlayer, game.getCombat() != null ? game.getCombat().getDefendingPlayerRelatedTo(source) : null);
-        game.getTriggerHandler().runTrigger(TriggerType.DamageDone, runParams, false);
+        game.getTriggerHandler().runTrigger(TriggerType.DamageDone, runParams, isCombat);
 
         game.fireEvent(new GameEventPlayerDamaged(this, source, amount, isCombat, infect));
 
@@ -810,6 +815,11 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
 
         return restDamage;
+    }
+
+    public final void dealCombatDamage() {
+        loseLife(simultaneousDamage, true, false);
+        simultaneousDamage = 0;
     }
 
     public final void clearAssignedDamage() {
@@ -1033,40 +1043,6 @@ public class Player extends GameEntity implements Comparable<Player> {
         addChangedKeywords(ImmutableList.of(keyword), ImmutableList.of(), getGame().getNextTimestamp(), 0);
     }
 
-    /**
-     * Remove all keyword changes which grant this {@link Player} the specified
-     * keyword.
-     * @param keyword the keyword to remove.
-     */
-    public final void removeKeyword(final String keyword) {
-        removeKeyword(keyword, true);
-    }
-    public final void removeKeyword(final String keyword, final boolean allInstances) {
-        boolean keywordRemoved = false;
-
-        for (final KeywordsChange ck : changedKeywords.values()) {
-            if (ck.removeKeywordfromAdd(keyword)) {
-                keywordRemoved = true;
-                if (!allInstances) {
-                    break;
-                }
-            }
-        }
-
-        // Remove the empty changes
-        for (final Table.Cell<Long, Long, KeywordsChange> ck : ImmutableList.copyOf(changedKeywords.cellSet())) {
-            if (ck.getValue().isEmpty() && changedKeywords.remove(ck.getRowKey(), ck.getColumnKey()) != null) {
-                keywordRemoved = true;
-                getKeywordCard().removeChangedCardTraits(ck.getRowKey(), ck.getColumnKey());
-            }
-        }
-
-        if (keywordRemoved) {
-            updateKeywords();
-            game.fireEvent(new GameEventPlayerStatsChanged(this, true));
-        }
-    }
-
     @Override
     public final boolean hasKeyword(final String keyword) {
         return keywords.contains(keyword);
@@ -1141,12 +1117,8 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
 
         // CantTarget static abilities
-        for (final Card ca : getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CantTarget", this, sa)) {
-                    return false;
-                }
-            }
+        if (StaticAbilityCantTarget.cantTarget(this, sa)) {
+            return false;
         }
 
         return !hasProtectionFrom(sa.getHostCard());
@@ -1490,13 +1462,11 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
 
         //External activatables from all opponents
-        for (final Player opponent : getOpponents()) {
-            cl.addAll(opponent.getZone(ZoneType.Exile).getCardsPlayerCanActivate(this));
-            cl.addAll(opponent.getZone(ZoneType.Graveyard).getCardsPlayerCanActivate(this));
-            cl.addAll(opponent.getZone(ZoneType.Library).getCardsPlayerCanActivate(this));
-            if (opponent.hasKeyword("Play with your hand revealed.")) {
-                cl.addAll(opponent.getZone(ZoneType.Hand).getCardsPlayerCanActivate(this));
-            }
+        for (final Player other : getAllOtherPlayers()) {
+            cl.addAll(other.getZone(ZoneType.Exile).getCardsPlayerCanActivate(this));
+            cl.addAll(other.getZone(ZoneType.Graveyard).getCardsPlayerCanActivate(this));
+            cl.addAll(other.getZone(ZoneType.Library).getCardsPlayerCanActivate(this));
+            cl.addAll(other.getZone(ZoneType.Hand).getCardsPlayerCanActivate(this));
         }
         cl.addAll(getGame().getCardsPlayerCanActivateInStack());
         return cl;
@@ -2019,7 +1989,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean cantLoseForZeroOrLessLife() {
-        return (hasKeyword("You don't lose the game for having 0 or less life."));
+        return hasKeyword("You don't lose the game for having 0 or less life.");
     }
 
     public final boolean cantWin() {
@@ -2529,8 +2499,6 @@ public class Player extends GameEntity implements Comparable<Player> {
         setLifeStartedThisTurnWith(getLife());
         setLibrarySearched(0);
         setNumManaConversion(0);
-
-        removeKeyword("Schemes can't be set in motion this turn.");
 
         // set last turn nr
         if (game.getPhaseHandler().isPlayerTurn(this)) {
@@ -3243,6 +3211,9 @@ public class Player extends GameEntity implements Comparable<Player> {
             com.remove(monarchEffect);
             this.updateZoneForView(com);
         }
+    }
+    public boolean canBecomeMonarch() {
+        return !StaticAbilityCantBecomeMonarch.anyCantBecomeMonarch(this);
     }
 
     public void updateKeywordCardAbilityText() {
