@@ -598,9 +598,9 @@ public class DamageDealAi extends DamageAiBase {
                     lastTgt = humanCreature;
                     dmg -= assignedDamage;
                 }
-                if (!source.hasProtectionFrom(humanCreature)) {
-                    dmgTaken += humanCreature.getNetPower();
-                }
+                // protection is already checked by target above
+                dmgTaken += humanCreature.getNetPower();
+
                 if (dmg == 0) {
                     return true;
                 }
@@ -761,7 +761,7 @@ public class DamageDealAi extends DamageAiBase {
             // TODO: Improve Damage, we shouldn't just target the player just because we can
             if (sa.canTarget(enemy) && tcs.size() < tgt.getMaxTargets(source, sa)) {
                 if (((phase.is(PhaseType.END_OF_TURN) && phase.getNextTurn().equals(ai))
-                        || (SpellAbilityAi.isSorcerySpeed(sa) && phase.is(PhaseType.MAIN2))
+                        || (SpellAbilityAi.isSorcerySpeed(sa, ai) && phase.is(PhaseType.MAIN2))
                         || ("PingAfterAttack".equals(logic) && phase.getPhase().isAfter(PhaseType.COMBAT_DECLARE_ATTACKERS) && phase.isPlayerTurn(ai))
                         || immediately || shouldTgtP(ai, sa, dmg, noPrevention)) &&
                         (!avoidTargetP(ai, sa))) {
@@ -811,9 +811,8 @@ public class DamageDealAi extends DamageAiBase {
                 if (!c.hasKeyword(Keyword.INDESTRUCTIBLE) && ComputerUtilCombat.getDamageToKill(c, false) <= restDamage) {
                     if (c.getController().equals(ai)) {
                         return false;
-                    } else {
-                        urgent = true;
                     }
+                    urgent = true;
                 }
                 if (c.getController().isOpponentOf(ai) ^ c.getName().equals("Stuffy Doll")) {
                     positive = true;

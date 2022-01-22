@@ -29,13 +29,17 @@ public class MakeCardEffect extends SpellAbilityEffect {
                 name = AbilityUtils.getDefinedCards(source, sa.getParam("DefinedName"), sa).getFirst().getName();
             }
             final ZoneType zone = ZoneType.smartValueOf(sa.getParamOrDefault("Zone", "Library"));
-            int amount = sa.hasParam("Amount") ? Integer.parseInt(sa.getParam("Amount")) : 1;
+            int amount = sa.hasParam("Amount") ?
+                    AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("Amount"), sa) : 1;
 
             CardCollection cards = new CardCollection();
 
             if (!name.equals("")) {
                 while (amount > 0) {
                     Card card = Card.fromPaperCard(StaticData.instance().getCommonCards().getUniqueByName(name), player);
+                    if (sa.hasParam("IsToken")) {
+                        card.setToken(true);
+                    }
                     if (!sa.hasParam("NotToken")) {
                         card.setTokenCard(true);
                     }

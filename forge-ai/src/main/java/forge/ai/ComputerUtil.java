@@ -40,6 +40,7 @@ import forge.card.CardStateName;
 import forge.card.CardType;
 import forge.card.ColorSet;
 import forge.card.MagicColor;
+import forge.card.mana.ManaAtom;
 import forge.game.CardTraitPredicates;
 import forge.game.Game;
 import forge.game.GameActionUtil;
@@ -1046,7 +1047,8 @@ public class ComputerUtil {
         // if we have non-persistent mana in our pool, would be good to try to use it and not waste it
         if (ai.getManaPool().willManaBeLostAtEndOfPhase()) {
             boolean canUseToPayCost = false;
-            for (byte color : MagicColor.WUBRGC) {
+            for (byte color : ManaAtom.MANATYPES) {
+                // tries to reuse any amount of colorless if cost only has generic
                 if (ai.getManaPool().getAmountOfColor(color) > 0 && card.getManaCost().canBePaidWithAvailable(color)) {
                     canUseToPayCost = true;
                     break;
@@ -2436,7 +2438,7 @@ public class ComputerUtil {
             CardCollection cardsInPlay = CardLists.getNotType(game.getCardsIn(ZoneType.Battlefield), "Land");
             CardCollection humanlist = CardLists.filterControlledBy(cardsInPlay, ai.getOpponents());
             CardCollection computerlist = ai.getCreaturesInPlay();
-            return (ComputerUtilCard.evaluatePermanentList(computerlist) + 3) < ComputerUtilCard.evaluatePermanentList(humanlist) ? "Carnage" : "Homage";
+            return ComputerUtilCard.evaluatePermanentList(computerlist) + 3 < ComputerUtilCard.evaluatePermanentList(humanlist) ? "Carnage" : "Homage";
         case "Judgment":
             if (votes.isEmpty()) {
                 CardCollection list = new CardCollection();
@@ -2446,9 +2448,8 @@ public class ComputerUtil {
                     }
                 }
                 return ComputerUtilCard.getBestAI(list);
-            } else {
-                return Iterables.getFirst(votes.keySet(), null);
             }
+            return Iterables.getFirst(votes.keySet(), null);
         case "Protection":
             if (votes.isEmpty()) {
                 List<String> restrictedToColors = Lists.newArrayList();
@@ -2459,9 +2460,8 @@ public class ComputerUtil {
                     }
                 CardCollection lists = CardLists.filterControlledBy(game.getCardsInGame(), ai.getOpponents());
                 return StringUtils.capitalize(ComputerUtilCard.getMostProminentColor(lists, restrictedToColors));
-            } else {
-                return Iterables.getFirst(votes.keySet(), null);
             }
+            return Iterables.getFirst(votes.keySet(), null);
         case "FeatherOrQuill":
             // try to mill opponent with Quill vote
             if (opponent && !controller.cantLose()) {

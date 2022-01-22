@@ -80,30 +80,6 @@ import io.sentry.event.BreadcrumbBuilder;
 public class AbilityUtils {
     private final static ImmutableList<String> cmpList = ImmutableList.of("LT", "LE", "EQ", "GE", "GT", "NE");
 
-    public static CounterType getCounterType(String name, SpellAbility sa) throws Exception {
-        CounterType counterType;
-        if ("ReplacedCounterType".equals(name)) {
-            name = (String) sa.getReplacingObject(AbilityKey.CounterType);
-        }
-        //try {
-            counterType = CounterType.getType(name);
-        /*
-        } catch (Exception e) {
-            String type = sa.getSVar(name);
-            if (type.equals("")) {
-                type = sa.getHostCard().getSVar(name);
-            }
-
-            if (type.equals("")) {
-                throw new Exception("Counter type doesn't match, nor does an SVar exist with the type name.");
-            }
-            counterType = CounterType.getType(type);
-        }
-        //*/
-
-        return counterType;
-    }
-
     // should the three getDefined functions be merged into one? Or better to
     // have separate?
     // If we only have one, each function needs to Cast the Object to the
@@ -1120,7 +1096,7 @@ public class AbilityUtils {
                     o = ((CardCollection) c).get(0).getController();
                 }
             }
-            else if (defParsed.endsWith("Opponent")) {
+            else if (defParsed.endsWith("Opponent") && !defParsed.endsWith("IfOpponent")) {
                 String triggeringType = defParsed.substring(9);
                 triggeringType = triggeringType.substring(0, triggeringType.length() - 8);
                 final Object c = root.getTriggeringObject(AbilityKey.fromString(triggeringType));
@@ -1148,8 +1124,22 @@ public class AbilityUtils {
                 }
             }
             else {
-                final String triggeringType = defParsed.substring(9);
+                String triggeringType = defParsed.substring(9);
+                String filter = null;
+                if (triggeringType.contains("=")) {
+                    filter = triggeringType.split("If")[1];
+                    triggeringType = triggeringType.split("If")[0];
+                }
                 o = root.getTriggeringObject(AbilityKey.fromString(triggeringType));
+                if (filter != null) {
+                    if (filter.equals("Opponent")) {
+                        if (!((Player)o).isOpponentOf(((SpellAbility) sa).getActivatingPlayer())) {
+                            o = null;
+                        }
+                    } else {
+                        System.err.println("getDefinedPlayers needs additional code for =Filter");
+                    }
+                }
             }
             if (o != null) {
                 if (o instanceof Player) {
@@ -1349,7 +1339,10 @@ public class AbilityUtils {
             }
         }
         else if (defined.equals("SourceFirstSpell")) {
-            sas.add(card.getFirstSpellAbility());
+            SpellAbility spell = game.getStack().getSpellMatchingHost(card);
+            if (spell != null) {
+                sas.add(spell);
+            }
         }
         else if (defined.startsWith("Triggered") && sa instanceof SpellAbility) {
             final SpellAbility root = ((SpellAbility)sa).getRootAbility();
@@ -1386,8 +1379,7 @@ public class AbilityUtils {
                         if (instanceSA != null) {
                             sas.add(instanceSA);
                         }
-                    }
-                    else {
+                    } else {
                         sas.add(targetSpell);
                     }
                 }
@@ -1422,7 +1414,7 @@ public class AbilityUtils {
 
         // do blessing there before condition checks
         if (sa.isSpell() && sa.isBlessing() && !sa.getHostCard().isPermanent()) {
-            if (pl != null && pl.getZone(ZoneType.Battlefield).size() >= 10) {
+            if (pl.getZone(ZoneType.Battlefield).size() >= 10) {
                 pl.setBlessing(true);
             }
         }
@@ -1871,9 +1863,8 @@ public class AbilityUtils {
                     list = CardLists.getValidCards(list, k[1].split(","), sa.getActivatingPlayer(), c, sa);
                     if (k[0].contains("TotalToughness")) {
                         return doXMath(Aggregates.sum(list, CardPredicates.Accessors.fnGetNetToughness), expr, c, ctb);
-                    } else {
-                        return doXMath(list.size(), expr, c, ctb);
                     }
+                    return doXMath(list.size(), expr, c, ctb);
                 }
 
                 if (sq[0].startsWith("LastStateGraveyard")) {
@@ -2187,6 +2178,10 @@ public class AbilityUtils {
             return doXMath(c.getRememberedCount(), expr, c, ctb);
         }
 
+        if (sq[0].startsWith("ImprintedSize")) {
+            return doXMath(c.getImprintedCards().size(), expr, c, ctb);
+        }
+
         if (sq[0].startsWith("RememberedNumber")) {
             int num = 0;
             for (final Object o : c.getRemembered()) {
@@ -2291,6 +2286,10 @@ public class AbilityUtils {
             return doXMath(player.getNumDrawnThisTurn(), expr, c, ctb);
         }
 
+        if (sq[0].equals("YouRollThisTurn")) {
+            return doXMath(player.getNumRollsThisTurn(), expr, c, ctb);
+        }
+
         if (sq[0].equals("YouSurveilThisTurn")) {
             return doXMath(player.getSurveilThisTurn(), expr, c, ctb);
         }
@@ -2369,6 +2368,10 @@ public class AbilityUtils {
 
         if (sq[0].equals("YourTurns")) {
             return doXMath(player.getTurn(), expr, c, ctb);
+        }
+
+        if (sq[0].equals("NotedNumber")) {
+            return doXMath(player.getNotedNumberForName(c.getName()), expr, c, ctb);
         }
 
         if (sq[0].startsWith("OppTypesInGrave")) {
@@ -2719,9 +2722,6 @@ public class AbilityUtils {
             String validFilter = workingCopy[hasFrom ? 4 : 2] ;
 
             final List<Card> res = CardUtil.getThisTurnEntered(destination, origin, validFilter, c, ctb);
-            if (origin == null) { // Remove cards on the battlefield that changed controller
-                res.removeAll(CardUtil.getThisTurnEntered(destination, destination, validFilter, c, ctb));
-            }
             return doXMath(res.size(), expr, c, ctb);
         }
 
@@ -2735,9 +2735,6 @@ public class AbilityUtils {
             String validFilter = workingCopy[hasFrom ? 4 : 2] ;
 
             final List<Card> res = CardUtil.getLastTurnEntered(destination, origin, validFilter, c, ctb);
-            if (origin == null) { // Remove cards on the battlefield that changed controller
-                res.removeAll(CardUtil.getLastTurnEntered(destination, destination, validFilter, c, ctb));
-            }
             return doXMath(res.size(), expr, c, ctb);
         }
 
@@ -3208,9 +3205,8 @@ public class AbilityUtils {
         } else if (s[0].contains("DivideEvenlyDown")) {
             if (secondaryNum == 0) {
                 return 0;
-            } else {
-                return num / secondaryNum;
             }
+            return num / secondaryNum;
         } else if (s[0].contains("Mod")) {
             return num % secondaryNum;
         } else if (s[0].contains("Abs")) {
@@ -3218,15 +3214,13 @@ public class AbilityUtils {
         } else if (s[0].contains("LimitMax")) {
             if (num < secondaryNum) {
                 return num;
-            } else {
-                return secondaryNum;
             }
+            return secondaryNum;
         } else if (s[0].contains("LimitMin")) {
             if (num > secondaryNum) {
                 return num;
-            } else {
-                return secondaryNum;
             }
+            return secondaryNum;
 
         } else {
             return num;
@@ -3489,11 +3483,7 @@ public class AbilityUtils {
         }
 
         if (value.contains("DamageToOppsThisTurn")) {
-            int oppDmg = 0;
-            for (Player opp : player.getOpponents()) {
-                oppDmg += opp.getAssignedDamage();
-            }
-            return doXMath(oppDmg, m, source, ctb);
+            return doXMath(player.getOpponentsAssignedDamage(), m, source, ctb);
         }
 
         if (value.contains("NonCombatDamageDealtThisTurn")) {

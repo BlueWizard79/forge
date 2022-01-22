@@ -1019,7 +1019,7 @@ public final class CMatchUI
     @Override
     public Map<CardView, Integer> assignCombatDamage(final CardView attacker,
             final List<CardView> blockers, final int damage,
-            final GameEntityView defender, final boolean overrideOrder) {
+            final GameEntityView defender, final boolean overrideOrder, final boolean maySkip) {
         if (damage <= 0) {
             return Collections.emptyMap();
         }
@@ -1034,7 +1034,7 @@ public final class CMatchUI
         FThreads.invokeInEdtAndWait(new Runnable() {
             @Override
             public void run() {
-                final VAssignCombatDamage v = new VAssignCombatDamage(CMatchUI.this, attacker, blockers, damage, defender, overrideOrder);
+                final VAssignCombatDamage v = new VAssignCombatDamage(CMatchUI.this, attacker, blockers, damage, defender, overrideOrder, maySkip);
                 result.set(v.getDamageMap());
             }});
         return result.get();
@@ -1056,7 +1056,6 @@ public final class CMatchUI
             }});
         return result.get();
     }
-
 
     @Override
     public void openView(final TrackableCollection<PlayerView> myPlayers) {

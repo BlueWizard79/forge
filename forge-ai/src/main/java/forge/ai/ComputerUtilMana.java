@@ -156,8 +156,8 @@ public class ComputerUtilMana {
                         // Mana abilities on the same card
                         String shardMana = shard.toString().replaceAll("\\{", "").replaceAll("\\}", "");
 
-                        boolean payWithAb1 = ability1.getManaPart().mana().contains(shardMana);
-                        boolean payWithAb2 = ability2.getManaPart().mana().contains(shardMana);
+                        boolean payWithAb1 = ability1.getManaPart().mana(ability1).contains(shardMana);
+                        boolean payWithAb2 = ability2.getManaPart().mana(ability2).contains(shardMana);
 
                         if (payWithAb1 && !payWithAb2) {
                             return -1;
@@ -196,9 +196,9 @@ public class ComputerUtilMana {
                     Collections.sort(prefSortedAbilities, new Comparator<SpellAbility>() {
                         @Override
                         public int compare(final SpellAbility ability1, final SpellAbility ability2) {
-                            if (ability1.getManaPart().mana().contains(preferredShard))
+                            if (ability1.getManaPart().mana(ability1).contains(preferredShard))
                                 return -1;
-                            else if (ability2.getManaPart().mana().contains(preferredShard))
+                            else if (ability2.getManaPart().mana(ability2).contains(preferredShard))
                                 return 1;
 
                             return 0;
@@ -207,9 +207,9 @@ public class ComputerUtilMana {
                     Collections.sort(otherSortedAbilities, new Comparator<SpellAbility>() {
                         @Override
                         public int compare(final SpellAbility ability1, final SpellAbility ability2) {
-                            if (ability1.getManaPart().mana().contains(preferredShard))
+                            if (ability1.getManaPart().mana(ability1).contains(preferredShard))
                                 return 1;
-                            else if (ability2.getManaPart().mana().contains(preferredShard))
+                            else if (ability2.getManaPart().mana(ability2).contains(preferredShard))
                                 return -1;
 
                             return 0;
@@ -306,51 +306,49 @@ public class ComputerUtilMana {
                 continue;
             }
 
-            if (saHost != null) {
-                if (ma.getPayCosts().hasTapCost() && AiCardMemory.isRememberedCard(ai, ma.getHostCard(), MemorySet.PAYS_TAP_COST)) {
+            if (ma.getPayCosts().hasTapCost() && AiCardMemory.isRememberedCard(ai, ma.getHostCard(), MemorySet.PAYS_TAP_COST)) {
+                continue;
+            }
+
+            if (!ComputerUtilCost.checkTapTypeCost(ai, ma.getPayCosts(), ma.getHostCard(), sa)) {
+                continue;
+            }
+
+            if (!ComputerUtilCost.checkForManaSacrificeCost(ai, ma.getPayCosts(), ma.getHostCard(), ma, ma.isTrigger())) {
+                continue;
+            }
+
+            if (sa.getApi() == ApiType.Animate) {
+                // For abilities like Genju of the Cedars, make sure that we're not activating the aura ability by tapping the enchanted card for mana
+                if (saHost.isAura() && "Enchanted".equals(sa.getParam("Defined"))
+                        && ma.getHostCard() == saHost.getEnchantingCard()
+                        && ma.getPayCosts().hasTapCost()) {
                     continue;
                 }
 
-                if (!ComputerUtilCost.checkTapTypeCost(ai, ma.getPayCosts(), ma.getHostCard(), sa)) {
+                // If a manland was previously animated this turn, do not tap it to animate another manland
+                if (saHost.isLand() && ma.getHostCard().isLand()
+                        && ai.getController().isAI()
+                        && AnimateAi.isAnimatedThisTurn(ai, ma.getHostCard())) {
                     continue;
                 }
-                
-                if (!ComputerUtilCost.checkForManaSacrificeCost(ai, ma.getPayCosts(), ma.getHostCard(), ma, ma.isTrigger())) {
+            } else if (sa.getApi() == ApiType.Pump) {
+                if ((saHost.isInstant() || saHost.isSorcery())
+                        && ma.getHostCard().isCreature()
+                        && ai.getController().isAI()
+                        && ma.getPayCosts().hasTapCost()
+                        && sa.getTargets().getTargetCards().contains(ma.getHostCard())) {
+                    // do not activate pump instants/sorceries targeting creatures by tapping targeted
+                    // creatures for mana (for example, Servant of the Conduit)
                     continue;
                 }
-
-                if (sa.getApi() == ApiType.Animate) {
-                    // For abilities like Genju of the Cedars, make sure that we're not activating the aura ability by tapping the enchanted card for mana
-                    if (saHost.isAura() && "Enchanted".equals(sa.getParam("Defined"))
-                            && ma.getHostCard() == saHost.getEnchantingCard()
-                            && ma.getPayCosts().hasTapCost()) {
+            } else if (sa.getApi() == ApiType.Attach
+                    && "AvoidPayingWithAttachTarget".equals(saHost.getSVar("AIPaymentPreference"))) {
+                // For cards like Genju of the Cedars, make sure we're not attaching to the same land that will
+                // be tapped to pay its own cost if there's another untapped land like that available
+                if (ma.getHostCard().equals(sa.getTargetCard())) {
+                    if (CardLists.filter(ai.getCardsIn(ZoneType.Battlefield), Predicates.and(CardPredicates.nameEquals(ma.getHostCard().getName()), CardPredicates.Presets.UNTAPPED)).size() > 1) {
                         continue;
-                    }
-
-                    // If a manland was previously animated this turn, do not tap it to animate another manland
-                    if (saHost.isLand() && ma.getHostCard().isLand()
-                            && ai.getController().isAI()
-                            && AnimateAi.isAnimatedThisTurn(ai, ma.getHostCard())) {
-                        continue;
-                    }
-                } else if (sa.getApi() == ApiType.Pump) {
-                    if ((saHost.isInstant() || saHost.isSorcery())
-                            && ma.getHostCard().isCreature()
-                            && ai.getController().isAI()
-                            && ma.getPayCosts().hasTapCost()
-                            && sa.getTargets().getTargetCards().contains(ma.getHostCard())) {
-                        // do not activate pump instants/sorceries targeting creatures by tapping targeted
-                        // creatures for mana (for example, Servant of the Conduit)
-                        continue;
-                    }
-                } else if (sa.getApi() == ApiType.Attach
-                        && "AvoidPayingWithAttachTarget".equals(saHost.getSVar("AIPaymentPreference"))) {
-                    // For cards like Genju of the Cedars, make sure we're not attaching to the same land that will
-                    // be tapped to pay its own cost if there's another untapped land like that available
-                    if (ma.getHostCard().equals(sa.getTargetCard())) {
-                        if (CardLists.filter(ai.getCardsIn(ZoneType.Battlefield), Predicates.and(CardPredicates.nameEquals(ma.getHostCard().getName()), CardPredicates.Presets.UNTAPPED)).size() > 1) {
-                            continue;
-                        }
                     }
                 }
             }
@@ -1023,7 +1021,7 @@ public class ComputerUtilMana {
         }
 
         if (m.isComboMana()) {
-            for (String s : m.getComboColors().split(" ")) {
+            for (String s : m.getComboColors(ma).split(" ")) {
                 if (toPay == ManaCostShard.COLORED_X && !ManaCostBeingPaid.canColoredXShardBePaidByColor(s, xManaCostPaidByColor)) {
                     continue;
                 }
@@ -1050,7 +1048,7 @@ public class ComputerUtilMana {
         }
 
         if (toPay == ManaCostShard.COLORED_X) {
-            for (String s : m.mana().split(" ")) {
+            for (String s : m.mana(ma).split(" ")) {
                 if (ManaCostBeingPaid.canColoredXShardBePaidByColor(s, xManaCostPaidByColor)) {
                     return true;
                 }
@@ -1166,7 +1164,7 @@ public class ComputerUtilMana {
         if (abMana.isComboMana()) {
             int amount = manaAb.hasParam("Amount") ? AbilityUtils.calculateAmount(source, manaAb.getParam("Amount"), manaAb) : 1;
             final ManaCostBeingPaid testCost = new ManaCostBeingPaid(cost);
-            final String[] comboColors = abMana.getComboColors().split(" ");
+            final String[] comboColors = abMana.getComboColors(manaAb).split(" ");
             for (int nMana = 1; nMana <= amount; nMana++) {
                 String choice = "";
                 // Use expressChoice first
@@ -1200,7 +1198,7 @@ public class ComputerUtilMana {
                 }
                 // check if combo mana can produce most common color in hand
                 String commonColor = ComputerUtilCard.getMostProminentColor(ai.getCardsIn(ZoneType.Hand));
-                if (!commonColor.isEmpty() && satisfiesColorChoice(abMana, choiceString, MagicColor.toShortString(commonColor)) && abMana.getComboColors().contains(MagicColor.toShortString(commonColor))) {
+                if (!commonColor.isEmpty() && satisfiesColorChoice(abMana, choiceString, MagicColor.toShortString(commonColor)) && abMana.getComboColors(manaAb).contains(MagicColor.toShortString(commonColor))) {
                     choice = MagicColor.toShortString(commonColor);
                 } else {
                     // default to first available color
@@ -1538,7 +1536,7 @@ public class ComputerUtilMana {
             } else if (producesAnyColor) {
                 anyColorManaSources.add(card);
             } else if (usableManaAbilities == 1) {
-                if (manaAbilities.get(0).getManaPart().mana().equals("C")) {
+                if (manaAbilities.get(0).getManaPart().mana(manaAbilities.get(0)).equals("C")) {
                     colorlessManaSources.add(card);
                 } else {
                     oneManaSources.add(card);

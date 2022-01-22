@@ -242,8 +242,8 @@ public class PumpEffect extends SpellAbilityEffect {
         if (sa.hasParam("KW")) {
             keywords.addAll(Arrays.asList(sa.getParam("KW").split(" & ")));
         }
-        final int a = AbilityUtils.calculateAmount(host, sa.getParam("NumAtt"), sa, true);
-        final int d = AbilityUtils.calculateAmount(host, sa.getParam("NumDef"), sa, true);
+        final int a = AbilityUtils.calculateAmount(host, sa.getParam("NumAtt"), sa, !sa.hasParam("Double"));
+        final int d = AbilityUtils.calculateAmount(host, sa.getParam("NumDef"), sa, !sa.hasParam("Double"));
 
         if (sa.hasParam("SharedKeywordsZone")) {
             List<ZoneType> zones = ZoneType.listValueOf(sa.getParam("SharedKeywordsZone"));
@@ -330,6 +330,18 @@ public class PumpEffect extends SpellAbilityEffect {
                 for (Player p : tgtPlayers) {
                     p.addNoteForName(sa.getParam("NoteCardsFor"), "Id:" + c.getId());
                 }
+            }
+        }
+        if (sa.hasParam("ClearNotedCardsFor")) {
+            for (Player p : tgtPlayers) {
+                p.clearNotesForName(sa.getParam("ClearNotedCardsFor"));
+            }
+        }
+
+        if (sa.hasParam("NoteNumber")) {
+            int num = AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("NoteNumber"), sa);
+            for (Player p : tgtPlayers) {
+                p.noteNumberForName(host.getName(), num);
             }
         }
 

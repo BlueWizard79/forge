@@ -171,12 +171,9 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
             layers.add(StaticAbilityLayer.ABILITIES);
         }
 
-        if (hasParam("CharacteristicDefining")) {
-            layers.add(StaticAbilityLayer.CHARACTERISTIC);
-        }
-
         if (hasParam("SetPower") || hasParam("SetToughness")) {
-            layers.add(StaticAbilityLayer.SETPT);
+            layers.add(hasParam("CharacteristicDefining") ? StaticAbilityLayer.CHARACTERISTIC :
+                StaticAbilityLayer.SETPT);
         }
         if (hasParam("AddPower") || hasParam("AddToughness")) {
             layers.add(StaticAbilityLayer.MODIFYPT);
@@ -232,6 +229,12 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
      */
     public StaticAbility(final String params, final Card host, CardState state) {
         this(parseParams(params, host), host, state);
+    }
+
+    public static StaticAbility create(final String params, final Card host, CardState state, boolean intrinsic) {
+        StaticAbility st = new StaticAbility(params, host, state);
+        st.setIntrinsic(intrinsic);
+        return st;
     }
 
     /**
@@ -325,8 +328,6 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
             return StaticAbilityCantAttackBlock.applyCantAttackAbility(this, card, target);
         } else if (mode.equals("CantBlockBy") && target instanceof Card) {
             return StaticAbilityCantAttackBlock.applyCantBlockByAbility(this, card, (Card)target);
-        } else if (mode.equals("CantAttach")) {
-            return StaticAbilityCantAttach.applyCantAttachAbility(this, card, target);
         } else if (mode.equals("CanAttackIfHaste")) {
             return StaticAbilityCantAttackBlock.applyCanAttackHasteAbility(this, card, target);
         }

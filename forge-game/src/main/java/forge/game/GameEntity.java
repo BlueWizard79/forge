@@ -20,7 +20,6 @@ package forge.game;
 import java.util.Map;
 
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import forge.game.ability.AbilityUtils;
@@ -39,7 +38,7 @@ import forge.game.replacement.ReplacementEffect;
 import forge.game.replacement.ReplacementType;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.TargetRestrictions;
-import forge.game.staticability.StaticAbility;
+import forge.game.staticability.StaticAbilityCantAttach;
 import forge.game.zone.ZoneType;
 
 public abstract class GameEntity extends GameObject implements IIdentifiable {
@@ -208,7 +207,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     }
 
     public final void unAttachAllCards() {
-        for (Card c : Lists.newArrayList(getAttachedCards())) {
+        for (Card c : getAttachedCards()) {
             c.unattachFromEntity(this);
         }
     }
@@ -222,15 +221,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
             return false;
         }
 
-        // CantTarget static abilities
-        for (final Card ca : getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CantAttach", attach, this)) {
-                    return false;
-                }
-            }
-        }
-
+        // check for rules
         if (attach.isAura() && !canBeEnchantedBy(attach)) {
             return false;
         }
@@ -241,8 +232,13 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
             return false;
         }
 
+        // check for can't attach static
+        if (StaticAbilityCantAttach.cantAttach(this, attach, checkSBA)) {
+            return false;
+        }
+
         // true for all
-        return !hasProtectionFrom(attach, checkSBA);
+        return true;
     }
 
     protected boolean canBeEquippedBy(final Card aura) {
@@ -260,6 +256,8 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     }
 
     protected boolean canBeEnchantedBy(final Card aura) {
+        // TODO need to check for multiple Enchant Keywords
+
         SpellAbility sa = aura.getFirstAttachSpell();
         TargetRestrictions tgt = null;
         if (sa != null) {
@@ -268,11 +266,6 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
 
         return !((tgt != null) && !isValid(tgt.getValidTgts(), aura.getController(), aura, sa));
     }
-
-    public boolean hasProtectionFrom(final Card source) {
-        return hasProtectionFrom(source, false);
-    }
-    public abstract boolean hasProtectionFrom(final Card source, final boolean checkSBA);
 
     // Counters!
     public boolean hasCounters() {
@@ -306,7 +299,6 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     abstract public void setCounters(final Map<CounterType, Integer> allCounters);
 
     abstract public boolean canReceiveCounters(final CounterType type);
-    abstract public int addCounter(final CounterType counterType, final int n, final Player source, final SpellAbility cause, final boolean applyMultiplier, final boolean fireEvents, GameEntityCounterTable table);
     abstract public void subtractCounter(final CounterType counterName, final int n);
     abstract public void clearCounters();
 
@@ -314,11 +306,27 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
         return canReceiveCounters(CounterType.get(type));
     }
 
-    public int addCounter(final CounterEnumType counterType, final int n, final Player source, final SpellAbility cause, final boolean applyMultiplier, final boolean fireEvents, GameEntityCounterTable table) {
-        return addCounter(CounterType.get(counterType), n, source, cause, applyMultiplier, fireEvents, table);
+    public final void addCounter(final CounterType counterType, final int n, final Player source, GameEntityCounterTable table) {
+        if (n <= 0 || !canReceiveCounters(counterType)) {
+            // As per rule 107.1b
+            return;
+        }
+        // doesn't really add counters, but is just a helper to add them to the Table
+        // so the Table can handle the Replacement Effect
+        table.put(source, this, counterType, n);
     }
+
+    public final void addCounter(final CounterEnumType counterType, final int n, final Player source, GameEntityCounterTable table) {
+        addCounter(CounterType.get(counterType), n, source, table);
+    }
+
     public void subtractCounter(final CounterEnumType counterName, final int n) {
         subtractCounter(CounterType.get(counterName), n);
+    }
+
+    abstract public void addCounterInternal(final CounterType counterType, final int n, final Player source, final boolean fireEvents, GameEntityCounterTable table);
+    public void addCounterInternal(final CounterEnumType counterType, final int n, final Player source, final boolean fireEvents, GameEntityCounterTable table) {
+        addCounterInternal(CounterType.get(counterType), n, source, fireEvents, table);
     }
 
     @Override

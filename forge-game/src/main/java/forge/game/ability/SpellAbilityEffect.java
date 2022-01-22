@@ -519,7 +519,7 @@ public abstract class SpellAbilityEffect {
 
             String valid = sa.getParamOrDefault("ReplaceDyingValid", "Card.IsRemembered");
 
-            String repeffstr = "Event$ Moved | ValidCard$ " + valid +
+            String repeffstr = "Event$ Moved | ValidLKI$ " + valid +
                     "| Origin$ Battlefield | Destination$ Graveyard " +
                     "| Description$ If that permanent would die this turn, exile it instead.";
             String effect = "DB$ ChangeZone | Defined$ ReplacedCard | Origin$ Battlefield | Destination$ " + zone;
@@ -579,7 +579,7 @@ public abstract class SpellAbilityEffect {
                 PlayerCollection defendingPlayers = AbilityUtils.getDefinedPlayers(host, attacking, sa);
                 defs = new FCollection<>();
                 for (Player p : defendingPlayers) {
-                    defs.addAll(game.getCombat().getDefendersControlledBy(p));
+                    defs.addAll(combat.getDefendersControlledBy(p));
                 }
             } else if ("True".equalsIgnoreCase(attacking)) {
                 defs = (FCollection<GameEntity>) combat.getDefenders();
@@ -760,6 +760,7 @@ public abstract class SpellAbilityEffect {
         } else if ("UntilUntaps".equals(duration)) {
             host.addUntapCommand(until);
         } else if ("UntilUnattached".equals(duration)) {
+            host.addLeavesPlayCommand(until); //if it leaves play, it's unattached
             host.addUnattachCommand(until);
         } else if ("UntilFacedown".equals(duration)) {
             host.addFacedownCommand(until);

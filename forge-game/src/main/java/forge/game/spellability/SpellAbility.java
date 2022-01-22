@@ -311,7 +311,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 result += amount;
             } else {
                 // For cards that produce like {C}{R} vs cards that produce {R}{R}.
-                result += mp.mana().split(" ").length * amount;
+                result += mp.mana(this).split(" ").length * amount;
             }
         }
         return result;
@@ -504,11 +504,23 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public boolean isCycling() {
-        return this.isAlternativeCost(AlternativeCost.Cycling);
+        return isAlternativeCost(AlternativeCost.Cycling);
     }
 
     public boolean isBoast() {
         return this.hasParam("Boast");
+    }
+
+    public boolean isNinjutsu() {
+        return this.hasParam("Ninjutsu");
+    }
+
+    public boolean isEpic() {
+        AbilitySub sub = this.getSubAbility();
+        while (sub != null && !sub.hasParam("Epic")) {
+            sub = sub.getSubAbility();
+        }
+        return sub != null && sub.hasParam("Epic");
     }
 
     // If this is not null, then ability was made in a factory
@@ -773,7 +785,10 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     public void resetOnceResolved() {
         //resetPaidHash(); // FIXME: if uncommented, breaks Dragon Presence, e.g. Orator of Ojutai + revealing a Dragon from hand.
                            // Is it truly necessary at this point? The paid hash seems to be reset on all SA instance operations.
-        resetTargets();
+        // Epic spell keeps original targets
+        if (!isEpic()) {
+            resetTargets();
+        }
         resetTriggeringObjects();
         resetTriggerRemembered();
 
@@ -841,9 +856,30 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 sb.append(getParam("CostDesc")).append(" ");
             } else {
                 sb.append(payCosts.toString());
+
+                // for cards like  Crystal Shard with {3}, {T} or {U}, {T}:
+                if (hasParam("AlternateCost")) {
+                    Cost alternateCost = new Cost(getParam("AlternateCost"), payCosts.isAbility());
+                    sb.append(" or ").append(alternateCost.toString());
+                }
+
+                if (payCosts.isAbility()) {
+                    sb.append(": ");
+                }
             }
+
             return sb.toString();
         }
+    }
+
+    public void rebuiltDescription() {
+        final StringBuilder sb = new StringBuilder();
+
+        // SubAbilities don't have Costs or Cost descriptors
+        sb.append(getCostDescription());
+
+        sb.append(getParam("SpellDescription"));
+        setDescription(sb.toString());
     }
 
     /** {@inheritDoc} */
@@ -2066,7 +2102,6 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     public boolean isCumulativeupkeep() {
         return cumulativeupkeep;
     }
-
     public void setCumulativeupkeep(boolean cumulativeupkeep0) {
         cumulativeupkeep = cumulativeupkeep0;
     }
@@ -2210,7 +2245,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (manaPart == null) {
             score++; //Assume a mana ability can generate at least 1 mana if the amount of mana can't be determined now.
         } else {
-            String mana = manaPart.mana();
+            String mana = manaPart.mana(this);
             if (!mana.equals("Any")) {
                 score += mana.length();
                 if (!canProduce("C")) {
@@ -2372,8 +2407,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         }
 
         if (isActivatedAbility()) {
-            // Activated Abillties are instant speed per default
-            return !getRestrictions().isSorcerySpeed();
+            // Activated Abilities are instant speed per default, except Planeswalker abilities
+            return !isPwAbility() && !getRestrictions().isSorcerySpeed();
         }
         return true;
     }
@@ -2382,10 +2417,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (getRestrictions().isInstantSpeed()) {
             return true;
         }
-        if (isSpell()) {
-            if (hasSVar("IsCastFromPlayEffect") || host.isInstant() || host.hasKeyword(Keyword.FLASH)) {
-                return true;
-            }
+        if (isSpell() && (hasSVar("IsCastFromPlayEffect") || host.isInstant() || host.hasKeyword(Keyword.FLASH))) {
+            return true;
         }
 
         return StaticAbilityCastWithFlash.anyWithFlash(this, host, activator);

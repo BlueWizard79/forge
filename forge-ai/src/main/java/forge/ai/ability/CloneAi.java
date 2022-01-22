@@ -53,7 +53,7 @@ public class CloneAi extends SpellAbilityAi {
 
             boolean bFlag = false;
             for (final Card c : defined) {
-                bFlag |= (!c.isCreature() && !c.isTapped() && !(c.getTurnInZone() == phase.getTurn()));
+                bFlag |= !c.isCreature() && !c.isTapped() && !(c.getTurnInZone() == phase.getTurn());
 
                 // for creatures that could be improved (like Figure of Destiny)
                 if (c.isCreature() && (!sa.hasParam("Duration") || (!c.isTapped() && !c.isSick()))) {
@@ -243,7 +243,7 @@ public class CloneAi extends SpellAbilityAi {
         // don't use instant speed clone abilities outside computers
         // Combat_Begin step
         if (!ph.is(PhaseType.COMBAT_BEGIN)
-                && ph.isPlayerTurn(ai) && !SpellAbilityAi.isSorcerySpeed(sa)
+                && ph.isPlayerTurn(ai) && !SpellAbilityAi.isSorcerySpeed(sa, ai)
                 && !sa.hasParam("ActivationPhases") && sa.hasParam("Duration")) {
             return false;
         }

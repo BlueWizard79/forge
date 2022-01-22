@@ -92,6 +92,9 @@ public abstract class CardTraitBase extends GameObject implements IHasCardView, 
     public String putParam(String key, String value) {
         return mapParams.put(key, value);
     }
+    public void removeParam(String key) {
+        mapParams.remove(key);
+    }
     /**
      * <p>
      * Getter for the field <code>mapParams</code>.
@@ -547,9 +550,8 @@ public abstract class CardTraitBase extends GameObject implements IHasCardView, 
     public String getSVar(final String name) {
         if (sVars.containsKey(name)) {
             return sVars.get(name);
-        } else {
-            return getSVarFallback().getSVar(name);
         }
+        return getSVarFallback().getSVar(name);
     }
 
     @Override

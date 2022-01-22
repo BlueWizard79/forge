@@ -171,7 +171,7 @@ public class ChooseGenericEffectAi extends SpellAbilityAi {
                     loyalty = sp;
                 }
             }
-            if (sa.getParent().getTargetCard() != null && sa.getParent().getTargetCard().getType().isPlaneswalker()) {
+            if (sa.getParent().getTargetCard() != null && sa.getParent().getTargetCard().isPlaneswalker()) {
                 return loyalty;
             } else {
                 return p1p1;
@@ -199,7 +199,6 @@ public class ChooseGenericEffectAi extends SpellAbilityAi {
             // Todo if hand is empty or mostly empty, skip main phase
             // Todo if hand has gas, skip draw
             return Aggregates.random(spells);
-
         } else if ("SinProdder".equals(logic)) {
             SpellAbility allow = null, deny = null;
             for (final SpellAbility sp : spells) {

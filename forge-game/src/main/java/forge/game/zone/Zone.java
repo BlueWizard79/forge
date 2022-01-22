@@ -113,7 +113,9 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
             if (zt != zoneType) {
                 c.setTurnInController(getPlayer());
                 c.setTurnInZone(game.getPhaseHandler().getTurn());
-                cardsAddedThisTurn.add(zt, latestState != null ? latestState : c);
+                if (latestState != null) {
+                    cardsAddedThisTurn.add(zt, latestState);
+                }
             }
         }
 
@@ -121,7 +123,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
             c.setTapped(false);
         }
 
-        // Do not add Tokens to other zones than the battlefield. (unless it's a copy of a card 706.12)
+        // Do not add Tokens to other zones than the battlefield. (unless it's a copy of a card 707.12)
         // But Effects/Emblems count as Tokens too, so allow Command too.
         if ((zoneType == ZoneType.Battlefield || !c.isToken()) || (zoneType == ZoneType.Stack && c.getCopiedPermanent() != null)) {
             c.setZone(this);
@@ -287,5 +289,14 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
         result.setCards(CardUtil.getLKICopyList(getCards(), cachedMap));
 
         return result;
+    }
+
+    public void saveLKI(Card c, Card old) {
+        final Zone oldZone = game.getZoneOf(old);
+        final ZoneType zt = oldZone == null ? ZoneType.Stack : oldZone.getZoneType();
+        if (zt == zoneType) {
+            return;
+        }
+        cardsAddedThisTurn.add(zt, CardUtil.getLKICopy(c));
     }
 }

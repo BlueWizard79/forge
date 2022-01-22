@@ -528,7 +528,7 @@ public class GameAction {
                     if (repres != ReplacementResult.NotReplaced) continue;
                 }
                 if (card == c) {
-                    zoneTo.add(copied, position, lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
+                    zoneTo.add(copied, position, toBattlefield ? null : lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
                 } else {
                     zoneTo.add(card, position, CardUtil.getLKICopy(card));
                 }
@@ -537,7 +537,7 @@ public class GameAction {
         } else {
             // "enter the battlefield as a copy" - apply code here
             // but how to query for input here and continue later while the callers assume synchronous result?
-            zoneTo.add(copied, position, lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
+            zoneTo.add(copied, position, toBattlefield ? null : lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
             c.setZone(zoneTo);
         }
 
@@ -568,11 +568,17 @@ public class GameAction {
 
         // Need to apply any static effects to produce correct triggers
         checkStaticAbilities();
+
+        // CR 603.6b
+        if (toBattlefield) {
+            zoneTo.saveLKI(copied, lastKnownInfo);
+        }
+
         game.getTriggerHandler().clearActiveTriggers(copied, null);
         game.getTriggerHandler().registerActiveLTBTrigger(lastKnownInfo);
         game.getTriggerHandler().registerActiveTrigger(copied, false);
 
-        table.triggerCountersPutAll(game);
+        table.replaceCounterEffect(game, null, true);
 
         // play the change zone sound
         game.fireEvent(new GameEventCardChangeZone(c, zoneFrom, zoneTo));
@@ -1073,7 +1079,6 @@ public class GameAction {
             }
         });
 
-
         final Comparator<StaticAbility> comp = new Comparator<StaticAbility>() {
             @Override
             public int compare(final StaticAbility a, final StaticAbility b) {
@@ -1299,8 +1304,8 @@ public class GameAction {
                     int loyal = c.getCounters(CounterEnumType.LOYALTY);
                     if (loyal < beeble) {
                         GameEntityCounterTable counterTable = new GameEntityCounterTable();
-                        c.addCounter(CounterEnumType.LOYALTY, beeble - loyal, c.getController(), null, false, counterTable);
-                        counterTable.triggerCountersPutAll(game);
+                        c.addCounter(CounterEnumType.LOYALTY, beeble - loyal, c.getController(), counterTable);
+                        counterTable.replaceCounterEffect(game, null, false);
                     } else if (loyal > beeble) {
                         c.subtractCounter(CounterEnumType.LOYALTY, loyal - beeble);
                     }
@@ -2216,7 +2221,7 @@ public class GameAction {
             // publicize the decision
             game.fireEvent(new GameEventScry(p, numToTop, numToBottom));
         }
-        // do the moves after all the decisions (maybe not necesssary, but let's
+        // do the moves after all the decisions (maybe not necessary, but let's
         // do it the official way)
         for (Map.Entry<Player, ImmutablePair<CardCollection, CardCollection>> e : decisions.entrySet()) {
             // no good iterate simultaneously in Java
@@ -2304,7 +2309,7 @@ public class GameAction {
         damageMap.triggerDamageDoneOnce(isCombat, game);
         damageMap.clear();
 
-        counterTable.triggerCountersPutAll(game);
+        counterTable.replaceCounterEffect(game, cause, !isCombat);
         counterTable.clear();
     }
 

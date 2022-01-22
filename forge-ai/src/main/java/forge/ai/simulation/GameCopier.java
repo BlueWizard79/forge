@@ -89,6 +89,7 @@ public class GameCopier {
             newPlayer.setCounters(Maps.newHashMap(origPlayer.getCounters()));
             newPlayer.setLifeLostLastTurn(origPlayer.getLifeLostLastTurn());
             newPlayer.setLifeLostThisTurn(origPlayer.getLifeLostThisTurn());
+            newPlayer.setLifeGainedThisTurn(origPlayer.getLifeGainedThisTurn());
             newPlayer.getManaPool().add(origPlayer.getManaPool());
             newPlayer.setCommanders(origPlayer.getCommanders()); // will be fixed up below
             playerMap.put(origPlayer, newPlayer);
@@ -233,10 +234,14 @@ public class GameCopier {
             if (card.isPaired()) {
                 otherCard.setPairedWith(cardMap.get(card.getPairedWith()));
             }
+            if (card.getCopiedPermanent() != null) {
+                // TODO would it be safe to simply reuse the prototype?
+                otherCard.setCopiedPermanent(CardFactory.copyCard(card.getCopiedPermanent(), false));
+            }
             // TODO: Verify that the above relationships are preserved bi-directionally or not.
         }
     }
-    
+
     private static final boolean USE_FROM_PAPER_CARD = true;
     private Card createCardCopy(Game newGame, Player newOwner, Card c) {
         if (c.isToken() && !c.isImmutable()) {

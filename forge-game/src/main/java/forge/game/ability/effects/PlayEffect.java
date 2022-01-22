@@ -149,6 +149,8 @@ public class PlayEffect extends SpellAbilityEffect {
             String name = source.getChosenName();
             if (name.trim().isEmpty()) return;
             Card card = Card.fromPaperCard(StaticData.instance().getCommonCards().getUniqueByName(name), controller);
+            // so it gets added to stack
+            card.setCopiedPermanent(card);
             card.setToken(true);
             tgtCards = new CardCollection();
             tgtCards.add(card);
@@ -159,6 +161,8 @@ public class PlayEffect extends SpellAbilityEffect {
                 Card gameCard = game.getCardState(c, null);
                 if (c.equalsWithTimestamp(gameCard)) {
                     tgtCards.add(gameCard);
+                } else if (sa.hasParam("ZoneRegardless")) {
+                    tgtCards.add(c);
                 }
             }
         }

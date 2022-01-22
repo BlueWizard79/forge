@@ -42,7 +42,6 @@ import forge.game.card.CardFactoryUtil;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
 import forge.game.card.CounterEnumType;
-import forge.game.card.CounterType;
 import forge.game.combat.Combat;
 import forge.game.combat.CombatUtil;
 import forge.game.cost.Cost;
@@ -1051,10 +1050,10 @@ public class ComputerUtilCard {
     public static boolean useRemovalNow(final SpellAbility sa, final Card c, final int dmg, ZoneType destination) {
         final Player ai = sa.getActivatingPlayer();
         final AiController aic = ((PlayerControllerAi)ai.getController()).getAi();
-        final Player opp = ai.getWeakestOpponent();
         final Game game = ai.getGame();
         final PhaseHandler ph = game.getPhaseHandler();
         final PhaseType phaseType = ph.getPhase();
+        final Player opp = ph.getPlayerTurn().isOpponentOf(ai) ? ph.getPlayerTurn() : ai.getStrongestOpponent();
 
         final int costRemoval = sa.getHostCard().getCMC();
         final int costTarget = c.getCMC();
@@ -1152,7 +1151,7 @@ public class ComputerUtilCard {
         if (c.isEquipped()) {
             valueTempo *= 2;
         }
-        if (SpellAbilityAi.isSorcerySpeed(sa)) {
+        if (SpellAbilityAi.isSorcerySpeed(sa, ai)) {
             valueTempo *= 2;    //sorceries have less usage opportunities
         }
         if (!c.canBeDestroyed()) {
@@ -1185,7 +1184,7 @@ public class ComputerUtilCard {
         	threat += (-1 + 1.0f * evaluateCreature(c) / 100) / costRemoval;
         	if (ai.getLife() > 0 && ComputerUtilCombat.canAttackNextTurn(c)) {
         		Combat combat = game.getCombat();
-        		threat += 1.0f * ComputerUtilCombat.damageIfUnblocked(c, opp, combat, true) / ai.getLife();
+        		threat += 1.0f * ComputerUtilCombat.damageIfUnblocked(c, ai, combat, true) / ai.getLife();
         		//TODO:add threat from triggers and other abilities (ie. Master of Cruelties)
         	}
         	if (ph.isPlayerTurn(ai) && phaseType.isAfter(PhaseType.COMBAT_DECLARE_BLOCKERS)) {
@@ -1330,7 +1329,7 @@ public class ComputerUtilCard {
         // will the creature attack (only relevant for sorcery speed)?
         if (phase.getPhase().isBefore(PhaseType.COMBAT_DECLARE_ATTACKERS)
                 && phase.isPlayerTurn(ai)
-                && (SpellAbilityAi.isSorcerySpeed(sa) || main1Preferred)
+                && (SpellAbilityAi.isSorcerySpeed(sa, ai) || main1Preferred)
                 && power > 0
                 && doesCreatureAttackAI(ai, c)) {
             return true;
@@ -1691,10 +1690,7 @@ public class ComputerUtilCard {
         if (!hiddenKws.isEmpty()) {
             pumped.addHiddenExtrinsicKeywords(timestamp, 0, hiddenKws);
         }
-        Set<CounterType> types = c.getCounters().keySet();
-        for (CounterType ct : types) {
-            pumped.addCounterFireNoEvents(ct, c.getCounters(ct), ai, sa, true, null);
-        }
+        pumped.setCounters(c.getCounters());
         //Copies tap-state and extra keywords (auras, equipment, etc.) 
         if (c.isTapped()) {
             pumped.setTapped(true);
