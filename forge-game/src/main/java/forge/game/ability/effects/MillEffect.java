@@ -1,7 +1,10 @@
 package forge.game.ability.effects;
 
+import java.util.Map;
+
 import forge.game.Game;
 import forge.game.GameLogEntryType;
+import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
@@ -19,7 +22,7 @@ public class MillEffect extends SpellAbilityEffect {
     public void resolve(SpellAbility sa) {
         final Card source = sa.getHostCard();
         final Game game = source.getGame();
-        final int numCards = AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("NumCards"), sa);
+        final int numCards = sa.hasParam("NumCards") ? AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("NumCards"), sa) : 1;
         final boolean bottom = sa.hasParam("FromBottom");
         final boolean facedown = sa.hasParam("ExileFaceDown");
         final boolean reveal = !sa.hasParam("NoReveal");
@@ -35,6 +38,9 @@ public class MillEffect extends SpellAbilityEffect {
         }
 
         final CardZoneTable table = new CardZoneTable();
+        Map<AbilityKey, Object> moveParams = AbilityKey.newMap();
+        moveParams.put(AbilityKey.LastStateBattlefield, sa.getLastStateBattlefield());
+        moveParams.put(AbilityKey.LastStateGraveyard, sa.getLastStateGraveyard());
 
         for (final Player p : getTargetPlayers(sa)) {
             if (!sa.usesTargeting() || p.canBeTargetedBy(sa)) {
@@ -45,7 +51,7 @@ public class MillEffect extends SpellAbilityEffect {
                         continue;
                     }
                 }
-                final CardCollectionView milled = p.mill(numCards, destination, bottom, sa, table);
+                final CardCollectionView milled = p.mill(numCards, destination, bottom, sa, table, moveParams);
                 // Reveal the milled cards, so players don't have to manually inspect the
                 // graveyard to figure out which ones were milled.
                 if (!facedown && reveal) { // do not reveal when exiling face down
@@ -84,7 +90,7 @@ public class MillEffect extends SpellAbilityEffect {
     @Override
     protected String getStackDescription(SpellAbility sa) {
         final StringBuilder sb = new StringBuilder();
-        final int numCards = AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("NumCards"), sa);
+        final int numCards = sa.hasParam("NumCards") ? AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("NumCards"), sa) : 1;
 
         sb.append(Lang.joinHomogenous(getTargetPlayers(sa))).append(" ");
 
@@ -97,6 +103,7 @@ public class MillEffect extends SpellAbilityEffect {
             sb.append("antes ");
         }
 
+        sb.append(Lang.nounWithNumeralExceptOne(numCards, "card")).append(".");
         sb.append(numCards == 1 ? "a card" : (Lang.getNumeral(numCards) + " cards")).append(".");
 
         return sb.toString();

@@ -149,7 +149,9 @@ public enum CounterEnumType {
 
     HARMONY("HRMNY", 0, 230, 155),
 
-    HATCHLING("HATCH", 201, 199, 186),
+    HATCHING("HATCH", 204, 255, 204),
+
+    HATCHLING("HTCHL", 201, 199, 186),
 
     HEALING("HEAL", 255, 166, 236),
 
@@ -184,6 +186,8 @@ public enum CounterEnumType {
     JUDGMENT("JUDGM", 249, 220, 52),
 
     KI("KI", 190, 189, 255),
+
+    KICK("KICK", 255, 255, 240),
 
     KNOWLEDGE("KNOWL", 0, 115, 255),
 

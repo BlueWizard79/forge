@@ -8,8 +8,8 @@ SVar:DBExile:DB$ ChangeZone | Origin$ Battlefield | Destination$ Exile | Remembe
 SVar:DBReturn:DB$ ChangeZone | Defined$ Remembered | Origin$ Exile | Destination$ Battlefield | Transformed$ True | ForgetOtherRemembered$ True | SubAbility$ DBCleanup | StackDescription$ None
 SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True
 SVar:X:Count$ValidGraveyard Card.YouOwn
-AlternateMode:DoubleFaced
 DeckHas:Ability$Graveyard
+AlternateMode:DoubleFaced
 Oracle:{T}: Draw a card, then discard a card. If there are five or more cards in your graveyard, exile Jace, Vryn's Prodigy, then return him to the battlefield transformed under his owner's control.
 
 ALTERNATE
@@ -28,4 +28,4 @@ SVar:MoveExile:DB$ ChangeZone | Defined$ ReplacedCard | Origin$ Stack | Destinat
 A:AB$ Effect | Cost$ SubCounter<9/LOYALTY> | Planeswalker$ True | Ultimate$ True | Name$ Emblem - Jace, Telepath Unbound | Image$ emblem_jace_telepath_unbound | Triggers$ TrigSpellCast | Duration$ Permanent | AILogic$ Always | SpellDescription$ You get an emblem with "Whenever you cast a spell, target opponent mills five cards."
 SVar:TrigSpellCast:Mode$ SpellCast | ValidActivatingPlayer$ You | Execute$ EffSpellCast | TriggerDescription$ Whenever you cast a spell, target opponent mills five cards.
 SVar:EffSpellCast:DB$ Mill | NumCards$ 5 | ValidTgts$ Opponent | TgtPrompt$ Select target opponent
-Oracle:[+1]: Up to one target creature gets -2/-0 until your next turn.\n[−3]: You may cast target instant or sorcery card from your graveyard this turn. If that spell would be put into your graveyard this turn, exile it instead.\n[−9]: You get an emblem with "Whenever you cast a spell, target opponent mills five cards."
+Oracle:[+1]: Up to one target creature gets -2/-0 until your next turn.\n[-3]: You may cast target instant or sorcery card from your graveyard this turn. If that spell would be put into your graveyard this turn, exile it instead.\n[-9]: You get an emblem with "Whenever you cast a spell, target opponent mills five cards."

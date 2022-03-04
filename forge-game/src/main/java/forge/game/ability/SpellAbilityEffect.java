@@ -98,16 +98,16 @@ public abstract class SpellAbilityEffect {
             		sb.append(" (Targeting: ").append(sa.getTargets()).append(")");
             	}
             } else if (!"None".equalsIgnoreCase(stackDesc)) { // by typing "none" they want to suppress output
-                makeSpellDescription(sa, sb, stackDesc);
+                tokenizeString(sa, sb, stackDesc);
             }
         } else {
-            final String conditionDesc = sa.getParam("ConditionDescription");
+            final String condDesc = sa.getParam("ConditionDescription");
             final String afterDesc = sa.getParam("AfterDescription");
             final String baseDesc = CardTranslation.translateSingleDescriptionText(this.getStackDescription(sa), sa.getHostCard().getName());
-            if (conditionDesc != null) {
-                sb.append(conditionDesc).append(" ");
+            if (condDesc != null) {
+                sb.append(condDesc).append(" ");
             }
-            sb.append(baseDesc);
+            sb.append(condDesc != null && condDesc.endsWith(",") ? StringUtils.uncapitalize(baseDesc) : baseDesc);
             if (afterDesc != null) {
                 sb.append(" ").append(afterDesc);
             }
@@ -155,7 +155,7 @@ public abstract class SpellAbilityEffect {
      *            {@link Player}, {@link SpellAbility}, and {@link Card}
      *            objects.
      */
-    private static void makeSpellDescription(final SpellAbility sa, final StringBuilder sb, final String stackDesc) {
+    public static void tokenizeString(final SpellAbility sa, final StringBuilder sb, final String stackDesc) {
         final StringTokenizer st = new StringTokenizer(stackDesc, "{}", true);
         boolean isPlainText = true;
 
@@ -435,7 +435,7 @@ public abstract class SpellAbilityEffect {
 
         // TODO: Add targeting to the effect so it knows who it's dealing with
         game.getTriggerHandler().suppressMode(TriggerType.ChangesZone);
-        game.getAction().moveTo(ZoneType.Command, eff, sa);
+        game.getAction().moveTo(ZoneType.Command, eff, sa, null);
         eff.updateStateForView();
         game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
     }
@@ -483,7 +483,6 @@ public abstract class SpellAbilityEffect {
 
     protected static void replaceDying(final SpellAbility sa) {
         if (sa.hasParam("ReplaceDyingDefined") || sa.hasParam("ReplaceDyingValid")) {
-
             if (sa.hasParam("ReplaceDyingCondition")) {
                 // currently there is only one with Kicker
                 final String condition = sa.getParam("ReplaceDyingCondition");
@@ -553,7 +552,7 @@ public abstract class SpellAbilityEffect {
 
             // TODO: Add targeting to the effect so it knows who it's dealing with
             game.getTriggerHandler().suppressMode(TriggerType.ChangesZone);
-            game.getAction().moveTo(ZoneType.Command, eff, sa);
+            game.getAction().moveTo(ZoneType.Command, eff, sa, null);
             eff.updateStateForView();
             game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
         }
@@ -685,13 +684,13 @@ public abstract class SpellAbilityEffect {
         };
     }
 
-    protected static void discard(SpellAbility sa, CardZoneTable table, final boolean effect, Map<Player, CardCollectionView> discardedMap) {
+    protected static void discard(SpellAbility sa, CardZoneTable table, final boolean effect, Map<Player, CardCollectionView> discardedMap, Map<AbilityKey, Object> params) {
         Set<Player> discarders = discardedMap.keySet();
         for (Player p : discarders) {
             final CardCollection discardedByPlayer = new CardCollection();
             for (Card card : Lists.newArrayList(discardedMap.get(p))) { // without copying will get concurrent modification exception
                 if (card == null) { continue; }
-                if (p.discard(card, sa, effect, table) != null) {
+                if (p.discard(card, sa, effect, table, params) != null) {
                     discardedByPlayer.add(card);
 
                     if (sa.hasParam("RememberDiscarded")) {

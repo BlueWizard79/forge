@@ -32,6 +32,7 @@ import forge.util.TextUtil;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Collections;
 import java.util.List;
@@ -54,11 +55,13 @@ public class CardProperty {
         // by name can also have color names, so needs to happen before colors.
         if (property.startsWith("named")) {
             String name = TextUtil.fastReplace(property.substring(5), ";", ","); // workaround for card name with ","
+            name = TextUtil.fastReplace(name, "_", " ");
             if (!card.sharesNameWith(name)) {
                 return false;
             }
         } else if (property.startsWith("notnamed")) {
             String name = TextUtil.fastReplace(property.substring(8), ";", ","); // workaround for card name with ","
+            name = TextUtil.fastReplace(name, "_", " ");
             if (card.sharesNameWith(name)) {
                 return false;
             }
@@ -631,18 +634,21 @@ public class CardProperty {
                 return false;
             }
         } else if (property.startsWith("DamagedBy")) {
+            List<Card> damaged = Lists.newArrayList();
+            for (Pair<Card, Integer> pair : card.getReceivedDamageFromThisTurn()) {
+                damaged.add(pair.getLeft());
+            }
             if (property.endsWith("Source") || property.equals("DamagedBy")) {
-                if (!card.getReceivedDamageFromThisTurn().containsKey(source)) {
+                if (!damaged.contains(source)) {
                     return false;
                 }
             } else {
                 String prop = property.substring("DamagedBy".length());
-                final Iterable<Card> list = Iterables.filter(card.getReceivedDamageFromThisTurn().keySet(), Card.class);
-                boolean found = Iterables.any(list, CardPredicates.restriction(prop, sourceController, source, spellAbility));
+                boolean found = Iterables.any(damaged, CardPredicates.restriction(prop, sourceController, source, spellAbility));
 
                 if (!found) {
                     for (Card d : AbilityUtils.getDefinedCards(source, prop, spellAbility)) {
-                        if (card.getReceivedDamageFromThisTurn().containsKey(d)) {
+                        if (damaged.contains(d)) {
                             found = true;
                             break;
                         }
@@ -950,6 +956,10 @@ public class CardProperty {
                         }
                     }
                     return list.isEmpty();
+                } else {
+                    CardCollection list = CardLists.getValidCards(game.getCardsIn(ZoneType.Battlefield), restriction,
+                            sourceController, source, spellAbility);
+                    return !Iterables.any(list, CardPredicates.sharesNameWith(card));
                 }
             }
         } else if (property.startsWith("sharesControllerWith")) {
@@ -1058,6 +1068,10 @@ public class CardProperty {
                 p = sourceController;
             }
             if (p == null || !controller.equals(game.getNextPlayerAfter(p, direction))) {
+                return false;
+            }
+        } else if (property.equals("hasABasicLandType")) {
+            if (!card.hasABasicLandType()) {
                 return false;
             }
         } else if (property.startsWith("hasKeyword")) {
@@ -1171,7 +1185,7 @@ public class CardProperty {
                 return false;
             }
         } else if (property.startsWith("wasDealtDamageThisTurn")) {
-            if ((card.getReceivedDamageFromThisTurn().keySet()).isEmpty()) {
+            if (card.getReceivedDamageFromPlayerThisTurn().isEmpty()) {
                 return false;
             }
         } else if (property.startsWith("dealtDamageThisTurn")) {
@@ -1326,6 +1340,10 @@ public class CardProperty {
             }
         } else if (property.startsWith("notEquipping")) {
             if (card.isEquipping()) {
+                return false;
+            }
+        } else if (property.startsWith("modified")) {
+            if (!card.isModified()) {
                 return false;
             }
         } else if (property.startsWith("token")) {
@@ -1573,8 +1591,8 @@ public class CardProperty {
         } else if (property.startsWith("blockedByThisTurn")) {
             return !card.getBlockedByThisTurn().isEmpty();
         } else if (property.startsWith("blockedValidThisTurn ")) {
-            CardCollectionView blocked = card.getBlockedThisTurn();
-            if (blocked == null) {
+            List<Card> blocked = card.getBlockedThisTurn();
+            if (blocked.isEmpty()) {
                 return false;
             }
             String valid = property.split(" ")[1];
@@ -1590,8 +1608,8 @@ public class CardProperty {
             }
             return false;
         } else if (property.startsWith("blockedByValidThisTurn ")) {
-            CardCollectionView blocked = card.getBlockedByThisTurn();
-            if (blocked == null) {
+            List<Card> blocked = card.getBlockedByThisTurn();
+            if (blocked.isEmpty()) {
                 return false;
             }
             String valid = property.split(" ")[1];
@@ -1775,24 +1793,57 @@ public class CardProperty {
             if (!castSA.isValid(v, sourceController, source, spellAbility)) {
                 return false;
             }
-        } else if (property.equals("wasCast")) {
+        }else if (property.startsWith("wasCastFrom")) {
+            boolean byYou = property.contains("ByYou");
+            String strZone = property.substring(11);
+            Player zoneOwner = null;
+            if (property.contains("Your")) {
+                strZone = strZone.substring(4);
+                zoneOwner = sourceController;
+            }
+            if (property.contains("Their")) {
+                strZone = strZone.substring(5);
+                zoneOwner = controller;
+            }
+            if (byYou) {
+                strZone = strZone.substring(0, strZone.indexOf("ByYou", 0));
+            }
+            final ZoneType realZone = ZoneType.smartValueOf(strZone);
+            if (card.getCastFrom() == null || (zoneOwner != null && !card.getCastFrom().getPlayer().equals(zoneOwner))
+                    || (byYou && !controller.equals(card.getCastSA().getActivatingPlayer()))
+                    || realZone != card.getCastFrom().getZoneType()) {
+                return false;
+            }
+        } else if (property.startsWith("wasNotCastFrom")) {
+            boolean byYou = property.contains("ByYou");
+            String strZone = property.substring(14);
+            Player zoneOwner = null;
+            if (property.contains("Your")) {
+                strZone = strZone.substring(4);
+                zoneOwner = sourceController;
+            }
+            if (property.contains("Their")) {
+                strZone = strZone.substring(5);
+                zoneOwner = controller;
+            }
+            if (byYou) {
+                strZone = strZone.substring(0, strZone.indexOf("ByYou", 0));
+            }
+            final ZoneType realZone = ZoneType.smartValueOf(strZone);
+            if (card.getCastFrom() != null && (zoneOwner == null || card.getCastFrom().getPlayer().equals(zoneOwner))
+                    && (!byYou || controller.equals(card.getCastSA().getActivatingPlayer()))
+                    && realZone == card.getCastFrom().getZoneType()) {
+                return false;
+            }
+        }  else if (property.startsWith("wasCast")) {
             if (!card.wasCast()) {
+                return false;
+            }
+            if (property.contains("ByYou") && !controller.equals(card.getCastSA().getActivatingPlayer())) {
                 return false;
             }
         } else if (property.equals("wasNotCast")) {
             if (card.wasCast()) {
-                return false;
-            }
-        } else if (property.startsWith("wasCastFrom")) {
-            final String strZone = property.substring(11);
-            final ZoneType realZone = ZoneType.smartValueOf(strZone);
-            if (realZone != card.getCastFrom()) {
-                return false;
-            }
-        } else if (property.startsWith("wasNotCastFrom")) {
-            final String strZone = property.substring(14);
-            final ZoneType realZone = ZoneType.smartValueOf(strZone);
-            if (realZone == card.getCastFrom()) {
                 return false;
             }
         } else if (property.startsWith("set")) {

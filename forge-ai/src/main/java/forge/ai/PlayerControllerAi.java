@@ -28,6 +28,7 @@ import forge.card.MagicColor;
 import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostShard;
 import forge.deck.Deck;
+import forge.deck.DeckSection;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameObject;
@@ -52,7 +53,6 @@ import forge.game.cost.CostPartMana;
 import forge.game.keyword.KeywordInterface;
 import forge.game.mana.Mana;
 import forge.game.mana.ManaConversionMatrix;
-import forge.game.mana.ManaCostBeingPaid;
 import forge.game.phase.PhaseHandler;
 import forge.game.phase.PhaseType;
 import forge.game.player.DelayedReveal;
@@ -241,11 +241,11 @@ public class PlayerControllerAi extends PlayerController {
         SpellAbility selected;
         do {
             selected = chooseSingleSpellForEffect(remaining, sa, title, params);
-            if ( selected != null ) {
+            if (selected != null) {
                 remaining.remove(selected);
                 selecteds.add(selected);
             }
-        } while ( (selected != null ) && (selecteds.size() < num) );
+        } while (selected != null && selecteds.size() < num);
         return selecteds;
     }
 
@@ -541,12 +541,6 @@ public class PlayerControllerAi extends PlayerController {
     @Override
     public CardCollectionView chooseCardsToDelve(int genericAmount, CardCollection grave) {
         return getAi().chooseCardsToDelve(genericAmount, grave);
-    }
-
-    @Override
-    public TargetChoices chooseNewTargetsFor(SpellAbility ability, Predicate<GameObject> filter, boolean optional) {
-        // AI currently can't do this. But when it can it will need to be based on Ability API
-        return null;
     }
 
     @Override
@@ -1099,6 +1093,12 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
+    public TargetChoices chooseNewTargetsFor(SpellAbility ability, Predicate<GameObject> filter, boolean optional) {
+        // AI currently can't do this. But when it can it will need to be based on Ability API
+        return null;
+    }
+
+    @Override
     public boolean chooseCardsPile(SpellAbility sa, CardCollectionView pile1, CardCollectionView pile2, String faceUp) {
         if (faceUp.equals("True")) {
             // AI will choose the first pile if it is larger or the same
@@ -1125,7 +1125,12 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
-    public Collection<? extends PaperCard> complainCardsCantPlayWell(Deck myDeck) {
+    public void revealAISkipCards(String message, Map<Player, Map<DeckSection, List<? extends PaperCard>>> deckCards) {
+        // Ai won't understand that anyway
+    }
+
+    @Override
+    public Map<DeckSection, List<? extends PaperCard>> complainCardsCantPlayWell(Deck myDeck) {
         return brains.complainCardsCantPlayWell(myDeck);
     }
 
@@ -1142,9 +1147,7 @@ public class PlayerControllerAi extends PlayerController {
 
     @Override
     public boolean payManaCost(ManaCost toPay, CostPartMana costPartMana, SpellAbility sa, String prompt /* ai needs hints as well */, ManaConversionMatrix matrix, boolean effect) {
-        // TODO Auto-generated method stub
-        ManaCostBeingPaid cost = !effect ? ComputerUtilMana.calculateManaCost(sa, false, 0) : new ManaCostBeingPaid(toPay);
-        return ComputerUtilMana.payManaCost(cost, sa, player, effect);
+        return ComputerUtilMana.payManaCost(player, sa, effect);
     }
 
     @Override
@@ -1194,9 +1197,15 @@ public class PlayerControllerAi extends PlayerController {
     public String chooseCardName(SpellAbility sa, Predicate<ICardFace> cpp, String valid, String message) {
         if (sa.hasParam("AILogic")) {
             CardCollectionView aiLibrary = player.getCardsIn(ZoneType.Library);
-            CardCollectionView oppLibrary = player.getWeakestOpponent().getCardsIn(ZoneType.Library);
+            CardCollectionView oppLibrary = player.getStrongestOpponent().getCardsIn(ZoneType.Library);
             final Card source = sa.getHostCard();
             final String logic = sa.getParam("AILogic");
+
+            // Filter for valid options only
+            if (!valid.isEmpty()) {
+                aiLibrary = CardLists.getValidCards(aiLibrary, valid, source.getController(), source, sa);
+                oppLibrary = CardLists.getValidCards(oppLibrary, valid, source.getController(), source, sa);
+            }
 
             if (source != null && source.getState(CardStateName.Original).hasIntrinsicKeyword("Hidden agenda")) {
                 // If any Conspiracies are present, try not to choose the same name twice
@@ -1329,8 +1338,7 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
-    public List<OptionalCostValue> chooseOptionalCosts(SpellAbility chosen,
-            List<OptionalCostValue> optionalCostValues) {
+    public List<OptionalCostValue> chooseOptionalCosts(SpellAbility chosen, List<OptionalCostValue> optionalCostValues) {
         List<OptionalCostValue> chosenOptCosts = Lists.newArrayList();
         Cost costSoFar = chosen.getPayCosts().copy();
 

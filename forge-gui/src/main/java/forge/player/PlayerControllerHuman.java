@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeSet;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.Range;
@@ -133,6 +134,7 @@ import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.localinstance.skin.FSkinProp;
 import forge.model.FModel;
 import forge.util.CardTranslation;
+import forge.util.DeckAIUtils;
 import forge.util.ITriggerEvent;
 import forge.util.Lang;
 import forge.util.Localizer;
@@ -1276,7 +1278,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
         // TODO JAVA 8 use getOrDefault
         for (Card c : player.getAllCards()) {
-
             // Changeling are all creature types, they are not interesting for
             // counting creature types
             if (c.hasStartOfKeyword(Keyword.CHANGELING.toString())) {
@@ -2089,6 +2090,40 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     }
 
     @Override
+    public void revealAISkipCards(final String message, final Map<Player, Map<DeckSection, List<? extends PaperCard>>> unplayable) {
+        if (GuiBase.getInterface().isLibgdxPort()) {
+            //restore old functionality for mobile version since list of card names can't be zoomed to display the cards
+            for (Player p : unplayable.keySet()) {
+                final Map<DeckSection, List<? extends PaperCard>> removedUnplayableCards = unplayable.get(p);
+                final List<PaperCard> labels = new ArrayList<>();
+                for (final DeckSection s: new TreeSet<>(removedUnplayableCards.keySet())) {
+                    if (DeckSection.Sideboard.equals(s))
+                        continue;
+                    for (PaperCard c: removedUnplayableCards.get(s)) {
+                        labels.add(c);
+                    }
+                }
+                if (!labels.isEmpty())
+                    getGui().reveal(localizer.getMessage("lblActionFromPlayerDeck", message, Lang.getInstance().getPossessedObject(MessageUtil.mayBeYou(player, p), "")),
+                        ImmutableList.copyOf(labels));
+            }
+            return;
+        }
+        for (Player p : unplayable.keySet()) {
+            final Map<DeckSection, List<? extends PaperCard>> removedUnplayableCards = unplayable.get(p);
+            final List<String> labels = new ArrayList<>();
+            for (final DeckSection s: new TreeSet<>(removedUnplayableCards.keySet())) {
+                labels.add("=== " + DeckAIUtils.getLocalizedDeckSection(localizer, s) + " ===");
+                for (PaperCard c: removedUnplayableCards.get(s)) {
+                    labels.add(c.toString());
+                }
+            }
+            getGui().reveal(localizer.getMessage("lblActionFromPlayerDeck", message, Lang.getInstance().getPossessedObject(MessageUtil.mayBeYou(player, p), "")),
+                    ImmutableList.copyOf(labels));
+        }
+    }
+
+    @Override
     public List<PaperCard> chooseCardsYouWonToAddToDeck(final List<PaperCard> losses) {
         return getGui().many(localizer.getMessage("lblSelectCardstoAddtoYourDeck"), localizer.getMessage("lblAddTheseToMyDeck"), 0, losses.size(), losses, null);
     }
@@ -2768,7 +2803,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                                         }
                                     }
                                 }
-                                getGame().getAction().moveTo(targetZone, forgeCard, null);
+                                getGame().getAction().moveTo(targetZone, forgeCard, null, AbilityKey.newMap());
                                 if (forgeCard.isCreature()) {
                                     forgeCard.setSickness(lastSummoningSickness);
                                 }
@@ -2823,7 +2858,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                             getGame().getAction().moveToBottomOfLibrary(forgeCard, null);
                         }
                     } else {
-                        getGame().getAction().moveTo(targetZone, forgeCard, null);
+                        getGame().getAction().moveTo(targetZone, forgeCard, null, AbilityKey.newMap());
                     }
 
                     lastAdded = f;
@@ -2863,7 +2898,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 if (c == null) {
                     continue;
                 }
-                if (getGame().getAction().moveTo(ZoneType.Exile, c, null) != null) {
+                if (getGame().getAction().moveTo(ZoneType.Exile, c, null, AbilityKey.newMap()) != null) {
                     StringBuilder sb = new StringBuilder();
                     sb.append(p).append(" exiles ").append(c).append(" due to Dev Cheats.");
                     getGame().getGameLog().add(GameLogEntryType.DISCARD, sb.toString());
@@ -2902,7 +2937,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 if (c == null) {
                     continue;
                 }
-                if (getGame().getAction().moveTo(ZoneType.Exile, c, null) != null) {
+                if (getGame().getAction().moveTo(ZoneType.Exile, c, null, AbilityKey.newMap()) != null) {
                     StringBuilder sb = new StringBuilder();
                     sb.append(p).append(" exiles ").append(c).append(" due to Dev Cheats.");
                     getGame().getGameLog().add(GameLogEntryType.ZONE_CHANGE, sb.toString());

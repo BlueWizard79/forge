@@ -146,6 +146,10 @@ public class SpellAbilityCondition extends SpellAbilityVariables {
             this.setPhases(PhaseType.parseRange(params.get("ConditionPhases")));
         }
 
+        if (params.containsKey("ConditionFirstCombat")) {
+            this.setFirstCombatOnly(true);
+        }
+
         if (params.containsKey("ConditionGameTypes")) {
             this.setGameTypes(GameType.listValueOf(params.get("ConditionGameTypes")));
         }
@@ -277,7 +281,7 @@ public class SpellAbilityCondition extends SpellAbilityVariables {
             final String type = this.getPresenceCondition();
 
             int revealed = AbilityUtils.calculateAmount(host, "Revealed$Valid " + type, host.getCastSA());
-            int ctrl = AbilityUtils.calculateAmount(host, "Count$Valid " + type + ".inZoneBattlefield+YouCtrl", host.getCastSA());
+            int ctrl = AbilityUtils.calculateAmount(host, "Count$LastStateBattlefield " + type + ".YouCtrl", host.getCastSA());
 
             if (revealed + ctrl == 0) {
                 return false;
@@ -323,6 +327,10 @@ public class SpellAbilityCondition extends SpellAbilityVariables {
             return false;
         }
 
+        if (this.getFirstCombatOnly() && !phase.isFirstCombat()) {
+            return false;
+        }
+
         if (this.getActivationLimit() != -1 && sa.getActivationsThisTurn() >= this.getActivationLimit()) {
             return false;
         }
@@ -361,7 +369,7 @@ public class SpellAbilityCondition extends SpellAbilityVariables {
             if (getPresentDefined() != null) {
                 list = AbilityUtils.getDefinedObjects(host, getPresentDefined(), sa);
             } else {
-                list = new FCollection<GameObject>(game.getCardsIn(getPresentZone()));
+                list = new FCollection<>(game.getCardsIn(getPresentZone()));
             }
 
             final int left = Iterables.size(Iterables.filter(list, GameObjectPredicates.restriction(getIsPresent().split(","), sa.getActivatingPlayer(), host, sa)));

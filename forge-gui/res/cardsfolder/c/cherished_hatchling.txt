@@ -2,7 +2,7 @@ Name:Cherished Hatchling
 ManaCost:1 G
 Types:Creature Dinosaur
 PT:2/1
-T:Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Battlefield | Destination$ Graveyard | Execute$ TrigEffect | TriggerController$ TriggeredCardController | TriggerDescription$ When CARDNAME dies, you may cast Dinosaur spells this turn as though they had flash, and whenever you cast a Dinosaur spell this turn, it gains "When this creature enters the battlefield, you may have it fight another target creature."
+T:Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Battlefield | Destination$ Graveyard | Execute$ TrigEffect | TriggerDescription$ When CARDNAME dies, you may cast Dinosaur spells this turn as though they had flash, and whenever you cast a Dinosaur spell this turn, it gains "When this creature enters the battlefield, you may have it fight another target creature."
 SVar:TrigEffect:DB$ Effect | Name$ Cherished Hatchling Effect | StaticAbilities$ STFlash | Triggers$ HatchlingCast
 SVar:STFlash:Mode$ Continuous | EffectZone$ Command | Affected$ Dinosaur.nonToken+YouCtrl | MayPlay$ True | MayPlayPlayer$ CardOwner | MayPlayWithFlash$ True | MayPlayDontGrantZonePermissions$ True | AffectedZone$ Hand,Graveyard,Library,Exile | Description$ You may cast Dinosaur spells this turn as though they had flash.
 SVar:HatchlingCast:Mode$ SpellCast | ValidCard$ Dinosaur | ValidActivatingPlayer$ You | Execute$ TrigHatchlingAnimate | TriggerZones$ Command | TriggerDescription$ Whenever you cast a Dinosaur spell this turn, it gains "When this creature enters the battlefield, you may have it fight another target creature."
@@ -10,5 +10,4 @@ SVar:TrigHatchlingAnimate:DB$ Animate | Defined$ TriggeredCard | Duration$ Perma
 SVar:TrigETBHatchling:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ HatchlingFight | OptionalDecider$ You | TriggerDescription$ When this creature enters the battlefield, you may have it fight another target creature.
 SVar:HatchlingFight:DB$ Fight | Defined$ TriggeredCardLKICopy | ValidTgts$ Creature.Other | TgtPrompt$ Select another target creature
 DeckHints:Type$Dinosaur
-SVar:Picture:http://www.wizards.com/global/images/magic/general/cherished_hatchling.jpg
 Oracle:When Cherished Hatchling dies, you may cast Dinosaur spells this turn as though they had flash, and whenever you cast a Dinosaur spell this turn, it gains "When this creature enters the battlefield, you may have it fight another target creature."

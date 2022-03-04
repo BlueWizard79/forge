@@ -11,7 +11,6 @@ import forge.game.card.Card;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityStackInstance;
-import forge.game.zone.ZoneType;
 
 public class ControlSpellEffect extends SpellAbilityEffect {
     /* (non-Javadoc)
@@ -42,7 +41,6 @@ public class ControlSpellEffect extends SpellAbilityEffect {
         return sb.toString();
     }
 
-
     @Override
     public void resolve(SpellAbility sa) {
         // Gaining Control of Spells is a permanent effect
@@ -70,7 +68,7 @@ public class ControlSpellEffect extends SpellAbilityEffect {
                 GameObject obj = Iterables.getFirst(getDefinedOrTargeted(sa, "DefinedExchange"), null);
                 if (obj instanceof Card) {
                     Card c = (Card)obj;
-                    if (!(c.isInZone(ZoneType.Battlefield)) || si == null) {
+                    if (!c.isInPlay() || si == null) {
                         // Exchanging object isn't available, continue
                         continue;
                     }
@@ -88,6 +86,7 @@ public class ControlSpellEffect extends SpellAbilityEffect {
                         source.addRemembered(c);
                     }
                     c.addTempController(si.getActivatingPlayer(), tStamp);
+                    c.runChangeControllerCommands();
                 }
             }
 
@@ -97,6 +96,9 @@ public class ControlSpellEffect extends SpellAbilityEffect {
 
             if (remember) {
                 source.addRemembered(tgtC);
+            }
+            if (tgtC.getController() != newController) {
+                tgtC.runChangeControllerCommands();
             }
             tgtC.addTempController(newController, tStamp);
             si.setActivatingPlayer(newController);

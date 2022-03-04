@@ -730,7 +730,7 @@ public class CardFactoryUtil {
         String[] splitkw = parse.split(":");
 
         String desc = "CARDNAME enters the battlefield with ";
-        desc += Lang.nounWithNumeral(splitkw[2], CounterType.getType(splitkw[1]).getName() + " counter");
+        desc += Lang.nounWithNumeralExceptOne(splitkw[2], CounterType.getType(splitkw[1]).getName().toLowerCase() + " counter");
         desc += " on it.";
 
         String extraparams = "";
@@ -852,9 +852,6 @@ public class CardFactoryUtil {
             String pumpStr = "DB$ Pump | Defined$ Self | NumAtt$ " + n + " | NumDef$ " + n;
 
             SpellAbility pump = AbilityFactory.getAbility(pumpStr, card);
-            if ("X".equals(n)) {
-                pump.setSVar("X", "Count$Valid Creature.attacking");
-            }
 
             final Trigger bushidoTrigger1 = TriggerHandler.parseTrigger(trigBlock, card, intrinsic);
             final Trigger bushidoTrigger2 = TriggerHandler.parseTrigger(trigBlocked, card, intrinsic);
@@ -920,12 +917,12 @@ public class CardFactoryUtil {
             }
 
             StringBuilder trig = new StringBuilder();
-            trig.append("Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self");
+            trig.append("Mode$ ChangesZone | Destination$ Battlefield | ValidCard$ Card.Self");
             trig.append(" | TriggerDescription$ Champion ").append(article).append(" ").append(desc);
             trig.append(" (").append(Keyword.getInstance("Champion:"+desc).getReminderText()) .append(")");
 
             StringBuilder trigReturn = new StringBuilder();
-            trigReturn.append("Mode$ ChangesZone | Origin$ Battlefield | Destination$ Any | ValidCard$ Card.Self");
+            trigReturn.append("Mode$ ChangesZone | Origin$ Battlefield | ValidCard$ Card.Self");
             trigReturn.append(" | Secondary$ True | TriggerDescription$ When this leaves the battlefield, that card returns to the battlefield.");
 
             StringBuilder ab = new StringBuilder();
@@ -1068,7 +1065,7 @@ public class CardFactoryUtil {
             inst.addTrigger(trigger);
         } else if (keyword.startsWith("Evoke")) {
             final StringBuilder trigStr = new StringBuilder(
-                    "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self+evoked | Secondary$ True | TriggerDescription$ "
+                    "Mode$ ChangesZone | Destination$ Battlefield | ValidCard$ Card.Self+evoked | Secondary$ True | TriggerDescription$ "
                             + "Evoke (" + inst.getReminderText() + ")");
 
             final String effect = "DB$ Sacrifice";
@@ -1077,7 +1074,7 @@ public class CardFactoryUtil {
 
             inst.addTrigger(trigger);
         } else if (keyword.equals("Evolve")) {
-            final String trigStr = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | "
+            final String trigStr = "Mode$ ChangesZone | Destination$ Battlefield | "
                     + " ValidCard$ Creature.YouCtrl+Other | EvolveCondition$ True | "
                     + "TriggerZones$ Battlefield | Secondary$ True | "
                     + "TriggerDescription$ Evolve (" + inst.getReminderText()+ ")";
@@ -1099,7 +1096,7 @@ public class CardFactoryUtil {
 
             inst.addTrigger(trigger);
         } else if (keyword.equals("Exploit")) {
-            final String trigStr = "Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Any | Destination$ Battlefield | Secondary$ True"
+            final String trigStr = "Mode$ ChangesZone | ValidCard$ Card.Self | Destination$ Battlefield | Secondary$ True"
                     + " | TriggerDescription$ Exploit (" + inst.getReminderText() + ")";
             final String effect = "DB$ Sacrifice | SacValid$ Creature | SacMessage$ creature | Exploit$ True | Optional$ True";
 
@@ -1132,7 +1129,7 @@ public class CardFactoryUtil {
 
             final String name = StringUtils.join(k);
 
-            final String trigStr = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield "
+            final String trigStr = "Mode$ ChangesZone | Destination$ Battlefield "
                     + " | ValidCard$ Card.Self | Secondary$ True"
                     + " | TriggerDescription$ Fabricate " + n + " (" + inst.getReminderText() + ")";
 
@@ -1254,7 +1251,7 @@ public class CardFactoryUtil {
             // Fourth, create a trigger that removes the haunting status if the
             // haunter leaves the exile
             final StringBuilder sbUnExiled = new StringBuilder();
-            sbUnExiled.append("Mode$ ChangesZone | Origin$ Exile | Destination$ Any | ");
+            sbUnExiled.append("Mode$ ChangesZone | Origin$ Exile | ");
             sbUnExiled.append("ValidCard$ Card.Self | Static$ True | Secondary$ True | ");
             sbUnExiled.append("TriggerDescription$ Blank");
 
@@ -1269,7 +1266,7 @@ public class CardFactoryUtil {
 
             // Trigger for when the haunted creature leaves the battlefield
             final StringBuilder sbHauntRemoved = new StringBuilder();
-            sbHauntRemoved.append("Mode$ ChangesZone | Origin$ Battlefield | Destination$ Any | ");
+            sbHauntRemoved.append("Mode$ ChangesZone | Origin$ Battlefield | ");
             sbHauntRemoved.append("ValidCard$ Creature.HauntedBy | Static$ True | Secondary$ True | ");
             sbHauntRemoved.append("TriggerDescription$ Blank");
 
@@ -1347,7 +1344,7 @@ public class CardFactoryUtil {
             triggers.add(gainControlTrigger);
 
             // when the card with hideaway leaves the battlefield, forget all exiled cards
-            final Trigger changeZoneTrigger = TriggerHandler.parseTrigger("Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Battlefield | Destination$ Any | TriggerZones$ Battlefield | Static$ True", card, intrinsic);
+            final Trigger changeZoneTrigger = TriggerHandler.parseTrigger("Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Battlefield | TriggerZones$ Battlefield | Static$ True", card, intrinsic);
             String cleanupStr = "DB$ Cleanup | ClearRemembered$ True";
             changeZoneTrigger.setOverridingAbility(AbilityFactory.getAbility(cleanupStr, card));
             triggers.add(changeZoneTrigger);
@@ -1369,7 +1366,7 @@ public class CardFactoryUtil {
             inst.addTrigger(trigger);
         } else if (keyword.equals("Living Weapon")) {
             final StringBuilder sbTrig = new StringBuilder();
-            sbTrig.append("Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ");
+            sbTrig.append("Mode$ ChangesZone | Destination$ Battlefield | ");
             sbTrig.append("ValidCard$ Card.Self | Secondary$ True | TriggerDescription$ ");
             sbTrig.append("Living Weapon (").append(inst.getReminderText()).append(")");
 
@@ -1455,7 +1452,7 @@ public class CardFactoryUtil {
             final String manacost = k[1];
             final String abStrReveal = "DB$ Reveal | Defined$ You | RevealDefined$ Self"
                     + " | MiracleCost$ " + manacost;
-            final String abStrPlay = "DB$ Play | Defined$ Self | PlayCost$ " + manacost;
+            final String abStrPlay = "DB$ Play | Defined$ Self | Optional$ True | PlayCost$ " + manacost;
 
             String revealed = "DB$ ImmediateTrigger | TriggerDescription$ CARDNAME - Miracle";
 
@@ -1480,7 +1477,7 @@ public class CardFactoryUtil {
                     "TgtPrompt$ Select target artifact creature | CounterType$ P1P1 | CounterNum$ ModularX | Modular$ True";
 
             String trigStr = "Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Battlefield | Destination$ Graveyard" +
-                    " | OptionalDecider$ TriggeredCardController | TriggerController$ TriggeredCardController" +
+                    " | OptionalDecider$ TriggeredCardController" +
                     " | Secondary$ True | TriggerDescription$ When CARDNAME dies, " +
                     "you may put a +1/+1 counter on target artifact creature for each +1/+1 counter on CARDNAME";
 
@@ -1550,7 +1547,7 @@ public class CardFactoryUtil {
         } else if (keyword.startsWith("Partner:")) {
             // Partner With
             final String[] k = keyword.split(":");
-            final String trigStr = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield " +
+            final String trigStr = "Mode$ ChangesZone | Destination$ Battlefield " +
                     "| ValidCard$ Card.Self | Secondary$ True " +
                     "| TriggerDescription$ Partner with " + k[1] + " (" + inst.getReminderText() + ")";
             // replace , for ; in the ChangeZone
@@ -1558,7 +1555,7 @@ public class CardFactoryUtil {
 
             final String effect = "DB$ ChangeZone | ValidTgts$ Player | TgtPrompt$ Select target player" +
                     " | Origin$ Library | Destination$ Hand | ChangeType$ Card.named" + k[1] +
-                    " | ChangeNum$ 1 | Hidden$ True | Chooser$ Targeted | Optional$ Targeted";
+                    " | Hidden$ True | Chooser$ Targeted | Optional$ Targeted";
 
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
             trigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
@@ -1568,7 +1565,7 @@ public class CardFactoryUtil {
             final String trigStr = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard " +
                     " | ValidCard$ Card.Self+counters_EQ0_M1M1 | TriggerZones$ Battlefield | Secondary$ True" +
                     " | TriggerDescription$ Persist (" + inst.getReminderText() + ")";
-            final String effect = "DB$ ChangeZone | Defined$ TriggeredNewCardLKICopy | Origin$ Graveyard | Destination$ Battlefield | WithCounters$ M1M1_1";
+            final String effect = "DB$ ChangeZone | Defined$ TriggeredNewCardLKICopy | Origin$ Graveyard | Destination$ Battlefield | WithCountersType$ M1M1";
 
             final Trigger trigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
 
@@ -1761,7 +1758,7 @@ public class CardFactoryUtil {
             }
         } else if (keyword.equals("Soulbond")) {
             // Setup ETB trigger for card with Soulbond keyword
-            final String actualTriggerSelf = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | "
+            final String actualTriggerSelf = "Mode$ ChangesZone | Destination$ Battlefield | "
                     + "ValidCard$ Card.Self | OptionalDecider$ You | "
                     + "IsPresent$ Creature.Other+YouCtrl+NotPaired | Secondary$ True | "
                     + "TriggerDescription$ When CARDNAME enters the battlefield, "
@@ -1771,7 +1768,7 @@ public class CardFactoryUtil {
             parsedTriggerSelf.setOverridingAbility(AbilityFactory.getAbility(abStringSelf, card));
 
             // Setup ETB trigger for other creatures you control
-            final String actualTriggerOther = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | "
+            final String actualTriggerOther = "Mode$ ChangesZone | Destination$ Battlefield | "
                     + "ValidCard$ Creature.Other+YouCtrl | TriggerZones$ Battlefield | OptionalDecider$ You | "
                     + " IsPresent$ Creature.Self+NotPaired | Secondary$ True | "
                     + " TriggerDescription$ When another unpaired creature you control enters the battlefield, "
@@ -1787,16 +1784,11 @@ public class CardFactoryUtil {
 
             final String actualTrigger = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard"
                     + "| Secondary$ True | OptionalDecider$ You | ValidCard$ Card.Self"
-                    + "| TriggerController$ TriggeredCardController | TriggerDescription$ " + k[0] + " " + k[1]
-                    + " (" + inst.getReminderText() + ")";
+                    + "| TriggerDescription$ " + k[0] + " " + k[1] + " (" + inst.getReminderText() + ")";
             final String effect = "DB$ ChangeZone | Origin$ Graveyard | Destination$ Hand"
                     + "| ValidTgts$ Spirit.YouOwn+cmcLE" + k[1];
             final Trigger parsedTrigger = TriggerHandler.parseTrigger(actualTrigger, card, intrinsic);
             final SpellAbility sp = AbilityFactory.getAbility(effect, card);
-            // Soulshift X
-            if (k[1].equals("X")) {
-                sp.setSVar("X", "Count$LastStateBattlefield " + k[3]);
-            }
 
             parsedTrigger.setOverridingAbility(sp);
 
@@ -1837,7 +1829,7 @@ public class CardFactoryUtil {
             playTrig.append(" | TriggerDescription$ When the last time counter is removed from this card, if it's exiled, play it without paying its mana cost if able.  ");
             playTrig.append("If you can't, it remains exiled. If you cast a creature spell this way, it gains haste until you lose control of the spell or the permanent it becomes.");
 
-            String abPlay = "DB$ Play | Defined$ Self | WithoutManaCost$ True | SuspendCast$ True";
+            String abPlay = "DB$ Play | Defined$ Self | WithoutManaCost$ True";
             if (card.isPermanent()) {
                 abPlay += "| RememberPlayed$ True";
             }
@@ -1881,7 +1873,7 @@ public class CardFactoryUtil {
 
             // get Description from Ability
             final String desc = AbilityFactory.getMapParams(card.getSVar(abStr)).get("SpellDescription");
-            final String trigStr = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self+notTributed " +
+            final String trigStr = "Mode$ ChangesZone | Destination$ Battlefield | ValidCard$ Card.Self+notTributed " +
                      " | Execute$ " + abStr + " | TriggerDescription$ " + desc;
 
             final Trigger parsedTrigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
@@ -1891,7 +1883,7 @@ public class CardFactoryUtil {
             final String trigStr = "Mode$ ChangesZone | Origin$ Battlefield | Destination$ Graveyard " +
                     " | ValidCard$ Card.Self+counters_EQ0_P1P1 | TriggerZones$ Battlefield | Secondary$ True" +
                     " | TriggerDescription$ Undying (" + inst.getReminderText() + ")";
-            final String effect = "DB$ ChangeZone | Defined$ TriggeredNewCardLKICopy | Origin$ Graveyard | Destination$ Battlefield | WithCounters$ P1P1_1";
+            final String effect = "DB$ ChangeZone | Defined$ TriggeredNewCardLKICopy | Origin$ Graveyard | Destination$ Battlefield | WithCountersType$ P1P1";
 
             final Trigger parsedTrigger = TriggerHandler.parseTrigger(trigStr, card, intrinsic);
             parsedTrigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
@@ -2004,8 +1996,8 @@ public class CardFactoryUtil {
                     + " | TriggerDescription$ If you cast it any time a sorcery couldn't have been cast, "
                     + " the controller of the permanent it becomes sacrifices it at the beginning of the next cleanup step.";
 
-            final String strDelay = "DB$ DelayedTrigger | Mode$ Phase | Phase$ Cleanup | TriggerDescription$ At the beginning of the next cleanup step, sacrifice CARDNAME.";
-            final String strSac = "DB$ SacrificeAll | Defined$ Self";
+            final String strDelay = "DB$ DelayedTrigger | Mode$ Phase | Phase$ Cleanup | RememberObjects$ Self | TriggerDescription$ At the beginning of the next cleanup step, sacrifice CARDNAME.";
+            final String strSac = "DB$ SacrificeAll | Defined$ DelayTriggerRememberedLKI";
 
             SpellAbility saDelay = AbilityFactory.getAbility(strDelay, card);
             saDelay.setAdditionalAbility("Execute", (AbilitySub) AbilityFactory.getAbility(strSac, card));
@@ -2156,6 +2148,11 @@ public class CardFactoryUtil {
             re.setOverridingAbility(saReturn);
 
             inst.addReplacement(re);
+        } else if (keyword.equals("Compleated")) {
+            String sb = "etbCounter:LOYALTY:-2:ValidCard$ Card.CastSa Spell.paidPhyrexianMana:If life was paid, this planeswalker enters with two fewer loyalty counters";
+            final ReplacementEffect re = makeEtbCounter(sb, card, intrinsic);
+
+            inst.addReplacement(re);
         } else if (keyword.startsWith("Dredge")) {
             final String dredgeAmount = keyword.split(":")[1];
 
@@ -2181,7 +2178,7 @@ public class CardFactoryUtil {
 
             inst.addReplacement(re);
         } else if (keyword.equals("Daybound")) {
-            final String actualRep = "Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | DayTime$ Night | Secondary$ True | Description$ If it is night, this permanent enters the battlefield transformed.";
+            final String actualRep = "Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | DayTime$ Night | Secondary$ True | Layer$ Transform | Description$ If it is night, this permanent enters the battlefield transformed.";
             final String abTransform = "DB$ SetState | Defined$ ReplacedCard | Mode$ Transform | ETB$ True | Daybound$ True";
 
             ReplacementEffect re = ReplacementHandler.parseReplacement(actualRep, host, intrinsic, card);
@@ -2451,7 +2448,7 @@ public class CardFactoryUtil {
             final String effect = "DB$ PutCounter | Defined$ ReplacedCard | Tribute$ True | "
                     + "CounterType$ P1P1 | CounterNum$ " + tributeAmount
                     + " | ETB$ True | SpellDescription$ Tribute " + tributeAmount
-                    + " ("+ inst.getReminderText() + ")";
+                    + " (" + inst.getReminderText() + ")";
 
             ReplacementEffect cardre = createETBReplacement(card, ReplacementLayer.Other, effect, false, true, intrinsic, "Card.Self", "");
 
@@ -2781,8 +2778,8 @@ public class CardFactoryUtil {
             String equipCost = k[1];
             String valid = k.length > 2 && !k[2].isEmpty() ? k[2] : "Creature.YouCtrl";
             String vstr = k.length > 3 && !k[3].isEmpty() ? k[3] : "creature";
-            String extra =  k.length > 4 ? k[4] : "";
-            String extraDesc =  k.length > 5 ? k[5] : "";
+            String extra = k.length > 4 ? k[4] : "";
+            String extraDesc = k.length > 5 ? k[5] : "";
             // Create attach ability string
             final StringBuilder abilityStr = new StringBuilder();
             abilityStr.append("AB$ Attach | Cost$ ");
@@ -3119,6 +3116,27 @@ public class CardFactoryUtil {
 
             newSA.setIntrinsic(intrinsic);
             inst.addSpellAbility(newSA);
+        } else if (keyword.startsWith("Reconfigure")) {
+            if (!keyword.contains(":")) {
+                System.err.println("Malformed Reconfigure entry! - Card: " + card.toString());
+                return;
+            }
+            String[] k = keyword.split(":");
+            String bothStr = "| Cost$ " + k[1] + " | SorcerySpeed$ True | Reconfigure$ True | PrecostDesc$ Reconfigure ";
+            final StringBuilder attachStr = new StringBuilder();
+            attachStr.append("AB$ Attach | ValidTgts$ Creature.YouCtrl+Other | TgtPrompt$ Select target creature you ");
+            attachStr.append("control | AILogic$ Pump | Secondary$ True | SpellDescription$ Attach ").append(bothStr);
+            final StringBuilder unattachStr = new StringBuilder();
+            unattachStr.append("AB$ Unattach | Defined$ Self | SpellDescription$ Unattach | Secondary$ True | IsPresent$ Card.Self+AttachedTo Creature");
+            unattachStr.append(bothStr);
+            // instantiate attach ability
+            SpellAbility attachSA = AbilityFactory.getAbility(attachStr.toString(), card);
+            attachSA.setIntrinsic(intrinsic);
+            inst.addSpellAbility(attachSA);
+            // instantiate unattach ability
+            SpellAbility unattachSA = AbilityFactory.getAbility(unattachStr.toString(), card);
+            unattachSA.setIntrinsic(intrinsic);
+            inst.addSpellAbility(unattachSA);
         } else if (keyword.startsWith("Reinforce")) {
             final String[] k = keyword.split(":");
             final String n = k[1];
@@ -3287,7 +3305,7 @@ public class CardFactoryUtil {
             final String effect = "AB$ ChangeZone | Cost$ " + manacost + " Sac<1/CARDNAME>"
                     + " | PrecostDesc$ Transfigure | CostDesc$ " + ManaCostParser.parse(manacost)
                     + " | Origin$ Library | Destination$ Battlefield | ChangeType$ Creature.cmcEQTransfigureX"
-                    + " | ChangeNum$ 1 | SorcerySpeed$ True | StackDescription$ SpellDescription | SpellDescription$ ("
+                    + " | SorcerySpeed$ True | StackDescription$ SpellDescription | SpellDescription$ ("
                     + inst.getReminderText() + ")";
 
             final SpellAbility sa = AbilityFactory.getAbility(effect, card);
@@ -3301,7 +3319,7 @@ public class CardFactoryUtil {
             final String effect = "AB$ ChangeZone | Cost$ " + manacost + " Discard<1/CARDNAME>"
                     + " | PrecostDesc$ Transmute | CostDesc$ " + ManaCostParser.parse(manacost) + " | ActivationZone$ Hand"
                     + " | Origin$ Library | Destination$ Hand | ChangeType$ Card.cmcEQTransmuteX"
-                    + " | ChangeNum$ 1 | SorcerySpeed$ True | StackDescription$ SpellDescription | SpellDescription$ ("
+                    + " | SorcerySpeed$ True | StackDescription$ SpellDescription | SpellDescription$ ("
                     + inst.getReminderText() + ")";
 
             final SpellAbility sa = AbilityFactory.getAbility(effect, card);
@@ -3343,11 +3361,11 @@ public class CardFactoryUtil {
             final String power = k[1];
 
             // tapXType has a special check for withTotalPower, and NEEDS it to be "+withTotalPowerGE"
-            // So adding redundant YouCtrl to simplify matters even though its unnecessary
-            String effect = "AB$ Animate | Cost$ tapXType<Any/Creature.YouCtrl+withTotalPowerGE" + power +
-                    "> | CostDesc$ Crew " + power + " (Tap any number of creatures you control with total power " + power +
-                    " or more: | Crew$ True | Secondary$ True | Defined$ Self | Types$ Creature,Artifact | RemoveCardTypes$ True" +
-                    " | SpellDescription$ CARDNAME becomes an artifact creature until end of turn.)";
+            String effect = "AB$ Animate | Cost$ tapXType<Any/Creature.Other+withTotalPowerGE" + power + "> | " +
+                    "CostDesc$ Crew " + power + " (Tap any number of creatures you control with total power " + power +
+                    " or more: | Crew$ True | Secondary$ True | Defined$ Self | Types$ Creature,Artifact | " +
+                    "RemoveCardTypes$ True | StackDescription$ SpellDescription | SpellDescription$ CARDNAME becomes" +
+                    " an artifact creature until end of turn.)";
 
             final SpellAbility sa = AbilityFactory.getAbility(effect, card);
             sa.setIntrinsic(intrinsic);

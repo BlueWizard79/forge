@@ -72,7 +72,7 @@ public class CostReveal extends CostPartWithList {
             modifiedHand.remove(source); // can't pay for itself
             handList = modifiedHand;
         }
-        handList = CardLists.getValidCards(handList, getType().split(","), payer, source, ability);
+        handList = CardLists.getValidCards(handList, getType(), payer, source, ability);
 
         return handList.size();
     }
@@ -138,7 +138,6 @@ public class CostReveal extends CostPartWithList {
         if (revealFrom.size() > 1) {
             final StringBuilder desc = new StringBuilder();
             desc.append(this.getTypeDescription() == null ? this.getType() : this.getTypeDescription());
-            desc.append(" card");
             sb.append(" or choose ");
             sb.append(Cost.convertAmountTypeToWords(i, this.getAmount(), desc.toString()));
             sb.append(" you control");

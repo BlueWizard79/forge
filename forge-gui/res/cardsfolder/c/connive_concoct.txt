@@ -1,8 +1,8 @@
 Name:Connive
 ManaCost:2 U/B U/B
 Types:Sorcery
-AlternateMode:Split
 A:SP$ GainControl | Cost$ 2 U/B U/B | ValidTgts$ Creature.powerLE2 | TgtPrompt$ Select target creature with power 2 or less. | SpellDescription$ Gain control of target creature with power 2 or less.
+AlternateMode:Split
 Oracle:Gain control of target creature with power 2 or less.
 
 ALTERNATE
@@ -12,5 +12,5 @@ ManaCost:3 U B
 Types:Sorcery
 A:SP$ Surveil | Cost$ 3 U B | Amount$ 3 | SubAbility$ DBReturn | SpellDescription$ Surveil 3, then return a creature card from your graveyard to the battlefield.
 SVar:DBReturn:DB$ ChangeZone | Origin$ Graveyard | Destination$ Battlefield | ChangeType$ Creature.YouCtrl | ChangeNum$ 1 | Hidden$ True
-DeckHas:Ability$Surveil & Ability$Graveyard
+DeckHas:Ability$Surveil|Graveyard
 Oracle:Surveil 3, then return a creature card from your graveyard to the battlefield.

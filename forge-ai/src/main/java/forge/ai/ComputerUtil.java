@@ -703,13 +703,13 @@ public class ComputerUtil {
             if (pow <= 0) {
                 continue;
             }
-            totalPower += pow;
             if (pow >= amount) {
                 // If the power of this creature matches the totalPower needed
                 // Might as well only use this creature?
                 tapList.clear();
             }
             tapList.add(next);
+            totalPower = CardLists.getTotalPower(tapList, true, sa.hasParam("Crew"));
             if (totalPower >= amount) {
                 break;
             }
@@ -793,7 +793,7 @@ public class ComputerUtil {
         boolean exceptSelf = "ExceptSelf".equals(source.getParam("AILogic"));
         boolean removedSelf = false;
 
-        if (isOptional && source.hasParam("Devour") || source.hasParam("Exploit")) {
+        if (isOptional && (source.hasParam("Devour") || source.hasParam("Exploit"))) {
             if (source.hasParam("Exploit")) {
                 for (Trigger t : host.getTriggers()) {
                     if (t.getMode() == TriggerType.Exploited) {
@@ -1343,7 +1343,7 @@ public class ComputerUtil {
                 }
 
                 final CardCollection typeList =
-                        CardLists.getValidCards(ai.getCardsIn(ZoneType.Battlefield), type.split(","), source.getController(), source, sa);
+                        CardLists.getValidCards(ai.getCardsIn(ZoneType.Battlefield), type, source.getController(), source, sa);
                 for (Card c : typeList) {
                     if (c.getSVar("SacMe").equals("6")) {
                         return true;
@@ -1620,7 +1620,7 @@ public class ComputerUtil {
                 objects = AbilityUtils.getDefinedObjects(source, topStack.getParam("Defined"), topStack);
             } else if (topStack.hasParam("ValidCards")) {
                 CardCollectionView battleField = aiPlayer.getCardsIn(ZoneType.Battlefield);
-                objects = CardLists.getValidCards(battleField, topStack.getParam("ValidCards").split(","), source.getController(), source, topStack);
+                objects = CardLists.getValidCards(battleField, topStack.getParam("ValidCards"), source.getController(), source, topStack);
             } else {
                 return threatened;
             }
@@ -1664,7 +1664,7 @@ public class ComputerUtil {
 
         if (saviourApi == ApiType.PutCounter || saviourApi == ApiType.PutCounterAll) {
             if (saviour != null && saviour.getParam("CounterType").equals("P1P1")) {
-                toughness = AbilityUtils.calculateAmount(saviour.getHostCard(), saviour.getParam("CounterNum"), saviour);
+                toughness = AbilityUtils.calculateAmount(saviour.getHostCard(), saviour.getParamOrDefault("CounterNum", "1"), saviour);
             } else {
                 return threatened;
             }
@@ -2664,13 +2664,13 @@ public class ComputerUtil {
         for (Trigger trigger : theTriggers) {
             final Card source = trigger.getHostCard();
 
+            if (trigger.getMode() != TriggerType.SpellCast) {
+                continue;
+            }
             if (!trigger.zonesCheck(game.getZoneOf(source))) {
                 continue;
             }
             if (!trigger.requirementsCheck(game)) {
-                continue;
-            }
-            if (trigger.getMode() != TriggerType.SpellCast) {
                 continue;
             }
             if (trigger.hasParam("ValidCard")) {
@@ -2724,6 +2724,12 @@ public class ComputerUtil {
         for (Trigger trigger : theTriggers) {
             final Card source = trigger.getHostCard();
 
+            if (trigger.getMode() != TriggerType.ChangesZone) {
+                continue;
+            }
+            if (!"Battlefield".equals(trigger.getParam("Destination"))) {
+                continue;
+            }
             if (!trigger.zonesCheck(game.getZoneOf(source))) {
                 continue;
             }
@@ -2732,12 +2738,6 @@ public class ComputerUtil {
             }
             if (trigger.hasParam("CheckOnTriggeredCard")
                     && AbilityUtils.getDefinedCards(permanent, source.getSVar(trigger.getParam("CheckOnTriggeredCard").split(" ")[0]), null).isEmpty()) {
-                continue;
-            }
-            if (trigger.getMode() != TriggerType.ChangesZone) {
-                continue;
-            }
-            if (!"Battlefield".equals(trigger.getParam("Destination"))) {
                 continue;
             }
             if (trigger.hasParam("ValidCard")) {
@@ -2821,8 +2821,6 @@ public class ComputerUtil {
             if (p.getCardsIn(ZoneType.Library).size() < 3) {
                 pRating /= 5;
             }
-
-            System.out.println("Board position evaluation for " + p + ": " + pRating);
 
             if (pRating > bestBoardRating) {
                 bestBoardRating = pRating;
@@ -3040,11 +3038,11 @@ public class ComputerUtil {
     public static boolean aiLifeInDanger(Player ai, boolean serious, int payment) {
         // TODO should also consider them as teams
         for (Player opponent: ai.getOpponents()) {
-            // test whether the human can kill the ai next turn
             Combat combat = new Combat(opponent);
             boolean containsAttacker = false;
+            boolean thisCombat = ai.getGame().getPhaseHandler().isPlayerTurn(opponent) && ai.getGame().getPhaseHandler().getPhase().isBefore(PhaseType.COMBAT_BEGIN);
             for (Card att : opponent.getCreaturesInPlay()) {
-                if (ComputerUtilCombat.canAttackNextTurn(att, ai)) {
+                if ((thisCombat && CombatUtil.canAttack(att, ai)) || (!thisCombat && ComputerUtilCombat.canAttackNextTurn(att, ai))) {
                     combat.addAttacker(att, ai);
                     containsAttacker = true;
                 }
@@ -3052,6 +3050,8 @@ public class ComputerUtil {
             if (!containsAttacker) {
                 continue;
             }
+
+            // TODO if it's next turn ignore mustBlockCards
             AiBlockController block = new AiBlockController(ai, false);
             block.assignBlockersForCombat(combat);
 

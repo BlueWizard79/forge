@@ -1,7 +1,6 @@
 package forge.ai;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -944,7 +943,7 @@ public class ComputerUtilCard {
         List<String> chosen = new ArrayList<>();
         Player ai = sa.getActivatingPlayer();
         final Game game = ai.getGame();
-        Player opp = ai.getWeakestOpponent();
+        Player opp = ai.getStrongestOpponent();
         if (sa.hasParam("AILogic")) {
             final String logic = sa.getParam("AILogic");
 
@@ -1361,7 +1360,7 @@ public class ComputerUtilCard {
                 if (!Iterables.any(oppCreatures, CardPredicates.possibleBlockers(pumped))) {
                     threat *= 2;
                 }
-                if (c.getNetPower() == 0 && c == sa.getHostCard() && power > 0 ) {
+                if (c.getNetPower() == 0 && c == sa.getHostCard() && power > 0) {
                     threat *= 4; //over-value self +attack for 0 power creatures which may be pumped further after attacking 
                 }
                 chance += threat;
@@ -1378,9 +1377,7 @@ public class ComputerUtilCard {
                         && ComputerUtilMana.hasEnoughManaSourcesToCast(sa, ai)) {
                     combatTrick = true;
 
-                    final List<String> kws = sa.hasParam("KW") ? Arrays.asList(sa.getParam("KW").split(" & "))
-                            : Lists.newArrayList();
-                    for (String kw : kws) {
+                    for (String kw : keywords) {
                         if (!kw.equals("Trample") && !kw.equals("First Strike") && !kw.equals("Double Strike")) {
                             combatTrick = false;
                             break;
@@ -1565,7 +1562,7 @@ public class ComputerUtilCard {
             }
 
             //5. if the life of the computer is in danger, try to pump blockers blocking Tramplers
-            if (combat.isBlocking(c) && toughness > 0 ) {
+            if (combat.isBlocking(c) && toughness > 0) {
                 List<Card> blockedBy = combat.getAttackersBlockedBy(c);
                 boolean attackerHasTrample = false;
                 for (Card b : blockedBy) {
@@ -1951,7 +1948,7 @@ public class ComputerUtilCard {
 
             CardCollectionView list = game.getCardsIn(ZoneType.Battlefield);
 
-            list = CardLists.getValidCards(list, needsToPlay.split(","), card.getController(), card, sa);
+            list = CardLists.getValidCards(list, needsToPlay, card.getController(), card, sa);
             if (list.isEmpty()) {
                 return AiPlayDecision.MissingNeededCards;
             }

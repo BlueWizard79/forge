@@ -1,9 +1,8 @@
 Name:Farm
 ManaCost:2 W
-AlternateMode: Split
 Types:Instant
 A:SP$ Destroy | Cost$ 2 W | ValidTgts$ Creature.attacking,Creature.blocking | TgtPrompt$ Select target attacking or blocking creature | SpellDescription$ Destroy target attacking or blocking creature.
-SVar:Picture:http://www.wizards.com/global/images/magic/general/farm_market.jpg
+AlternateMode:Split
 Oracle:Destroy target attacking or blocking creature.
 
 ALTERNATE

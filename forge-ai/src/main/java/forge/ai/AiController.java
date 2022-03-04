@@ -160,9 +160,7 @@ public class AiController {
             all.add(ccvPlayerLibrary.get(0));
         }
 
-        for (final Player opp : player.getOpponents()) {
-            all.addAll(opp.getCardsIn(ZoneType.Exile));
-        }
+        all.addAll(player.getOpponents().getCardsIn(ZoneType.Exile));
 
         final List<SpellAbility> spellAbilities = Lists.newArrayList();
         for (final Card c : all) {
@@ -703,7 +701,7 @@ public class AiController {
         // but should work in most circumstances to ensure safety in whatever the AI is using this for.
         if (manaSources.size() >= cost.getConvertedManaCost()) {
             for (Card c : manaSources) {
-                AiCardMemory.rememberCard(player, c, memSet);
+                memory.rememberCard(c, memSet);
             }
             return true;
         }
@@ -756,9 +754,9 @@ public class AiController {
         }
 
         // state needs to be switched here so API checks evaluate the right face
-        CardStateName currentState = sa.getCardState() != null && sa.getHostCard().getCurrentStateName() != sa.getCardState().getStateName() && !sa.getHostCard().isInPlay() ? sa.getHostCard().getCurrentStateName() : null;
+        CardStateName currentState = sa.getCardState() != null && sa.getHostCard().getCurrentStateName() != sa.getCardStateName() && !sa.getHostCard().isInPlay() ? sa.getHostCard().getCurrentStateName() : null;
         if (currentState != null) {
-            sa.getHostCard().setState(sa.getCardState().getStateName(), false);
+            sa.getHostCard().setState(sa.getCardStateName(), false);
         }
 
         AiPlayDecision canPlay = canPlaySa(sa); // this is the "heaviest" check, which also sets up targets, defines X, etc.
@@ -839,7 +837,7 @@ public class AiController {
 
         // When processing a new SA, clear the previously remembered cards that have been marked to avoid re-entry
         // which might potentially cause a stack overflow.
-        AiCardMemory.clearMemorySet(this, AiCardMemory.MemorySet.MARKED_TO_AVOID_REENTRY);
+        memory.clearMemorySet(AiCardMemory.MemorySet.MARKED_TO_AVOID_REENTRY);
 
         // TODO before suspending some spells try to predict if relevant targets can be expected
         if (sa.getApi() != null) {
@@ -894,7 +892,7 @@ public class AiController {
             spellHost = CardUtil.getLKICopy(spellHost);
             spellHost.setLKICMC(-1); // to reset the cmc
             spellHost.setLastKnownZone(game.getStackZone()); // need to add to stack to make check Restrictions respect stack cmc
-            spellHost.setCastFrom(card.getZone().getZoneType());
+            spellHost.setCastFrom(card.getZone());
         }
         if (!sa.checkRestrictions(spellHost, player)) {
             return AiPlayDecision.AnotherTime;
@@ -1419,14 +1417,15 @@ public class AiController {
             } else {
                 chance = SpellApiToAi.Converter.get(spell.getApi()).doTriggerAI(player, spell, mandatory);
             }
-            if (!chance)
+            if (!chance) {
                 return AiPlayDecision.TargetingFailed;
+            }
+
+            if (mandatory) {
+                return AiPlayDecision.WillPlay;
+            }
 
             if (spell instanceof SpellPermanent) {
-                if (mandatory) {
-                    return AiPlayDecision.WillPlay;
-                }
-
                 if (!checkETBEffects(card, spell, null)) {
                     return AiPlayDecision.BadEtbEffects;
                 }
@@ -1489,7 +1488,7 @@ public class AiController {
         predictedCombatNextTurn = null;
 
         // Reset priority mana reservation that's meant to work for one spell only
-        AiCardMemory.clearMemorySet(player, AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
+        memory.clearMemorySet(AiCardMemory.MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
 
         if (useSimulation) {
             return singleSpellAbilityList(simPicker.chooseSpellAbilityToPlay(null));
@@ -2077,18 +2076,23 @@ public class AiController {
         return result;
     }
 
-    public Collection<? extends PaperCard> complainCardsCantPlayWell(Deck myDeck) {
-        List<PaperCard> result = Lists.newArrayList();
+    public Map<DeckSection, List<? extends PaperCard>> complainCardsCantPlayWell(Deck myDeck) {
+        Map<DeckSection, List<? extends PaperCard>> complaints = new HashMap<>();
         // When using simulation, AI should be able to figure out most cards.
         if (!useSimulation) {
             for (Entry<DeckSection, CardPool> ds : myDeck) {
+                List<PaperCard> result = Lists.newArrayList();
                 for (Entry<PaperCard, Integer> cp : ds.getValue()) {
-                    if (cp.getKey().getRules().getAiHints().getRemAIDecks())
+                    if (cp.getKey().getRules().getAiHints().getRemAIDecks()) {
                         result.add(cp.getKey());
+                    }
+                }
+                if (!result.isEmpty()) {
+                    complaints.put(ds.getKey(), result);
                 }
             }
         }
-        return result;
+        return complaints;
     }
 
     // this is where the computer cheats

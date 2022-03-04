@@ -115,6 +115,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     private Player targetingPlayer = null;
     private Pair<Long, Player> controlledByPlayer = null;
     private ManaCostBeingPaid manaCostBeingPaid = null;
+    private boolean spentPhyrexian = false;
 
     private SpellAbility grantorOriginal = null;
     private StaticAbility grantorStatic = null;
@@ -272,7 +273,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
             return true;
         }
 
-        return this.subAbility != null ? this.subAbility.canProduce(s) : false;
+        return this.subAbility != null && this.subAbility.canProduce(s);
     }
 
     public boolean isManaAbilityFor(SpellAbility saPaidFor, byte colorNeeded) {
@@ -290,7 +291,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (mp != null && metConditions() && mp.meetsManaRestrictions(saPaidFor) && mp.abilityProducesManaColor(this, colorNeeded)) {
             return true;
         }
-        return this.subAbility != null ? this.subAbility.isManaAbilityFor(saPaidFor, colorNeeded) : false;
+        return this.subAbility != null && this.subAbility.isManaAbilityFor(saPaidFor, colorNeeded);
     }
 
     public boolean isManaCannotCounter(SpellAbility saPaidFor) {
@@ -298,7 +299,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         if (mp != null && metConditions() && mp.meetsManaRestrictions(saPaidFor) && mp.cannotCounterPaidWith(saPaidFor)) {
             return true;
         }
-        return this.subAbility != null ? this.subAbility.isManaCannotCounter(saPaidFor) : false;
+        return this.subAbility != null && this.subAbility.isManaCannotCounter(saPaidFor);
     }
 
     public int amountOfManaGenerated(boolean multiply) {
@@ -613,6 +614,13 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         payingMana.clear();
     }
 
+    public final boolean getSpendPhyrexianMana() {
+        return this.spentPhyrexian;
+    }
+    public final void setSpendPhyrexianMana(boolean value) {
+        this.spentPhyrexian = value;
+    }
+
     public final void applyPayingManaEffects() {
         Card host = getHostCard();
 
@@ -905,8 +913,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 // if alternate state is viewed while card uses original
                 if (node.isIntrinsic() && node.cardState != null && node.cardState.getCard() == node.getHostCard()) {
                     currentName = node.cardState.getName();
-                }
-                else {
+                } else {
                     currentName = node.getHostCard().getName();
                 }
                 desc = CardTranslation.translateMultipleDescriptionText(desc, currentName);
@@ -1104,8 +1111,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 clone.counterTable = new GameEntityCounterTable(counterTable);
             }
             if (changeZoneTable != null) {
-                clone.changeZoneTable = new CardZoneTable();
-                clone.changeZoneTable.putAll(changeZoneTable);
+                clone.changeZoneTable = new CardZoneTable(changeZoneTable);
             }
 
             clone.payingMana = Lists.newArrayList(payingMana);

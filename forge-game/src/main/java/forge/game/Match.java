@@ -7,6 +7,7 @@ import forge.deck.CardPool;
 import forge.deck.Deck;
 import forge.deck.DeckFormat;
 import forge.deck.DeckSection;
+import forge.game.ability.AbilityKey;
 import forge.game.card.Card;
 import forge.game.card.CardCollectionView;
 import forge.game.event.Event;
@@ -80,7 +81,7 @@ public class Match {
             Multimap<Player, Card> list = game.chooseCardsForAnte(rules.getMatchAnteRarity());
             for (Entry<Player, Card> kv : list.entries()) {
                 Player p = kv.getKey();
-                game.getAction().moveTo(ZoneType.Ante, kv.getValue(), null);
+                game.getAction().moveTo(ZoneType.Ante, kv.getValue(), null, AbilityKey.newMap());
                 game.getGameLog().add(GameLogEntryType.ANTE, p + " anted " + kv.getValue());
             }
             game.fireEvent(new GameEventAnteCardsSelected(list));
@@ -216,7 +217,7 @@ public class Match {
         game.getTriggerHandler().clearDelayedTrigger();
 
         // friendliness
-        Multimap<Player, PaperCard> rAICards = HashMultimap.create();
+        Map<Player, Map<DeckSection, List<? extends PaperCard>>> rAICards = new HashMap<>();
         Multimap<Player, PaperCard> removedAnteCards = ArrayListMultimap.create();
 
         final FCollectionView<Player> players = game.getPlayers();
@@ -303,7 +304,7 @@ public class Match {
                 // Create an effect that lets you cast your companion from your sideboard
                 if (companion != null) {
                     PlayerZone commandZone = player.getZone(ZoneType.Command);
-                    companion = game.getAction().moveTo(ZoneType.Command, companion, null);
+                    companion = game.getAction().moveTo(ZoneType.Command, companion, null, AbilityKey.newMap());
                     commandZone.add(Player.createCompanionEffect(game, companion));
 
                     player.updateZoneForView(commandZone);
@@ -315,9 +316,9 @@ public class Match {
             player.shuffle(null);
 
             if (isFirstGame) {
-                Collection<? extends PaperCard> cardsComplained = player.getController().complainCardsCantPlayWell(myDeck);
-                if (null != cardsComplained) {
-                    rAICards.putAll(player, cardsComplained);
+                Map<DeckSection, List<? extends PaperCard>> cardsComplained = player.getController().complainCardsCantPlayWell(myDeck);
+                if (cardsComplained != null && !cardsComplained.isEmpty()) {
+                    rAICards.put(player, cardsComplained);
                 }
             } else {
                 //reset cards to fix weird issues on netplay nextgame client
@@ -334,7 +335,7 @@ public class Match {
 
         final Localizer localizer = Localizer.getInstance();
         if (!rAICards.isEmpty() && !rules.getGameType().isCardPoolLimited()) {
-            game.getAction().revealAnte(localizer.getMessage("lblAICantPlayCards"), rAICards);
+            game.getAction().revealUnplayableByAI(localizer.getMessage("lblAICantPlayCards"), rAICards);
         }
 
         if (!removedAnteCards.isEmpty()) {

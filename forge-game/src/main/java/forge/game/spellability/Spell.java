@@ -62,7 +62,7 @@ public abstract class Spell extends SpellAbility implements java.io.Serializable
     @Override
     public boolean canPlay() {
         Card card = this.getHostCard();
-        if (card.isInZone(ZoneType.Battlefield)) {
+        if (card.isInPlay()) {
             return false;
         }
 
@@ -174,11 +174,11 @@ public abstract class Spell extends SpellAbility implements java.io.Serializable
             }
             source.turnFaceDownNoUpdate();
             lkicheck = true;
-        } else if (getCardState() != null && source.getCurrentStateName() != getCardStateName()) {
+        } else if (getCardState() != null && source.getCurrentStateName() != getCardStateName() && getHostCard().getState(getCardStateName()) != null) {
             if (!source.isLKI()) {
                 source = CardUtil.getLKICopy(source);
             }
-            CardStateName stateName = getCardState().getStateName();
+            CardStateName stateName = getCardStateName();
             if (!source.hasState(stateName)) {
                 source.addAlternateState(stateName, false);
                 source.getState(stateName).copyFrom(getHostCard().getState(stateName), true);

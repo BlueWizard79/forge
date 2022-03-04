@@ -6,8 +6,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.badlogic.gdx.utils.ScreenUtils;
 import forge.ai.GameState;
+import forge.deck.Deck;
+import forge.game.player.Player;
 import forge.item.IPaperCard;
+import forge.screens.TransitionScreen;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Function;
@@ -94,14 +98,26 @@ public class MatchController extends AbstractGuiGame {
         }
     }
 
+    public static Deck getPlayerDeck(final PlayerView playerView) {
+        try {
+            for (Player p : instance.getGameView().getGame().getPlayers()) {
+                if (p.getView() == playerView) {
+                    return p.getRegisteredPlayer().getDeck();
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
+    }
+
     public static FImage getPlayerAvatar(final PlayerView p) {
         final String lp = p.getLobbyPlayerName();
         FImage avatar = avatarImages.get(lp);
         if (avatar == null) {
             if (StringUtils.isEmpty(p.getAvatarCardImageKey())) {
                 avatar = new FTextureRegionImage(FSkin.getAvatars().get(p.getAvatarIndex()));
-            }
-            else { //handle lobby players with art from cards
+            } else { //handle lobby players with art from cards
                 avatar = new CardAvatarImage(p.getAvatarCardImageKey());
             }
         }
@@ -290,6 +306,18 @@ public class MatchController extends AbstractGuiGame {
 
     @Override
     public void finishGame() {
+        if (Forge.isMobileAdventureMode) {
+            Runnable runnable = new Runnable() {
+                @Override
+                public void run() {
+                    Forge.clearTransitionScreen();
+                    Forge.clearCurrentScreen();
+                }
+            };
+            Forge.setTransitionScreen(new TransitionScreen(runnable, ScreenUtils.getFrameBufferTexture(), false, false));
+            Forge.setCursor(null, "0");
+            return;
+        }
         if (hasLocalPlayers() || getGameView().isMatchOver()) {
             view.setViewWinLose(new ViewWinLose(getGameView()));
             view.getViewWinLose().setVisible(true);

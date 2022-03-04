@@ -17,10 +17,13 @@
  */
 package forge.game.cost;
 
-import org.apache.commons.lang3.ObjectUtils;
+import forge.card.CardType;
+
+import java.util.Map;
 
 import com.google.common.collect.Iterables;
 
+import forge.game.ability.AbilityKey;
 import forge.game.card.Card;
 import forge.game.card.CardCollectionView;
 import forge.game.card.CardLists;
@@ -86,7 +89,12 @@ public class CostSacrifice extends CostPartWithList {
             String typeDesc = getType().toLowerCase().replace(";","s and/or ");
             sb.append("any number of ").append(typeDesc).append("s");
         } else {
-            final String desc = ObjectUtils.firstNonNull(getTypeDescription(), getType());
+            String desc;
+            if (this.getTypeDescription() == null) {
+                desc = CardType.CoreType.isValidEnum(this.getType()) ? this.getType().toLowerCase() : this.getType();
+            } else {
+                desc = this.getTypeDescription();
+            }
             sb.append(Cost.convertAmountTypeToWords(convertAmount(), getAmount(), desc));
         }
         return sb.toString();
@@ -128,7 +136,10 @@ public class CostSacrifice extends CostPartWithList {
     @Override
     protected Card doPayment(SpellAbility ability, Card targetCard, final boolean effect) {
         // no table there, it is already handled by CostPartWithList
-        return targetCard.getGame().getAction().sacrifice(targetCard, ability, effect, null, null);
+        Map<AbilityKey, Object> moveParams = AbilityKey.newMap();
+        moveParams.put(AbilityKey.LastStateBattlefield, ability.getLastStateBattlefield());
+        moveParams.put(AbilityKey.LastStateGraveyard, ability.getLastStateGraveyard());
+        return targetCard.getGame().getAction().sacrifice(targetCard, ability, effect, null, moveParams);
     }
 
     /* (non-Javadoc)
