@@ -638,8 +638,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     public <T extends GameEntity> List<T> chooseEntitiesForEffect(final FCollectionView<T> optionList, final int  min, final int max,
             final DelayedReveal delayedReveal, final SpellAbility sa, final String title, final Player targetedPlayer, Map<String, Object> params) {
         // useful details for debugging problems with the mass select logic
-        Sentry.getContext().addExtra("Card", sa.getCardView().toString());
-        Sentry.getContext().addExtra("SpellAbility", sa.toString());
+        Sentry.setExtra("Card", sa.getCardView().toString());
+        Sentry.setExtra("SpellAbility", sa.toString());
 
         // Human is supposed to read the message and understand from it what to choose
         if (optionList.isEmpty()) {
@@ -2754,15 +2754,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
             final CardDb carddb = FModel.getMagicDb().getCommonCards();
             final List<ICardFace> faces = Lists.newArrayList(carddb.getAllFaces());
-            final CardDb customDb = FModel.getMagicDb().getCustomCards();
-            final List<ICardFace> customFaces = Lists.newArrayList(customDb.getAllFaces());
+
             List<CardFaceView> choices = new ArrayList<>();
             CardFaceView cardFaceView;
             for (ICardFace cardFace : faces) {
-                cardFaceView = new CardFaceView(CardTranslation.getTranslatedName(cardFace.getName()), cardFace.getName());
-                choices.add(cardFaceView);
-            }
-            for (ICardFace cardFace : customFaces) {
                 cardFaceView = new CardFaceView(CardTranslation.getTranslatedName(cardFace.getName()), cardFace.getName());
                 choices.add(cardFaceView);
             }
@@ -2775,8 +2770,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             }
 
             PaperCard c = carddb.getUniqueByName(f.getOracleName());
-            if (c == null)
-                c = customDb.getUniqueByName(f.getOracleName());
             final Card forgeCard = Card.fromPaperCard(c, p);
             forgeCard.setTimestamp(getGame().getNextTimestamp());
 

@@ -39,6 +39,7 @@ import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
 import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
+import forge.game.card.CardUtil;
 import forge.game.cost.Cost;
 import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
@@ -301,6 +302,7 @@ public class CombatUtil {
         // Not a great solution, but prevents a crash by passing a fake SA for Propaganda payments
         // If there's a better way of handling this somewhere deeper in the code, feel free to remove
         final SpellAbility fakeSA = new SpellAbility.EmptySa(attacker, attacker.getController());
+        fakeSA.setCardState(attacker.getCurrentState());
         return attacker.getController().getController().payManaOptional(attacker, attackCost, fakeSA,
                 "Pay additional cost to declare " + attacker + " an attacker", ManaPaymentPurpose.DeclareAttacker);
     }
@@ -345,6 +347,7 @@ public class CombatUtil {
         }
 
         SpellAbility fakeSA = new SpellAbility.EmptySa(blocker, blocker.getController());
+        fakeSA.setCardState(blocker.getCurrentState());
         return blocker.getController().getController().payManaOptional(blocker, blockCost, fakeSA, "Pay cost to declare " + blocker + " a blocker. ", ManaPaymentPurpose.DeclareBlocker);
     }
 
@@ -401,9 +404,8 @@ public class CombatUtil {
 
         c.getDamageHistory().setCreatureAttackedThisCombat(true);
         c.getDamageHistory().clearNotAttackedSinceLastUpkeepOf();
-        c.getController().addCreaturesAttackedThisTurn(c);
-        c.getController().incrementAttackersDeclaredThisTurn();
-    } // checkDeclareAttackers
+        c.getController().addCreaturesAttackedThisTurn(CardUtil.getLKICopy(c));
+    }
 
     /**
      * Create a {@link Map} mapping each possible attacker for the attacking
@@ -461,7 +463,7 @@ public class CombatUtil {
 
         CardCollection allOtherBlockers = combat.getAllBlockers();
         allOtherBlockers.remove(blocker);
-        final int blockersFromOnePlayer = CardLists.filter(allOtherBlockers, CardPredicates.isController(blocker.getController())).size();
+        final int blockersFromOnePlayer = CardLists.count(allOtherBlockers, CardPredicates.isController(blocker.getController()));
         if (blockersFromOnePlayer > 0 && game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.onlyOneBlockerPerOpponent)) {
             return false;
         }
