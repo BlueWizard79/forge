@@ -28,6 +28,8 @@ import forge.assets.ImageCache;
 import forge.gui.GuiBase;
 import forge.util.ImageFetcher;
 
+import static forge.adventure.util.Paths.ITEMS_ATLAS;
+
 /**
  * Render the rewards as a card on the reward scene.
  */
@@ -82,15 +84,30 @@ public class RewardActor extends Actor implements Disposable, ImageFetcher.Callb
                 }
                 break;
             }
+            case Item: {
+                TextureAtlas atlas = Config.instance().getAtlas(ITEMS_ATLAS);
+                Sprite backSprite = atlas.createSprite("CardBack");
+                Pixmap drawingMap = new Pixmap((int) backSprite.getWidth(), (int) backSprite.getHeight(), Pixmap.Format.RGBA8888);
+
+                DrawOnPixmap.draw(drawingMap, backSprite);
+                Sprite item = reward.getItem().sprite();
+                DrawOnPixmap.draw(drawingMap, (int) ((backSprite.getWidth() / 2f) - item.getWidth() / 2f), (int) ((backSprite.getHeight() / 4f) * 1.7f), item);
+                DrawOnPixmap.drawText(drawingMap, String.valueOf(reward.getItem().name), 0, (int) ((backSprite.getHeight() / 8f) * 1f), backSprite.getWidth(), false);
+
+                image=new Texture(drawingMap);
+                drawingMap.dispose();
+                needsToBeDisposed = true;
+                break;
+            }
             case Gold: {
-                TextureAtlas atlas = Config.instance().getAtlas("sprites/items.atlas");
+                TextureAtlas atlas = Config.instance().getAtlas(ITEMS_ATLAS);
                 Sprite backSprite = atlas.createSprite("CardBack");
                 Pixmap drawingMap = new Pixmap((int) backSprite.getWidth(), (int) backSprite.getHeight(), Pixmap.Format.RGBA8888);
 
                 DrawOnPixmap.draw(drawingMap, backSprite);
                 Sprite gold = atlas.createSprite("Gold");
                 DrawOnPixmap.draw(drawingMap, (int) ((backSprite.getWidth() / 2f) - gold.getWidth() / 2f), (int) ((backSprite.getHeight() / 4f) * 1f), gold);
-                DrawOnPixmap.drawText(drawingMap, String.valueOf(reward.getCount()), 0, (int) ((backSprite.getHeight() / 4f) * 2f), backSprite.getWidth());
+                DrawOnPixmap.drawText(drawingMap, String.valueOf(reward.getCount()), 0, (int) ((backSprite.getHeight() / 4f) * 2f), backSprite.getWidth(), true);
 
                 image=new Texture(drawingMap);
                 drawingMap.dispose();
@@ -98,14 +115,14 @@ public class RewardActor extends Actor implements Disposable, ImageFetcher.Callb
                 break;
             }
             case Life: {
-                TextureAtlas atlas = Config.instance().getAtlas("sprites/items.atlas");
+                TextureAtlas atlas = Config.instance().getAtlas(ITEMS_ATLAS);
                 Sprite backSprite = atlas.createSprite("CardBack");
                 Pixmap drawingMap = new Pixmap((int) backSprite.getWidth(), (int) backSprite.getHeight(), Pixmap.Format.RGBA8888);
 
                 DrawOnPixmap.draw(drawingMap, backSprite);
                 Sprite gold = atlas.createSprite("Life");
                 DrawOnPixmap.draw(drawingMap, (int) ((backSprite.getWidth() / 2f) - gold.getWidth() / 2f), (int) ((backSprite.getHeight() / 4f) * 1f), gold);
-                DrawOnPixmap.drawText(drawingMap, String.valueOf(reward.getCount()), 0, (int) ((backSprite.getHeight() / 4f) * 2f), backSprite.getWidth());
+                DrawOnPixmap.drawText(drawingMap, String.valueOf(reward.getCount()), 0, (int) ((backSprite.getHeight() / 4f) * 2f), backSprite.getWidth(), true);
 
                 image = new Texture(drawingMap);
                 drawingMap.dispose();
@@ -206,7 +223,11 @@ public class RewardActor extends Actor implements Disposable, ImageFetcher.Callb
             batch.setColor(0.5f, 0.5f, 0.5f, 1);
 
         if (!frontSideUp()) {
-            batch.draw(backTexture, -getWidth() / 2, -getHeight() / 2, getWidth(), getHeight());
+            if (flipOnClick) {
+                batch.draw(backTexture, -getWidth() / 2, -getHeight() / 2, getWidth(), getHeight());
+            } else {
+                batch.draw(backTexture, getWidth() / 2, -getHeight() / 2, -getWidth(), getHeight());
+            }
         } else {
             drawFrontSide(batch);
         }
