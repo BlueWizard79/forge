@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.utils.Array;
@@ -24,11 +25,20 @@ public class CharacterSprite extends MapActor {
     private AnimationTypes currentAnimationType = AnimationTypes.Idle;
     private AnimationDirections currentAnimationDir = AnimationDirections.None;
     private Sprite avatar;
+    public boolean hidden = false;
 
-    public CharacterSprite(String path) {
-        super(0);
+    public CharacterSprite(int id,String path) {
+        super(id);
         collisionHeight=0.4f;
         load(path);
+    }
+    public CharacterSprite(String path) {
+        this(0,path);
+    }
+
+    @Override
+    void updateBoundingRect() { //We want a slimmer box for the player entity so it can navigate terrain without getting stuck.
+        boundingRect = new Rectangle(getX() + 4, getY(), getWidth() - 6, getHeight() * collisionHeight);
     }
 
     protected void load(String path) {
@@ -204,7 +214,7 @@ public class CharacterSprite extends MapActor {
 
     @Override
     public void draw(Batch batch, float parentAlpha) {
-        if (currentAnimation == null)
+        if (currentAnimation == null || hidden)
             return;
         TextureRegion currentFrame = currentAnimation.getKeyFrame(timer, true);
         setHeight(currentFrame.getRegionHeight());

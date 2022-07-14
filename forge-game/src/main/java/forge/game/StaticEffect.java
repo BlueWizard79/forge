@@ -252,6 +252,11 @@ public class StaticEffect {
                 affectedCard.removeColor(getTimestamp(), ability.getId());
             }
 
+            // remove changed name
+            if (hasParam("SetName") || hasParam("AddNames")) {
+                affectedCard.removeChangedName(timestamp, ability.getId());
+            }
+
             // remove may look at
             if (hasParam("MayLookAt")) {
                 affectedCard.removeMayLookAt(getTimestamp());
@@ -283,6 +288,8 @@ public class StaticEffect {
                 affectedCard.removeCanBlockAdditional(getTimestamp());
             }
 
+            affectedCard.removeChangedSVars(getTimestamp(), ability.getId());
+
             affectedCard.updateAbilityTextForView(); // only update keywords and text for view to avoid flickering
         }
         return affectedCards;
@@ -292,4 +299,4 @@ public class StaticEffect {
         makeMappedCopy(map).remove();
     }
 
-} // end class StaticEffect
+}

@@ -10,15 +10,20 @@ import forge.game.ability.ApiType;
 import forge.game.card.Card;
 import forge.game.card.CardState;
 import forge.game.cost.Cost;
+import forge.game.mana.Mana;
 import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.spellability.SpellAbilityPredicates;
+import forge.game.spellability.TargetChoices;
 import forge.game.staticability.StaticAbility;
 import forge.game.trigger.Trigger;
 import forge.game.zone.ZoneType;
 import forge.util.Expressions;
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class ForgeScript {
 
@@ -153,6 +158,8 @@ public class ForgeScript {
         } else if (property.equals("hasTapCost")) {
             Cost cost = sa.getPayCosts();
             return cost != null && cost.hasTapCost();
+        } else if (property.equals("Blitz")) {
+            return sa.isBlitz();
         } else if (property.equals("Buyback")) {
             return sa.isBuyBackAbility();
         } else if (property.equals("Cycling")) {
@@ -176,7 +183,7 @@ public class ForgeScript {
         } else if (property.equals("Modular")) {
             return sa.hasParam("Modular");
         } else if (property.equals("Equip")) {
-            return sa.hasParam("Equip");
+            return sa.isEquip();
         } else if (property.equals("Boast")) {
             return sa.isBoast();
         } else if (property.equals("Mutate")) {
@@ -195,12 +202,39 @@ public class ForgeScript {
             return sa.hasParam("Nightbound");
         } else if (property.equals("paidPhyrexianMana")) {
             return sa.getSpendPhyrexianMana();
+        } else if (property.startsWith("ManaSpent")) {
+            String[] k = property.split(" ", 2);
+            String comparator = k[1].substring(0, 2);
+            int y = AbilityUtils.calculateAmount(sa.getHostCard(), k[1].substring(2), sa);
+            return Expressions.compare(sa.getPayingMana().size(), comparator, y);
+        } else if (property.startsWith("ManaFrom")) {
+            final String fromWhat = property.substring(8);
+            boolean found = false;
+            for (Mana m : sa.getPayingMana()) {
+                final Card manaSource = m.getSourceCard();
+                if (manaSource != null) {
+                    if (manaSource.isValid(fromWhat, sourceController, source, spellAbility)) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            return found;
         } else if (property.equals("MayPlaySource")) {
             StaticAbility m = sa.getMayPlay();
             if (m == null) {
                 return false;
             }
             return source.equals(m.getHostCard());
+        } else if (property.startsWith("numTargets")) {
+            Set<GameObject> targets = new HashSet<>();
+            for (TargetChoices tc : sa.getAllTargetChoices()) {
+                targets.addAll(tc);
+            }
+            String[] k = property.split(" ", 2);
+            String comparator = k[1].substring(0, 2);
+            int y = AbilityUtils.calculateAmount(sa.getHostCard(), k[1].substring(2), sa);
+            return Expressions.compare(targets.size(), comparator, y);
         } else if (property.startsWith("IsTargeting")) {
             String[] k = property.split(" ", 2);
             boolean found = false;
@@ -218,7 +252,7 @@ public class ForgeScript {
         } else if (property.startsWith("cmc")) {
             int y = 0;
             // spell was on the stack
-            if (sa.getCardState().getCard().isInZone(ZoneType.Stack)) {
+            if (sa.getHostCard().isInZone(ZoneType.Stack)) {
                 y = sa.getHostCard().getCMC();
             } else {
                 y = sa.getPayCosts().getTotalMana().getCMC();

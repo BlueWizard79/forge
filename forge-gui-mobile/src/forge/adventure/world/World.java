@@ -3,6 +3,7 @@ package forge.adventure.world;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -16,6 +17,7 @@ import forge.adventure.data.WorldData;
 import forge.adventure.pointofintrest.PointOfInterest;
 import forge.adventure.pointofintrest.PointOfInterestMap;
 import forge.adventure.scene.Scene;
+import forge.adventure.stage.WorldStage;
 import forge.adventure.util.Config;
 import forge.adventure.util.Paths;
 import forge.adventure.util.SaveFileContent;
@@ -31,8 +33,6 @@ import java.util.Random;
  * Class that will create the world from the configuration
  */
 public class World implements  Disposable, SaveFileContent {
-
-
     private WorldData data;
     private Pixmap biomeImage;
     private long[][] biomeMap;
@@ -45,6 +45,7 @@ public class World implements  Disposable, SaveFileContent {
     private long seed;
     private final Random random = new Random();
     private boolean worldDataLoaded=false;
+    private Texture globalTexture = null;
 
     public Random getRandom()
     {
@@ -54,8 +55,7 @@ public class World implements  Disposable, SaveFileContent {
         return (int) (Math.log(Long.highestOneBit(biome)) / Math.log(2));
     }
 
-    public void loadWorldData()
-    {
+    public void loadWorldData() {
         if(worldDataLoaded)
             return;
 
@@ -226,12 +226,8 @@ public class World implements  Disposable, SaveFileContent {
     }
 
     public World generateNew(long seed) {
-
         loadWorldData();
-        if(seed==0)
-        {
-            seed=random.nextLong();
-        }
+        if(seed==0) { seed=random.nextLong(); }
         this.seed=seed;
         random.setSeed(seed);
         OpenSimplexNoise noise = new OpenSimplexNoise(seed);
@@ -504,7 +500,8 @@ public class World implements  Disposable, SaveFileContent {
         }
         biomeImage = pix;
 
-        return this;//new World();
+        WorldStage.getInstance().clearCache();
+        return this;
     }
 
     public int getWidthInTiles() {
@@ -551,8 +548,11 @@ public class World implements  Disposable, SaveFileContent {
         return mapPoiIds.pointsOfInterest(chunkX, chunkY);
     }
 
+    public PointOfInterest findPointsOfInterest(String name) {
+        return   mapPoiIds.findPointsOfInterest(name);
+    }
     public int getChunkSize() {
-        return Scene.GetIntendedWidth() / data.tileSize;
+        return (Scene.getIntendedWidth()>Scene.getIntendedHeight()?Scene.getIntendedWidth():Scene.getIntendedHeight()) / data.tileSize;
     }
 
     public void dispose() {
@@ -564,5 +564,11 @@ public class World implements  Disposable, SaveFileContent {
         random.setSeed(seedOffset+seed);
     }
 
-
+    public Texture getGlobalTexture() {
+        if(globalTexture == null){
+            globalTexture = new Texture(Config.instance().getFile("ui/sprite_markers.png"));
+            System.out.print("Loading auxiliary sprites.\n");
+        }
+        return globalTexture;
+    }
 }

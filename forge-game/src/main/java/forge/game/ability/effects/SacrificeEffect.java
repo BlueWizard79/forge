@@ -46,7 +46,7 @@ public class SacrificeEffect extends SpellAbilityEffect {
         if (sa.hasParam("Echo")) {
             boolean isPaid;
             if (activator.hasKeyword("You may pay 0 rather than pay the echo cost for permanents you control.")
-                    && activator.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantPayEcho") + " {0}?")) {
+                    && activator.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantPayEcho") + " {0}?", null)) {
                 isPaid = true;
             } else {
                 isPaid = activator.getController().payManaOptional(card, new Cost(sa.getParam("Echo"), true),
@@ -110,7 +110,7 @@ public class SacrificeEffect extends SpellAbilityEffect {
         if (valid.equals("Self") && game.getZoneOf(card) != null) {
             if (game.getZoneOf(card).is(ZoneType.Battlefield)) {
                 if (!optional || activator.getController().confirmAction(sa, null,
-                        Localizer.getInstance().getMessage("lblDoYouWantSacrificeThis", card.getName()))) {
+                        Localizer.getInstance().getMessage("lblDoYouWantSacrificeThis", card.getName()), null)) {
                     if (game.getAction().sacrifice(card, sa, true, table, params) != null) {
                         if (remSacrificed) {
                             card.addRemembered(card);
@@ -153,7 +153,7 @@ public class SacrificeEffect extends SpellAbilityEffect {
 
                     if (sa.hasParam("Random")) {
                         choosenToSacrifice = Aggregates.random(validTargets, Math.min(amount, validTargets.size()), new CardCollection());
-                    } else if (optional && !p.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantSacrifice"))) {
+                    } else if (optional && !p.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantSacrifice"), null)) {
                         choosenToSacrifice = CardCollection.EMPTY;
                     } else {
                         boolean isStrict = sa.hasParam("StrictAmount");
@@ -213,6 +213,10 @@ public class SacrificeEffect extends SpellAbilityEffect {
         String valid = sa.getParamOrDefault("SacValid", "Self");
         String num = sa.getParamOrDefault("Amount", "1");
 
+        if (sa.hasParam("Optional")) { // TODO make boolean and handle verb reconjugation throughout
+            sb.append("(OPTIONAL) ");
+        }
+
         final int amount = AbilityUtils.calculateAmount(sa.getHostCard(), num, sa);
 
         if (valid.equals("Self")) {
@@ -228,9 +232,9 @@ public class SacrificeEffect extends SpellAbilityEffect {
             msg = CardType.CoreType.isValidEnum(msg) ? msg.toLowerCase() : msg;
 
             if (sa.hasParam("Destroy")) {
-                sb.append(oneTgtP ? "destroys " : " destroys ");
+                sb.append(oneTgtP ? "destroys " : " destroy ");
             } else {
-                sb.append(oneTgtP ? "sacrifices " : "sacrifices ");
+                sb.append(oneTgtP ? "sacrifices " : "sacrifice ");
             }
             sb.append(Lang.nounWithNumeralExceptOne(amount, msg)).append(".");
         }

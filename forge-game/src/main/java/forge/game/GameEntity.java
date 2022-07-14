@@ -17,9 +17,13 @@
  */
 package forge.game;
 
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import forge.game.ability.AbilityUtils;
@@ -46,6 +50,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     private String name = "";
     protected CardCollection attachedCards = new CardCollection();
     protected Map<CounterType, Integer> counters = Maps.newHashMap();
+    protected List<Pair<Integer, Boolean>> damageReceivedThisTurn = Lists.newArrayList();
 
     protected GameEntity(int id0) {
         id = id0;
@@ -212,10 +217,10 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
         }
     }
 
-    public boolean canBeAttached(final Card attach) {
-        return canBeAttached(attach, false);
+    public boolean canBeAttached(final Card attach, SpellAbility sa) {
+        return canBeAttached(attach, sa, false);
     }
-    public boolean canBeAttached(final Card attach, boolean checkSBA) {
+    public boolean canBeAttached(final Card attach, SpellAbility sa, boolean checkSBA) {
         // master mode
         if (!attach.isAttachment() || (attach.isCreature() && !attach.hasKeyword(Keyword.RECONFIGURE))
                 || equals(attach)) {
@@ -226,7 +231,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
         if (attach.isAura() && !canBeEnchantedBy(attach)) {
             return false;
         }
-        if (attach.isEquipment() && !canBeEquippedBy(attach)) {
+        if (attach.isEquipment() && !canBeEquippedBy(attach, sa)) {
             return false;
         }
         if (attach.isFortification() && !canBeFortifiedBy(attach)) {
@@ -242,7 +247,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
         return true;
     }
 
-    protected boolean canBeEquippedBy(final Card aura) {
+    protected boolean canBeEquippedBy(final Card aura, SpellAbility sa) {
         /**
          * Equip only to Creatures which are cards
          */
@@ -328,6 +333,30 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
     abstract public void addCounterInternal(final CounterType counterType, final int n, final Player source, final boolean fireEvents, GameEntityCounterTable table);
     public void addCounterInternal(final CounterEnumType counterType, final int n, final Player source, final boolean fireEvents, GameEntityCounterTable table) {
         addCounterInternal(CounterType.get(counterType), n, source, fireEvents, table);
+    }
+
+    public void receiveDamage(Pair<Integer, Boolean> dmg) {
+        damageReceivedThisTurn.add(dmg);
+    }
+
+    public final int getAssignedDamage() {
+        return getAssignedDamage(null, null);
+    }
+    public final int getAssignedCombatDamage() {
+        return getAssignedDamage(true, null);
+    }
+    public final int getAssignedDamage(Boolean isCombat, final Card source) {
+        int num = 0;
+        for (Pair<Integer, Boolean> dmg : damageReceivedThisTurn) {
+            if (isCombat != null && dmg.getRight() != isCombat) {
+                continue;
+            }
+            if (source != null && !getGame().getDamageLKI(dmg).getLeft().equalsWithTimestamp(source)) {
+                continue;
+            }
+            num += dmg.getLeft();
+        }
+        return num;
     }
 
     @Override

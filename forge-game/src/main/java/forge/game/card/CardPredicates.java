@@ -251,11 +251,11 @@ public final class CardPredicates {
         };
     }
 
-    public static final Predicate<Card> canBeAttached(final Card aura) {
+    public static final Predicate<Card> canBeAttached(final Card aura, final SpellAbility sa) {
         return new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
-                return c.canBeAttached(aura);
+                return c.canBeAttached(aura, sa);
             }
         };
     }
@@ -733,13 +733,6 @@ public final class CardPredicates {
     }
 
     public static class Accessors {
-        public static final Function<Card, Integer> fnGetDefense = new Function<Card, Integer>() {
-            @Override
-            public Integer apply(Card a) {
-                return a.getNetToughness();
-            }
-        };
-
         public static final Function<Card, Integer> fnGetNetPower = new Function<Card, Integer>() {
             @Override
             public Integer apply(Card a) {
@@ -765,6 +758,13 @@ public final class CardPredicates {
             @Override
             public Integer apply(Card a) {
                 return a.getCMC();
+            }
+        };
+
+        public static final Function<Card, String> fnGetNetName = new Function<Card, String>() {
+            @Override
+            public String apply(Card a) {
+                return a.getName();
             }
         };
     }

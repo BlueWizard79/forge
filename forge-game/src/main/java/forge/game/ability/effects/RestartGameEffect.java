@@ -54,9 +54,8 @@ public class RestartGameEffect extends SpellAbilityEffect {
 
         game.getStack().reset();
         game.clearCounterAddedThisTurn();
-        game.resetPlayersAttackedOnNextTurn();
-        game.resetPlayersAttackedOnNextTurn();
         game.setMonarch(null);
+        game.setHasInitiative(null);
         game.setDayTime(null);
         GameAction action = game.getAction();
 
@@ -72,7 +71,6 @@ public class RestartGameEffect extends SpellAbilityEffect {
             p.resetCompletedDungeons();
             p.setBlessing(false);
             p.clearController();
-            p.setMustAttackEntity(null);
 
             CardCollection newLibrary = new CardCollection(p.getCardsIn(restartZones, false));
             List<Card> filteredCards = null;

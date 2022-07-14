@@ -1,36 +1,9 @@
 [
 {
-	"name": "Gold",
-	"sprite": "sprites/gold.atlas",
-	"rewards": [
-		{
-			"type": "gold",
-			"count": 10,
-			"addMaxCount": 100,
-			"cardName": "",
-			"itemName": "",
-			"manaCosts": [],
-			"cardText": ""
-		}
-	]
-},
-{
-	"name": "Treasure",
-	"sprite": "sprites/treasure.atlas",
-	"deck": "",
-	"rewards": [
-		{
-			"type": "randomCard",
-			"count": 2,
-			"addMaxCount": 8
-		}
-	]
-},
-{
 	"name": "Adventurer",
 	"sprite": "sprites/swordsman_3.atlas",
 	"deck": "decks/adventurer.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 13,
@@ -47,13 +20,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "UW"
 },
 {
 	"name": "Amonkhet Minotaur",
 	"sprite": "sprites/warden.atlas",
 	"deck": "decks/amonkhet_minotaur.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 16,
@@ -70,13 +44,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Ape",
 	"sprite": "sprites/behemoth.atlas",
 	"deck": "decks/ape.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 16,
@@ -93,13 +68,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GR"
 },
 {
 	"name": "Archer",
 	"sprite": "sprites/archer_2.atlas",
 	"deck": "decks/human_archer.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 11,
@@ -116,13 +92,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Ashmouth Devil",
 	"sprite": "sprites/devil.atlas",
 	"deck": "decks/ashmouth_devil.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 18,
@@ -139,13 +116,14 @@
 			"count": 13,
 			"addMaxCount": 87
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Axgard Dwarf",
 	"sprite": "sprites/dwarf_8.atlas",
 	"deck": "decks/axgard_dwarf.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 13,
@@ -162,13 +140,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "RW"
 },
 {
 	"name": "Bandit",
 	"sprite": "sprites/dwarf_7.atlas",
 	"deck": "decks/bandit.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 13,
@@ -185,13 +164,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Bear",
 	"sprite": "sprites/bear.atlas",
 	"deck": "decks/bear.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 16,
@@ -208,13 +188,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Beholder",
 	"sprite": "sprites/beholder.atlas",
 	"deck": "decks/beholder.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 15,
@@ -231,13 +212,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BRU"
 },
 {
 	"name": "Berserker",
 	"sprite": "sprites/dwarf_5.atlas",
 	"deck": "decks/berserker.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 13,
@@ -254,13 +236,14 @@
 			"count": 5,
 			"addMaxCount": 95
 		}
-	]
+	],
+	"colors": "BGR"
 },
 {
 	"name": "Big Zombie",
 	"sprite": "sprites/zombie_2.atlas",
 	"deck": "decks/zombie_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 13,
@@ -288,13 +271,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Bird",
 	"sprite": "sprites/griffin_2.atlas",
 	"deck": "decks/bird_blue.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 11,
@@ -311,13 +295,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Black Wiz1",
 	"sprite": "sprites/black_wizard.atlas",
 	"deck": "decks/black_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -334,13 +319,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Black Wiz2",
 	"sprite": "sprites/black_wiz2.atlas",
 	"deck": "decks/fear.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -357,13 +343,14 @@
 			"count": 20,
 			"addMaxCount": 80
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Black Wiz3",
 	"sprite": "sprites/black_wiz3.atlas",
 	"deck": "decks/black_wiz3.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -380,13 +367,14 @@
 			"count": 20,
 			"addMaxCount": 80
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Blue Wiz1",
 	"sprite": "sprites/mage.atlas",
 	"deck": "decks/blue_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 10,
@@ -403,13 +391,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Blue Wiz2",
 	"sprite": "sprites/blue_wiz2.atlas",
 	"deck": "decks/mill.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -419,43 +408,43 @@
 			"probability": 1,
 			"count": 4,
 			"addMaxCount": 6
-		},
-		{
+		},{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 10,
-			"addMaxCount": 90
+			"probability": 1.0,
+			"count": 80,
+			"addMaxCount": 40
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Blue Wiz3",
 	"sprite": "sprites/mage_2.atlas",
 	"deck": "decks/counter.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
-	"life": 10,
+	"life": 14,
 	"rewards": [
 		{
 			"type": "deckCard",
 			"probability": 1,
-			"count": 4,
-			"addMaxCount": 6
+			"count": 2,
+			"addMaxCount": 8
 		},
 		{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 10,
-			"addMaxCount": 90
+			"count": 50,
+			"addMaxCount": 300
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Boggart",
 	"sprite": "sprites/goblin_2.atlas",
 	"deck": "decks/eyeblight.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 27,
 	"life": 8,
@@ -483,13 +472,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "GR"
 },
 {
 	"name": "Cat",
 	"sprite": "sprites/lion.atlas",
 	"deck": "decks/cat.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 27,
 	"life": 15,
@@ -506,13 +496,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Cathar",
 	"sprite": "sprites/cathar.atlas",
 	"deck": "decks/cathar.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 13,
@@ -529,13 +520,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Centaur",
 	"sprite": "sprites/centaur.atlas",
 	"deck": "decks/centaur.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 16,
@@ -552,13 +544,14 @@
 			"count": 15,
 			"addMaxCount": 85
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Centaur Warrior",
 	"sprite": "sprites/centaur_2.atlas",
 	"deck": "decks/centaur_warrior.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 16,
@@ -575,13 +568,14 @@
 			"count": 15,
 			"addMaxCount": 85
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "ClayGolem",
 	"sprite": "sprites/golem_2.atlas",
 	"deck": "decks/golem_good.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 19,
 	"life": 12,
@@ -607,13 +601,14 @@
 			],
 			"colorType": "Colorless"
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Cleric",
 	"sprite": "sprites/cleric.atlas",
 	"deck": "decks/cleric.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -630,13 +625,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Construct",
 	"sprite": "sprites/golem_3.atlas",
 	"deck": "decks/artificer.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 21,
 	"life": 14,
@@ -653,13 +649,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "RU"
 },
 {
 	"name": "Cyclops",
 	"sprite": "sprites/cyclops.atlas",
 	"deck": "decks/cyclops.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 16,
 	"life": 19,
@@ -676,13 +673,14 @@
 			"count": 15,
 			"addMaxCount": 85
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Dark Knight",
 	"sprite": "sprites/death_knight.atlas",
 	"deck": "decks/death_knight.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 15,
@@ -699,13 +697,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Dawnhart Witch",
 	"sprite": "sprites/dawnhart_witch.atlas",
 	"deck": "decks/dawnhart_witch.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -722,13 +721,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Death Knight",
 	"sprite": "sprites/death_knight_2.atlas",
 	"deck": "decks/death_knight.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 15,
@@ -745,13 +745,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Demon",
 	"sprite": "sprites/demon_3.atlas",
 	"deck": "decks/demon.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 18,
@@ -768,13 +769,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Devil",
 	"sprite": "sprites/imp.atlas",
 	"deck": "decks/devil.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 11,
@@ -791,13 +793,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Dino",
 	"sprite": "sprites/ancient.atlas",
 	"deck": "decks/dinosaurs.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 19,
@@ -827,13 +830,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "GRW"
 },
 {
 	"name": "Dinosaur",
 	"sprite": "sprites/ancient_2.atlas",
 	"deck": "decks/dinosaur_w_r.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 19,
@@ -863,13 +867,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "RW"
 },
 {
 	"name": "Djinn",
 	"sprite": "sprites/djinn.atlas",
 	"deck": "decks/djinn.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 32,
 	"life": 18,
@@ -886,13 +891,37 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "RU"
+},
+{
+	"name": "Doppelganger",
+	"sprite": "sprites/doppelganger.atlas",
+	"deck": "decks/mimic.dck",
+	"copyPlayerDeck": true,
+	"spawnRate": 0.95,
+	"difficulty": 0.1,
+	"speed": 30,
+	"life": 20,
+	"rewards": [
+		{
+			"type": "deckCard",
+			"probability": 1,
+			"count": 1
+		},{
+			"type": "gold",
+			"probability": 0.3,
+			"count": 100,
+			"addMaxCount": 150
+		}
+	],
+	"colors": "C"
 },
 {
 	"name": "Dragon",
 	"sprite": "sprites/dragon.atlas",
 	"deck": "decks/dragon.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 0.95,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 19,
@@ -909,13 +938,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Dwarf",
 	"sprite": "sprites/dwarf_2.atlas",
 	"deck": "decks/dwarf.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 13,
@@ -932,13 +962,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "RW"
 },
 {
 	"name": "Efreet",
 	"sprite": "sprites/efreet_2.atlas",
 	"deck": "decks/efreet.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 18,
@@ -955,13 +986,14 @@
 			"count": 50,
 			"addMaxCount": 95
 		}
-	]
+	],
+	"colors": "RU"
 },
 {
 	"name": "Eldraine Faerie",
 	"sprite": "sprites/pixie.atlas",
 	"deck": "decks/eldraine_faerie.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 8,
@@ -978,13 +1010,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GU"
 },
 {
 	"name": "Eldraine Knight",
 	"sprite": "sprites/paladin_2.atlas",
 	"deck": "decks/eldraine_knight.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 14,
@@ -1001,13 +1034,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "RW"
 },
 {
 	"name": "Eldrazi",
 	"sprite": "sprites/mindelemental.atlas",
 	"deck": "decks/eldrazi.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 19,
@@ -1024,13 +1058,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BGU"
 },
 {
 	"name": "Elemental",
 	"sprite": "sprites/crystalelemental.atlas",
 	"deck": "decks/elemental_blue.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 16,
@@ -1047,13 +1082,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Elf",
 	"sprite": "sprites/druid.atlas",
 	"deck": "decks/elf_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -1081,13 +1117,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Elf warrior",
 	"sprite": "sprites/hunter.atlas",
 	"deck": "decks/elf_mid.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 11,
@@ -1115,13 +1152,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Elk",
 	"sprite": "sprites/deer_2.atlas",
 	"deck": "decks/elk.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 29,
 	"life": 11,
@@ -1138,13 +1176,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Faerie",
 	"sprite": "sprites/pixie_2.atlas",
 	"deck": "decks/faerie.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 8,
@@ -1161,13 +1200,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BGU"
 },
 {
 	"name": "Fire Elemental",
 	"sprite": "sprites/fireelemental.atlas",
 	"deck": "decks/fire_elemental.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 16,
@@ -1184,13 +1224,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Flame Elemental",
 	"sprite": "sprites/magmaelemental.atlas",
 	"deck": "decks/flame_elemental.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 23,
 	"life": 17,
@@ -1207,13 +1248,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Gargoyle",
 	"sprite": "sprites/gargoyle.atlas",
 	"deck": "decks/gargoyle.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 17,
@@ -1230,13 +1272,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "RUW"
 },
 {
 	"name": "Gargoyle 2",
 	"sprite": "sprites/gargoyle_2.atlas",
 	"deck": "decks/gargoyle.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 16,
@@ -1253,13 +1296,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Geist",
 	"sprite": "sprites/ghost.atlas",
 	"deck": "decks/ghost_blue.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 32,
 	"life": 15,
@@ -1276,13 +1320,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Ghoul",
 	"sprite": "sprites/ghoul.atlas",
 	"deck": "decks/ghoul.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 13,
@@ -1299,13 +1344,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BU"
 },
 {
 	"name": "Ghost",
 	"sprite": "sprites/ghost_2.atlas",
 	"deck": "decks/ghost.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 14,
@@ -1322,13 +1368,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Giant Spider",
 	"sprite": "sprites/spider_2.atlas",
 	"deck": "decks/spider_token.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 23,
 	"life": 15,
@@ -1345,22 +1392,18 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Goblin",
 	"sprite": "sprites/goblin.atlas",
 	"deck": "decks/goblin_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 27,
 	"life": 8,
 	"rewards": [
-		{
-			"type": "enemyItems",
-			"probability": 0.2,
-			"count": 1
-		},
 		{
 			"type": "deckCard",
 			"probability": 1,
@@ -1385,15 +1428,13 @@
 			]
 		}
 	],
-	"equipment": [
-		"Battle Standard"
-	]
+	"colors": "R"
 },
 {
 	"name": "Goblin Chief",
 	"sprite": "sprites/wolf_rider_2.atlas",
 	"deck": "decks/goblin_good.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 29,
 	"life": 10,
@@ -1421,13 +1462,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Goblin Warrior",
 	"sprite": "sprites/wolf_rider.atlas",
 	"deck": "decks/goblin_mid.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 28,
 	"life": 9,
@@ -1455,7 +1497,8 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Golem",
@@ -1493,7 +1536,8 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Golem that is Generous",
@@ -1543,13 +1587,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GW"
 },
 {
 	"name": "Gorgon",
 	"sprite": "sprites/gorgone.atlas",
 	"deck": "decks/gorgon.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 14,
@@ -1566,13 +1611,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BG"
 },
 {
 	"name": "Gorgon 2",
 	"sprite": "sprites/gorgonen.atlas",
 	"deck": "decks/gorgon_2.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 14,
@@ -1589,13 +1635,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BG"
 },
 {
 	"name": "Green Beast",
 	"sprite": "sprites/basilisk.atlas",
 	"deck": "decks/beast_green.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 18,
@@ -1612,13 +1659,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Green Wiz1",
 	"sprite": "sprites/green_wiz1.atlas",
 	"deck": "decks/green_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -1635,13 +1683,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Green Wiz2",
 	"sprite": "sprites/green_wiz2.atlas",
 	"deck": "decks/trample.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -1658,13 +1707,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Green Wiz3",
 	"sprite": "sprites/green_wiz3.atlas",
 	"deck": "decks/ramp.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -1681,13 +1731,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Griffin",
 	"sprite": "sprites/griffin.atlas",
 	"deck": "decks/griffin.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 32,
 	"life": 15,
@@ -1704,13 +1755,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Harpy",
 	"sprite": "sprites/harpy.atlas",
 	"deck": "decks/harpy.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 13,
@@ -1727,13 +1779,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Harpy 2",
 	"sprite": "sprites/harpy_2.atlas",
 	"deck": "decks/harpy_2.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 13,
@@ -1750,13 +1803,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BU"
 },
 {
 	"name": "Hellhound",
 	"sprite": "sprites/hellhound_2.atlas",
 	"deck": "decks/hellhound.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 17,
@@ -1773,13 +1827,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "High Elf",
 	"sprite": "sprites/druid_2.atlas",
 	"deck": "decks/elf_good.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 26,
 	"life": 12,
@@ -1807,13 +1862,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "BG"
 },
 {
 	"name": "High Vampire",
 	"sprite": "sprites/vampire_2.atlas",
 	"deck": "decks/vampire.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 32,
 	"life": 18,
@@ -1830,13 +1886,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Horseman",
 	"sprite": "sprites/cavalier_2.atlas",
 	"deck": "decks/horsemanship.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 14,
@@ -1864,13 +1921,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "UW"
 },
 {
 	"name": "Human",
 	"sprite": "sprites/pikeman.atlas",
 	"deck": "decks/human_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 23,
 	"life": 11,
@@ -1898,13 +1956,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "BRW"
 },
 {
 	"name": "Human elite",
 	"sprite": "sprites/legionite.atlas",
 	"deck": "decks/human_good.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 13,
@@ -1932,13 +1991,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Human guard",
 	"sprite": "sprites/swordsman.atlas",
 	"deck": "decks/human_mid.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 12,
@@ -1966,13 +2026,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "BW"
 },
 {
 	"name": "Hydra",
 	"sprite": "sprites/hydra.atlas",
 	"deck": "decks/hydra.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 19,
@@ -2000,13 +2061,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Immersturm Demon",
 	"sprite": "sprites/devil_2.atlas",
 	"deck": "decks/immersturm_demon.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 17,
@@ -2023,13 +2085,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Khan",
 	"sprite": "sprites/cavalier.atlas",
 	"deck": "decks/mardu.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 14,
@@ -2046,13 +2109,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BRW"
 },
 {
 	"name": "Knight",
 	"sprite": "sprites/paladin.atlas",
 	"deck": "decks/knight.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 30,
 	"life": 14,
@@ -2080,13 +2144,14 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Lich",
 	"sprite": "sprites/lich_2.atlas",
 	"deck": "decks/lich.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 20,
 	"life": 17,
@@ -2103,13 +2168,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Merfolk",
 	"sprite": "sprites/waterelemental.atlas",
 	"deck": "decks/merfolk_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 23,
 	"life": 12,
@@ -2137,13 +2203,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Merfolk Avatar",
 	"sprite": "sprites/iceelemental.atlas",
 	"deck": "decks/merfolk_good.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 14,
@@ -2171,70 +2238,82 @@
 				"Mythic Rare"
 			]
 		}
-	]
+	],
+	"colors": "GU"
 },
 {
 	"name": "Merfolk Fighter",
 	"sprite": "sprites/merfolk.atlas",
 	"deck": "decks/merfolk_lords.dck",
-	"spawnRate": 0.2,
-	"difficulty": 0.1,
+	"spawnRate": 1.0,
+	"difficulty": 0.2,
 	"speed": 22,
-	"life": 13,
+	"life": 16,
 	"rewards": [
 		{
 			"type": "deckCard",
 			"probability": 1,
-			"count": 2,
-			"addMaxCount": 4
-		},
-		{
+			"count": 1
+		},{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 10,
-			"addMaxCount": 90
-		},
-		{
+			"probability": 1,
+			"count": 100,
+			"addMaxCount": 150
+		},{
 			"type": "card",
-			"probability": 0.5,
-			"count": 3,
-			"colors": [
-				"Blue"
-			],
-			"rarity": [
-				"Rare"
-			]
+			"probability": 0.65,
+			"count": 2,
+			"colors": [ "Blue" ],
+			"rarity": [ "Rare" ]
+		},{
+			"type": "card",
+			"probability": 0.0035,
+			"count": 1,
+			"colors": [ "Blue" ],
+			"rarity": [ "Mythic Rare" ]
 		}
-	]
+	],
+	"colors": "GU"
 },
 {
 	"name": "Merfolk Lord",
 	"sprite": "sprites/merfolk_lord.atlas",
 	"deck": "decks/merfolk_lord2.dck",
-	"spawnRate": 0.2,
-	"difficulty": 0.1,
+	"spawnRate": 1.0,
+	"difficulty": 0.25,
 	"speed": 25,
-	"life": 14,
+	"life": 20,
 	"rewards": [
 		{
 			"type": "deckCard",
 			"probability": 1,
-			"count": 4,
-			"addMaxCount": 6
-		},
-		{
+			"count": 1
+		},{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 10,
-			"addMaxCount": 90
+			"probability": 1,
+			"count": 200,
+			"addMaxCount": 100
+		},{
+			"type": "card",
+			"probability": 0.75,
+			"count": 2,
+			"colors": [ "Blue" ],
+			"rarity": [ "Rare" ]
+		},{
+			"type": "card",
+			"probability": 0.005,
+			"count": 1,
+			"colors": [ "Blue" ],
+			"rarity": [ "Mythic Rare" ]
 		}
-	]
+	],
+	"colors": "GU"
 },
 {
 	"name": "Merfolk Soldier",
 	"sprite": "sprites/mermaid.atlas",
 	"deck": "decks/merfolk_v_goblins.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 13,
@@ -2262,13 +2341,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Merfolk warrior",
 	"sprite": "sprites/airelemental.atlas",
 	"deck": "decks/merfolk_mid.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 13,
@@ -2296,13 +2376,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Mimic",
 	"sprite": "sprites/mimic.atlas",
 	"deck": "decks/mimic.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 12,
@@ -2319,13 +2400,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BU"
 },
 {
 	"name": "Minotaur",
 	"sprite": "sprites/minotaur.atlas",
 	"deck": "decks/minotaur.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 16,
@@ -2342,13 +2424,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Minotaur Flayer",
 	"sprite": "sprites/warden_2.atlas",
 	"deck": "decks/minotaur.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 16,
@@ -2365,13 +2448,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Monk",
 	"sprite": "sprites/monk.atlas",
 	"deck": "decks/angel.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -2388,13 +2472,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Rakdos Devil",
 	"sprite": "sprites/juggler.atlas",
 	"deck": "decks/rakdos_devil.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 11,
@@ -2411,13 +2496,14 @@
 			"count": 5,
 			"addMaxCount": 95
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Red Beast",
 	"sprite": "sprites/basilisk_2.atlas",
 	"deck": "decks/beast_red.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 23,
 	"life": 17,
@@ -2434,16 +2520,17 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Red Wiz1",
 	"sprite": "sprites/enchanter.atlas",
 	"deck": "decks/red_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
-	"life": 10,
+	"life": 8,
 	"rewards": [
 		{
 			"type": "deckCard",
@@ -2457,13 +2544,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Red Wiz2",
 	"sprite": "sprites/red_wiz2.atlas",
 	"deck": "decks/haste_burn.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -2476,20 +2564,20 @@
 		},
 		{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 5,
-			"addMaxCount": 95
+			"count": 25,
+			"addMaxCount": 200
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Red Wiz3",
 	"sprite": "sprites/red_wiz3.atlas",
 	"deck": "decks/lava_axe.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
-	"life": 10,
+	"life": 14,
 	"rewards": [
 		{
 			"type": "deckCard",
@@ -2499,40 +2587,38 @@
 		},
 		{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 5,
-			"addMaxCount": 95
+			"count": 50,
+			"addMaxCount": 300
 		}
-	]
+	],
+	"colors": "R"
 },
 {
 	"name": "Rogue",
 	"sprite": "sprites/rogue.atlas",
 	"deck": "decks/rogue.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 11,
 	"rewards": [
 		{
 			"type": "deckCard",
-			"probability": 1,
-			"count": 4,
-			"addMaxCount": 6
+			"count": 2
 		},
 		{
 			"type": "gold",
-			"probability": 0.7,
-			"count": 10,
-			"addMaxCount": 90
+			"count": 250,
+			"addMaxCount": 250
 		}
-	]
+	],
+	"colors": "BU"
 },
 {
 	"name": "Satyr",
 	"sprite": "sprites/satyr.atlas",
 	"deck": "decks/satyr.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 8,
@@ -2549,13 +2635,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GR"
 },
 {
 	"name": "Sea Monster",
 	"sprite": "sprites/leech_2.atlas",
 	"deck": "decks/sea_monster.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 19,
@@ -2572,13 +2659,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "U"
 },
 {
 	"name": "Shaman",
 	"sprite": "sprites/shaman_2.atlas",
 	"deck": "decks/shaman.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -2595,13 +2683,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GR"
 },
 {
 	"name": "Skeleton",
 	"sprite": "sprites/skeleton.atlas",
 	"deck": "decks/skeleton.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 20,
 	"life": 11,
@@ -2617,13 +2706,14 @@
 			"count": 7,
 			"addMaxCount": 32
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Skeleton Soldier",
 	"sprite": "sprites/skeleton_2.atlas",
 	"deck": "decks/skeleton_2.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 20,
 	"life": 11,
@@ -2639,35 +2729,34 @@
 			"count": 7,
 			"addMaxCount": 32
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Sliver",
 	"sprite": "sprites/sliver.atlas",
 	"deck": "decks/sliver.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
-	"life": 14,
+	"life": 15,
 	"rewards": [
 		{
 			"type": "deckCard",
-			"count": 4,
-			"addMaxCount": 6
+			"count": 5
 		},
 		{
 			"type": "gold",
-			"probability": 0.6,
-			"count": 10,
-			"addMaxCount": 90
+			"count": 150
 		}
-	]
+	],
+	"colors": "GRW"
 },
 {
 	"name": "Snake",
 	"sprite": "sprites/big_snake.atlas",
 	"deck": "decks/snake.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 10,
@@ -2684,13 +2773,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GU"
 },
 {
 	"name": "Spider",
 	"sprite": "sprites/spider.atlas",
 	"deck": "decks/spider.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 10,
@@ -2707,13 +2797,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BG"
 },
 {
 	"name": "Tarkir Djinn",
 	"sprite": "sprites/djinn_2.atlas",
 	"deck": "decks/djinn_tarkir.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 18,
@@ -2730,13 +2821,14 @@
 			"count": 50,
 			"addMaxCount": 95
 		}
-	]
+	],
+	"colors": "RU"
 },
 {
 	"name": "Treefolk",
 	"sprite": "sprites/treant.atlas",
 	"deck": "decks/treefolk.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 16,
 	"life": 17,
@@ -2753,13 +2845,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Treefolk Guardian",
 	"sprite": "sprites/treant_2.atlas",
 	"deck": "decks/treefolk.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 16,
 	"life": 17,
@@ -2776,13 +2869,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Troll",
 	"sprite": "sprites/troll.atlas",
 	"deck": "decks/troll.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 18,
@@ -2799,13 +2893,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GR"
 },
 {
 	"name": "Vampire",
 	"sprite": "sprites/vampire.atlas",
 	"deck": "decks/vampire.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 17,
@@ -2815,13 +2910,14 @@
 			"count": 2,
 			"addMaxCount": 8
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Vampire Lord",
 	"sprite": "sprites/vampire_3.atlas",
 	"deck": "decks/vampire_blood_token_fly.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 31,
 	"life": 18,
@@ -2831,13 +2927,14 @@
 			"count": 2,
 			"addMaxCount": 8
 		}
-	]
+	],
+	"colors": "BR"
 },
 {
 	"name": "Viashino",
 	"sprite": "sprites/battler.atlas",
 	"deck": "decks/viashino.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 11,
@@ -2854,13 +2951,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BGR"
 },
 {
 	"name": "Viper",
 	"sprite": "sprites/big_snake_2.atlas",
 	"deck": "decks/snake.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 10,
@@ -2877,13 +2975,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "BG"
 },
 {
 	"name": "Werewolf",
 	"sprite": "sprites/hellhound.atlas",
 	"deck": "decks/werewolf.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 26,
 	"life": 16,
@@ -2899,13 +2998,14 @@
 			"count": 7,
 			"addMaxCount": 32
 		}
-	]
+	],
+	"colors": "GR"
 },
 {
 	"name": "White Dwarf",
 	"sprite": "sprites/dwarf_6.atlas",
 	"deck": "decks/white_dwarf.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 22,
 	"life": 13,
@@ -2922,13 +3022,14 @@
 			"count": 20,
 			"addMaxCount": 80
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "White Wiz1",
 	"sprite": "sprites/priest.atlas",
 	"deck": "decks/white_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -2945,13 +3046,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "White Wiz2",
 	"sprite": "sprites/white_wiz2.atlas",
 	"deck": "decks/basri.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -2968,13 +3070,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "White Wiz3",
 	"sprite": "sprites/white_wiz3.atlas",
 	"deck": "decks/human_soldier_token.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 24,
 	"life": 10,
@@ -2991,13 +3094,15 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "W"
 },
 {
 	"name": "Wurm",
 	"sprite": "sprites/leech.atlas",
 	"deck": "decks/wurm.json",
-	"spawnRate": 0.2,
+	"ai": "reckless",
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 19,
@@ -3025,13 +3130,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "G"
 },
 {
 	"name": "Yeti",
 	"sprite": "sprites/yeti_2.atlas",
 	"deck": "decks/yeti.dck",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 25,
 	"life": 16,
@@ -3048,13 +3154,14 @@
 			"count": 10,
 			"addMaxCount": 90
 		}
-	]
+	],
+	"colors": "GRU"
 },
 {
 	"name": "Zombie",
 	"sprite": "sprites/zombie.atlas",
 	"deck": "decks/zombie_bad.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 15,
 	"life": 12,
@@ -3082,13 +3189,14 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "B"
 },
 {
 	"name": "Zombie Lord",
 	"sprite": "sprites/lich.atlas",
 	"deck": "decks/zombie_good.json",
-	"spawnRate": 0.2,
+	"spawnRate": 1.0,
 	"difficulty": 0.1,
 	"speed": 21,
 	"life": 18,
@@ -3102,7 +3210,7 @@
 		{
 			"type": "gold",
 			"probability": 0.7,
-			"count": 10,
+			"count": 100,
 			"addMaxCount": 90
 		},
 		{
@@ -3116,14 +3224,233 @@
 				"Rare"
 			]
 		}
-	]
+	],
+	"colors": "B"
+},
+
+
+
+
+{
+	"name": "Wounded Sliver",
+	"sprite": "sprites/boss/wsliver.atlas",
+	"deck": "decks/miniboss/sliver_shandalar.dck",
+	"speed": 0,
+	"life": 28,
+	"boss": true,
+	"ai": "reckless",
+	"rewards": [
+		{
+			"type": "deckCard",
+			"probability": 1,
+			"count": 2
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 500,
+			"addMaxCount": 150
+		}
+	],
+	"colors": "GRW"
+},
+
+
+
+
+{
+	"name": "Griselbrand",
+	"sprite": "sprites/boss/griselbrand.atlas",
+	"deck": "decks/boss/griselbrand.dck",
+	"speed": 1,
+	"life": 80,
+	"boss": true,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"cardName": "Mox Jet"
+		},
+		{
+			"type": "item",
+			"probability": 1,
+			"count": 1,
+			"itemName": "Black Key"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 1000,
+			"addMaxCount": 250
+		}
+	],
+	"equipment": [
+		"Mox Jet"
+	],
+	"colors": "B"
+},
+{
+	"name": "Akroma",
+	"sprite": "sprites/boss/akroma.atlas",
+	"deck": "decks/boss/akroma.dck",
+	"speed": 1,
+	"life": 80,
+	"boss": true,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"cardName": "Mox Pearl"
+		},
+		{
+			"type": "item",
+			"probability": 1,
+			"count": 1,
+			"itemName": "White Key"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 1000,
+			"addMaxCount": 250
+		}
+	],
+	"equipment": [
+		"Mox Pearl"
+	],
+	"colors": "W"
+},
+{
+	"name": "Ghalta",
+	"sprite": "sprites/boss/ghalta.atlas",
+	"deck": "decks/boss/ghalta.dck",
+	"speed": 1,
+	"life": 80,
+	"boss": true,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"cardName": "Mox Emerald"
+		},
+		{
+			"type": "item",
+			"probability": 1,
+			"count": 1,
+			"itemName": "Green Key"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 1000,
+			"addMaxCount": 250
+		}
+	],
+	"equipment": [
+		"Mox Emerald"
+	],
+	"colors": "G"
+},
+{
+	"name": "Lorthos",
+	"sprite": "sprites/boss/lorthos.atlas",
+	"deck": "decks/boss/lorthos.dck",
+	"speed": 1,
+	"life": 80,
+	"boss": true,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"cardName": "Mox Sapphire"
+		},
+		{
+			"type": "item",
+			"probability": 1,
+			"count": 1,
+			"itemName": "Blue Key"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 1000,
+			"addMaxCount": 250
+		}
+	],
+	"equipment": [
+		"Mox Sapphire"
+	],
+	"colors": "U"
+},
+{
+	"name": "Lathliss",
+	"sprite": "sprites/boss/lathiss.atlas",
+	"deck": "decks/boss/lathliss.dck",
+	"speed": 1,
+	"life": 80,
+	"boss": true,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"cardName": "Mox Ruby"
+		},
+		{
+			"type": "item",
+			"probability": 1,
+			"count": 1,
+			"itemName": "Red Key"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 1000,
+			"addMaxCount": 250
+		}
+	],
+	"equipment": [
+		"Mox Ruby"
+	],
+	"colors": "R"
+},
+{
+	"name": "Emrakul",
+	"sprite": "sprites/boss/emrakul.atlas",
+	"deck": "decks/boss/emrakul.dck",
+	"speed": 1,
+	"life": 100,
+	"boss": true,
+	"rewards": [
+		{
+			"type": "item",
+			"probability": 1,
+			"count": 1,
+			"itemName": "Sol Ring"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 5000,
+			"addMaxCount": 2500
+		}
+	],
+	"equipment": [
+		"Sol Ring"
+	],
+	"colors": "C"
 },
 {
 	"name": "Sliver Queen",
 	"sprite": "sprites/boss/sliver_queen.atlas",
 	"deck": "decks/boss/sliver_queen.dck",
 	"speed": 1,
-	"life": 50,
+	"life": 100,
+	"boss": true,
 	"rewards": [
 		{
 			"type": "item",
@@ -3136,181 +3463,17 @@
 			"probability": 1,
 			"count": 1,
 			"itemName": "Strange Key"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 2500,
+			"addMaxCount": 1000
 		}
 	],
 	"equipment": [
 		"Black Lotus"
-	]
-},
-{
-	"name": "Griselbrand",
-	"sprite": "sprites/boss/griselbrand.atlas",
-	"deck": "decks/boss/griselbrand.dck",
-	"speed": 1,
-	"life": 40,
-	"rewards": [
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Mox Jet"
-		},
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Black Key"
-		}
 	],
-	"equipment": [
-		"Mox Jet"
-	]
-},
-{
-	"name": "Akroma",
-	"sprite": "sprites/boss/akroma.atlas",
-	"deck": "decks/boss/akroma.dck",
-	"speed": 1,
-	"life": 80,
-	"rewards": [
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Mox Pearl"
-		},
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "White Key"
-		}
-	],
-	"equipment": [
-		"Mox Pearl"
-	]
-},
-{
-	"name": "Emrakul",
-	"sprite": "sprites/boss/emrakul.atlas",
-	"deck": "decks/boss/emrakul.dck",
-	"speed": 1,
-	"life": 40,
-	"rewards": [
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Sol Ring"
-		}
-	],
-	"equipment": [
-		"Sol Ring"
-	]
-},
-{
-	"name": "Ghalta",
-	"sprite": "sprites/boss/ghalta.atlas",
-	"deck": "decks/boss/ghalta.dck",
-	"speed": 1,
-	"life": 80,
-	"rewards": [
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Mox Emerald"
-		},
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Green Key"
-		}
-	],
-	"equipment": [
-		"Mox Emerald"
-	]
-},
-{
-	"name": "Lorthos",
-	"sprite": "sprites/boss/lorthos.atlas",
-	"deck": "decks/boss/lorthos.dck",
-	"speed": 1,
-	"life": 80,
-	"rewards": [
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Mox Sapphire"
-		},
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Blue Key"
-		}
-	],
-	"equipment": [
-		"Mox Sapphire"
-	]
-},
-{
-	"name": "Lathliss",
-	"sprite": "sprites/boss/lathiss.atlas",
-	"deck": "decks/boss/lathliss.dck",
-	"speed": 1,
-	"life": 80,
-	"rewards": [
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Mox Ruby"
-		},
-		{
-			"type": "item",
-			"probability": 1,
-			"count": 1,
-			"itemName": "Red Key"
-		}
-	],
-	"equipment": [
-		"Mox Ruby"
-	]
-},
-{
-	"name": "1Life",
-	"sprite": "sprites/1life.atlas",
-	"deck": "",
-	"rewards": [
-		{
-			"type": "life",
-			"count": 3
-		}
-	]
-},
-{
-	"name": "2Life",
-	"sprite": "sprites/2life.atlas",
-	"deck": "",
-	"rewards": [
-		{
-			"type": "life",
-			"count": 2
-		}
-	]
-},
-{
-	"name": "3Life",
-	"sprite": "sprites/3life.atlas",
-	"deck": "",
-	"rewards": [
-		{
-			"type": "life",
-			"count": 3
-		}
-	]
+	"colors": "BGRUW"
 }
 ]

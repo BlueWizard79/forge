@@ -22,7 +22,6 @@ import forge.ai.SpecialCardAi;
 import forge.ai.SpellAbilityAi;
 import forge.game.Game;
 import forge.game.GameObject;
-import forge.game.GlobalRuleChange;
 import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
@@ -43,7 +42,6 @@ import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.PlayerActionConfirmMode;
 import forge.game.spellability.SpellAbility;
-import forge.game.spellability.SpellPermanent;
 import forge.game.spellability.TargetRestrictions;
 import forge.game.staticability.StaticAbility;
 import forge.game.trigger.Trigger;
@@ -78,9 +76,7 @@ public class AttachAi extends SpellAbilityAi {
             }
         }
 
-        if (!ai.getGame().getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noLegendRule)
-                && source.getType().isLegendary() && sa instanceof SpellPermanent
-                && ai.isCardInPlay(source.getName())) {
+        if (source.isAura() && sa.isSpell() && !source.ignoreLegendRule() && ai.isCardInPlay(source.getName())) {
             // Don't play the second copy of a legendary enchantment already in play
 
             // TODO: Add some extra checks for where the AI may want to cast a replacement aura
@@ -618,7 +614,7 @@ public class AttachAi extends SpellAbilityAi {
                 CardCollection preList = new CardCollection(lki);
                 preList.add(attachSourceLki);
                 c.getGame().getAction().checkStaticAbilities(false, Sets.newHashSet(preList), preList);
-                boolean result = lki.canBeAttached(attachSourceLki);
+                boolean result = lki.canBeAttached(attachSourceLki, null);
 
                 //reset static abilities
                 c.getGame().getAction().checkStaticAbilities(false);
@@ -1354,7 +1350,7 @@ public class AttachAi extends SpellAbilityAi {
         if (tgt == null) {
             list = AbilityUtils.getDefinedCards(attachSource, sa.getParam("Defined"), sa);
         } else {
-            list = CardLists.filter(CardUtil.getValidCardsToTarget(tgt, sa), CardPredicates.canBeAttached(attachSource));
+            list = CardLists.filter(CardUtil.getValidCardsToTarget(tgt, sa), CardPredicates.canBeAttached(attachSource, sa));
         }
 
         if (list.isEmpty()) {
@@ -1609,8 +1605,6 @@ public class AttachAi extends SpellAbilityAi {
                     && CombatUtil.canBlock(card, true);
         } else if (keyword.equals("Reach")) {
             return !card.hasKeyword(Keyword.FLYING) && CombatUtil.canBlock(card, true);
-        } else if (keyword.equals("CARDNAME can attack as though it didn't have defender.")) {
-            return card.hasKeyword(Keyword.DEFENDER) && card.getNetCombatDamage() + powerBonus > 0;
         } else if (keyword.equals("Shroud") || keyword.equals("Hexproof")) {
             return !card.hasKeyword(Keyword.SHROUD) && !card.hasKeyword(Keyword.HEXPROOF);
         } else return !keyword.equals("Defender");
@@ -1627,7 +1621,6 @@ public class AttachAi extends SpellAbilityAi {
      * @return true, if is useful keyword
      */
     private static boolean isUsefulCurseKeyword(final String keyword, final Card card, final SpellAbility sa) {
-        final Player ai = sa.getActivatingPlayer();
         if (!CardUtil.isStackingKeyword(keyword) && card.hasKeyword(keyword)) {
             return false;
         }
@@ -1635,8 +1628,6 @@ public class AttachAi extends SpellAbilityAi {
         if (keyword.endsWith("CARDNAME can't attack.") || keyword.equals("Defender")
                 || keyword.endsWith("CARDNAME can't attack or block.")) {
             return card.getNetCombatDamage() >= 1 && ComputerUtilCombat.canAttackNextTurn(card);
-        } else if (keyword.endsWith("CARDNAME attacks each turn if able.") || keyword.endsWith("CARDNAME attacks each combat if able.")) {
-            return !ai.getCreaturesInPlay().isEmpty() && ComputerUtilCombat.canAttackNextTurn(card) && CombatUtil.canBlock(card, true);
         } else if (keyword.endsWith("CARDNAME can't block.")) {
             return CombatUtil.canBlock(card, true);
         } else if (keyword.endsWith("CARDNAME's activated abilities can't be activated.")) {
@@ -1738,7 +1729,7 @@ public class AttachAi extends SpellAbilityAi {
     }
 
     @Override
-    public boolean confirmAction(Player player, SpellAbility sa, PlayerActionConfirmMode mode, String message) {
+    public boolean confirmAction(Player player, SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
         return true;
     }
 

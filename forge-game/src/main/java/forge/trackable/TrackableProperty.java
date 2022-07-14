@@ -73,6 +73,7 @@ public enum TrackableProperty {
     NamedCard(TrackableTypes.StringType),
     NamedCard2(TrackableTypes.StringType),
     PlayerMayLook(TrackableTypes.PlayerViewCollectionType, FreezeMode.IgnoresFreeze),
+    MayPlayPlayers(TrackableTypes.PlayerViewCollectionType, FreezeMode.IgnoresFreeze),
     EntityAttachedTo(TrackableTypes.GameEntityViewType),
     EncodedCards(TrackableTypes.CardViewCollectionType),
     UntilLeavesBattlefield(TrackableTypes.CardViewCollectionType),
@@ -86,6 +87,7 @@ public enum TrackableProperty {
     NeedsTapAnimation(TrackableTypes.BooleanType, FreezeMode.IgnoresFreeze),
 
     ImprintedCards(TrackableTypes.CardViewCollectionType),
+    ExiledCards(TrackableTypes.CardViewCollectionType),
     HauntedBy(TrackableTypes.CardViewCollectionType),
     Haunting(TrackableTypes.CardViewType),
     MustBlockCards(TrackableTypes.CardViewCollectionType),

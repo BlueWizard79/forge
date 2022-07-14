@@ -7,29 +7,36 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
 import forge.adventure.util.Config;
 import forge.adventure.util.Paths;
-import forge.item.IPaperCard;
-import forge.model.FModel;
 
 import static forge.adventure.util.Paths.ITEMS_ATLAS;
 
 /**
  * Data class that will be used to read Json configuration files
  * ItemData
- * contains the information possible hero sprite
+ * contains the information for equipment and items.
  */
 public class ItemData {
     public String name;
     public String equipmentSlot;
-    public int lifeModifier=0;
-    public int changeStartCards=0;
-    public String[] startBattleWithCard;
+    public EffectData effect;
+    public String description; //Manual description of the item.
     public String iconName;
-    public float moveSpeed=1.0f;
     public boolean questItem=false;
     public int cost=1000;
-    //not an item on it owns but effects will be applied to the opponent
-    public ItemData opponent;
+    public ItemData()
+    {
 
+    }
+    public ItemData(ItemData cpy)
+    {
+          name              = cpy.name         ;
+          equipmentSlot     = cpy.equipmentSlot;
+          effect            = new EffectData(cpy.effect);
+          description       = cpy.description  ;
+          iconName          = cpy.iconName     ;
+          questItem         = cpy.questItem    ;
+          cost              = cpy.cost         ;
+    }
 
     public Sprite sprite()
     {
@@ -64,34 +71,15 @@ public class ItemData {
         return null;
     }
 
-    public Array<IPaperCard> startBattleWithCards() {
+    public String getDescription() {
+        String result = "";
+        if(this.description != null && !this.description.isEmpty())
+            result += description + "\n";
+        if(this.equipmentSlot != null && !this.equipmentSlot.isEmpty())
+            result += "Slot: " + this.equipmentSlot + "\n";
+        if(effect != null)
+            result += effect.getDescription();
+        return result;
+    }
 
-        Array<IPaperCard> startCards=new Array<>();
-        if(startBattleWithCard!=null)
-        {
-            for (String name:startBattleWithCard)
-            {
-                if(FModel.getMagicDb().getCommonCards().contains(name))
-                    startCards.add(FModel.getMagicDb().getCommonCards().getCard(name));
-                else if (FModel.getMagicDb().getAllTokens().containsRule(name))
-                    startCards.add(FModel.getMagicDb().getAllTokens().getToken(name));
-                else
-                {
-                    System.err.print("Can not find card "+name+"\n");
-                }
-            }
-        }
-        return startCards;
-    }
-    public String cardNames() {
-        String ret="";
-        Array<IPaperCard> array=startBattleWithCards();
-        for(int i =0;i<array.size;i++)
-        {
-            ret+=array.get(i).toString();
-            if(i!=array.size-1)
-                ret+=" , ";
-        }
-        return ret;
-    }
 }

@@ -4,7 +4,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import forge.Forge;
 import forge.adventure.character.CharacterSprite;
@@ -22,15 +21,18 @@ import forge.adventure.util.SaveFileContent;
 import forge.adventure.util.SaveFileData;
 import forge.adventure.world.World;
 import forge.adventure.world.WorldSave;
+import forge.gui.FThreads;
 import forge.screens.TransitionScreen;
 import forge.sound.SoundEffectType;
 import forge.sound.SoundSystem;
+import forge.util.MyRandom;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+
 
 /**
  * Stage for the over world. Will handle monster spawns
@@ -39,7 +41,7 @@ public class WorldStage extends GameStage implements SaveFileContent {
 
     private static WorldStage instance=null;
     protected EnemySprite currentMob;
-    protected Random rand = new Random();
+    protected Random rand = MyRandom.getRandom();
     WorldBackground background;
     private float spawnDelay = 0;
     private final float spawnInterval = 4;//todo config
@@ -81,25 +83,22 @@ public class WorldStage extends GameStage implements SaveFileContent {
                 if (player.collideWith(mob)) {
                     player.setAnimation(CharacterSprite.AnimationTypes.Attack);
                     mob.setAnimation(CharacterSprite.AnimationTypes.Attack);
+                    SoundSystem.instance.play(SoundEffectType.Block, false);
                     Gdx.input.vibrate(50);
-                    Forge.setCursor(null, Forge.magnifyToggle ? "1" : "2");
-                    SoundSystem.instance.play(SoundEffectType.ManaBurn, false);
-                    Forge.setTransitionScreen(new TransitionScreen(new Runnable() {
-                        @Override
-                        public void run() {
-                            Forge.clearTransitionScreen();
-                        }
-                    }, ScreenUtils.getFrameBufferTexture(), true, false));
-                    startPause(0.5f, new Runnable() {
-                        @Override
-                        public void run() {
-                            ((DuelScene) SceneType.DuelScene.instance).setEnemy(currentMob);
-                            ((DuelScene) SceneType.DuelScene.instance).setPlayer(player);
-                            Forge.switchScene(SceneType.DuelScene.instance);
-                        }
+                    startPause(0.8f, () -> {
+                        Forge.setCursor(null, Forge.magnifyToggle ? "1" : "2");
+                        SoundSystem.instance.play(SoundEffectType.ManaBurn, false);
+                        DuelScene duelScene = ((DuelScene) SceneType.DuelScene.instance);
+                        FThreads.invokeInEdtNowOrLater(() -> {
+                            Forge.setTransitionScreen(new TransitionScreen(() -> {
+                                duelScene.initDuels(player, mob);
+                                Forge.clearTransitionScreen();
+                                startPause(0.3f, () -> Forge.switchScene(SceneType.DuelScene.instance));
+                            }, Forge.takeScreenshot(), true, false));
+                            currentMob = mob;
+                            WorldSave.getCurrentSave().autoSave();
+                        });
                     });
-                    currentMob = mob;
-                    WorldSave.getCurrentSave().autoSave();
                     break;
                 }
             }
@@ -193,34 +192,29 @@ public class WorldStage extends GameStage implements SaveFileContent {
     }
 
     private void HandleMonsterSpawn(float delta) {
-
-
         World world = WorldSave.getCurrentSave().getWorld();
         int currentBiome = World.highestBiome(world.getBiome((int) player.getX() / world.getTileSize(), (int) player.getY() / world.getTileSize()));
         List<BiomeData> biomeData = WorldSave.getCurrentSave().getWorld().getData().GetBiomes();
-        if (biomeData.size() <= currentBiome)
-        {
+        if (biomeData.size() <= currentBiome) {
             player.setMoveModifier(1.5f);
             return;
         }
         player.setMoveModifier(1.0f);
         BiomeData data = biomeData.get(currentBiome);
+        if (data == null) return;
 
-        if (data == null)
-            return;
+        spawnDelay -= delta;
+        if(spawnDelay>=0) return;
+        spawnDelay=spawnInterval + ( rand.nextFloat() * 4.0f );
+
         ArrayList<EnemyData> list = data.getEnemyList();
         if (list == null)
             return;
-        spawnDelay -= delta;
-        if(spawnDelay>=0)
+        EnemyData enemyData = data.getEnemy( 1.0f );
+        if (enemyData == null)
             return;
-        spawnDelay=spawnInterval+(rand.nextFloat()*4);
-        EnemyData enemyData = data.getEnemy( 1);
-        if (enemyData == null) {
-            return;
-        }
         EnemySprite sprite = new EnemySprite(enemyData);
-        float unit = Scene.GetIntendedHeight() / 6f;
+        float unit = Scene.getIntendedHeight() / 6f;
         Vector2 spawnPos = new Vector2(1, 1);
         spawnPos.setLength(unit + (unit * 3) * rand.nextFloat());
         spawnPos.setAngleDeg(360 * rand.nextFloat());
@@ -252,6 +246,12 @@ public class WorldStage extends GameStage implements SaveFileContent {
 
         }
         setBounds(WorldSave.getCurrentSave().getWorld().getWidthInPixels(), WorldSave.getCurrentSave().getWorld().getHeightInPixels());
+        if (WorldSave.getCurrentSave().getPlayer().hasAnnounceFantasy()) {
+            MapStage.getInstance().showDeckAwardDialog("Chaos Mode!\n"+ WorldSave.getCurrentSave().getPlayer().getName()+ "'s Deck: "+
+                    WorldSave.getCurrentSave().getPlayer().getSelectedDeck().getName()+
+                    "\nEnemy will use Preconstructed or Random Generated Decks. Genetic AI Decks will be available to some enemies on Hard difficulty.", WorldSave.getCurrentSave().getPlayer().getSelectedDeck());
+            WorldSave.getCurrentSave().getPlayer().clearAnnounceFantasy();
+        }
     }
 
     @Override
@@ -262,10 +262,8 @@ public class WorldStage extends GameStage implements SaveFileContent {
     @Override
     public void load(SaveFileData data) {
         try {
-            for(Pair<Float, EnemySprite> enemy:enemies)
-                foregroundSprites.removeActor(enemy.getValue());
-            enemies.clear();
-            background.clear();
+            clearCache();
+
 
 
             List<Float> timeouts= (List<Float>) data.readObject("timeouts");
@@ -286,6 +284,15 @@ public class WorldStage extends GameStage implements SaveFileContent {
         {
 
         }
+    }
+
+    public void clearCache() {
+
+        for(Pair<Float, EnemySprite> enemy:enemies)
+            foregroundSprites.removeActor(enemy.getValue());
+        enemies.clear();
+        background.clear();
+        player=null;
     }
 
     @Override

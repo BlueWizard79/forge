@@ -11,7 +11,6 @@ import forge.card.MagicColor;
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameObject;
-import forge.game.GlobalRuleChange;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
@@ -274,13 +273,9 @@ public class ChangeZoneAi extends SpellAbilityAi {
                 }
             }
 
-            //Ninjutsu
-            if (sa.hasParam("Ninjutsu")) {
-                if (source.getType().isLegendary()
-                        && !ai.getGame().getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noLegendRule)) {
-                    if (ai.getZone(ZoneType.Battlefield).contains(CardPredicates.nameEquals(source.getName()))) {
-                        return false;
-                    }
+            if (sa.isNinjutsu()) {
+                if (!source.ignoreLegendRule() && ai.isCardInPlay(source.getName())) {
+                    return false;
                 }
                 if (ai.getGame().getPhaseHandler().getPhase().isAfter(PhaseType.COMBAT_DAMAGE)) {
                     return false;
@@ -387,15 +382,13 @@ public class ChangeZoneAi extends SpellAbilityAi {
                 return false;
             }
 
-            String num = sa.getParam("ChangeNum");
-            if (num != null) {
-                if (num.contains("X") && sa.getSVar("X").equals("Count$xPaid")) {
-                    // Set PayX here to maximum value.
-                    int xPay = ComputerUtilCost.getMaxXValue(sa, ai, sa.isTrigger());
-                    if (xPay == 0) return false;
-                    xPay = Math.min(xPay, list.size());
-                    sa.setXManaCostPaid(xPay);
-                }
+            String num = sa.getParamOrDefault("ChangeNum", "1");
+            if (num.contains("X") && sa.getSVar("X").equals("Count$xPaid")) {
+                // Set PayX here to maximum value.
+                int xPay = ComputerUtilCost.getMaxXValue(sa, ai, sa.isTrigger());
+                if (xPay == 0) return false;
+                xPay = Math.min(xPay, list.size());
+                sa.setXManaCostPaid(xPay);
             }
 
             if (sourceName.equals("Temur Sabertooth")) {
@@ -734,17 +727,15 @@ public class ChangeZoneAi extends SpellAbilityAi {
                     }
                 }
                 // predict Legendary cards already present
-                if (!ai.getGame().getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noLegendRule)) {
-                    boolean nothingWillReturn = true;
-                    for (final Card c : retrieval) {
-                        if (!(c.getType().isLegendary() && ai.isCardInPlay(c.getName()))) {
-                            nothingWillReturn = false;
-                            break;
-                        }
+                boolean nothingWillReturn = true;
+                for (final Card c : retrieval) {
+                    if (!(!c.ignoreLegendRule() && ai.isCardInPlay(c.getName()))) {
+                        nothingWillReturn = false;
+                        break;
                     }
-                    if (nothingWillReturn) {
-                        return false;
-                    }
+                }
+                if (nothingWillReturn) {
+                    return false;
                 }
             }
         }
@@ -1748,7 +1739,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
      * @see forge.card.ability.SpellAbilityAi#confirmAction(forge.game.player.Player, forge.card.spellability.SpellAbility, forge.game.player.PlayerActionConfirmMode, java.lang.String)
      */
     @Override
-    public boolean confirmAction(Player player, SpellAbility sa, PlayerActionConfirmMode mode, String message) {
+    public boolean confirmAction(Player player, SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
         // AI was never asked
         return true;
     }

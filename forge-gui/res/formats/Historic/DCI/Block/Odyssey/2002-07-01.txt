@@ -1,6 +1,0 @@
-[format]
-Name:Odyssey Block, Judgment
-Type:Historic
-Subtype:Block
-Effective:2002-07-01
-Sets:ODY, TOR, JUD

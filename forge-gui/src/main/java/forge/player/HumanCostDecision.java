@@ -667,12 +667,16 @@ public class HumanCostDecision extends CostDecisionMakerBase {
         final int c = cost.getAbilityAmount(ability);
 
         if (cost.payCostFromSource()) {
+            // UnlessCost so player might not want to pay (Fabricate)
+            if (ability.hasParam("UnlessCost") && !controller.confirmPayment(cost, Localizer.getInstance().getMessage("lblPutNTypeCounterOnTarget", String.valueOf(c), cost.getCounter().getName(), ability.getHostCard().getName()), ability)) {
+                return null;
+            }
             cost.setLastPaidAmount(c);
             return PaymentDecision.number(c);
         }
 
         // Cards to use this branch: Scarscale Ritual, Wandering Mage - each adds only one counter
-        final CardCollectionView typeList = CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield),
+        final CardCollectionView typeList = CardLists.getValidCards(source.getGame().getCardsIn(ZoneType.Battlefield),
                 cost.getType().split(";"), player, ability.getHostCard(), ability);
 
         final InputSelectCardsFromList inp = new InputSelectCardsFromList(controller, 1, 1, typeList, ability);
@@ -816,8 +820,13 @@ public class HumanCostDecision extends CostDecisionMakerBase {
             super(controller, cntCounters, cntCounters, sa);
             this.validChoices = validCards;
             counterType = cType;
+            String fromWhat = costPart.getDescriptiveType();
+            if (fromWhat.equals("CARDNAME")) {
+                fromWhat = sa.getHostCard().getName();
+            }
 
-            setMessage(Localizer.getInstance().getMessage("lblRemoveNTargetCounterFromCardPayCostConfirm", "%d", counterType == null ? "any" : counterType.getName().toLowerCase(), costPart.getDescriptiveType()));
+            setMessage(Localizer.getInstance().getMessage("lblRemoveNTargetCounterFromCardPayCostConfirm",
+                    "%d", counterType == null ? "" : " " + counterType.getName().toLowerCase(), fromWhat));
         }
 
         @Override

@@ -37,10 +37,8 @@ public class PointOfInterestData {
         return pointOfInterestList;
     }
     public static PointOfInterestData getPointOfInterest(String name) {
-        for(PointOfInterestData data: new Array.ArrayIterator<>(getAllPointOfInterest()))
-        {
-            if(data.name.equals(name))
-                return data;
+        for(PointOfInterestData data: new Array.ArrayIterator<>(getAllPointOfInterest())){
+            if(data.name.equals(name)) return data;
         }
         return null;
     }

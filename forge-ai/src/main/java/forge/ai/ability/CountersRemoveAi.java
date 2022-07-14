@@ -3,7 +3,9 @@ package forge.ai.ability;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
+import com.google.common.collect.Iterables;
 
 import forge.ai.ComputerUtil;
 import forge.ai.ComputerUtilCard;
@@ -11,7 +13,6 @@ import forge.ai.ComputerUtilCost;
 import forge.ai.SpellAbilityAi;
 import forge.game.Game;
 import forge.game.GameEntity;
-import forge.game.GlobalRuleChange;
 import forge.game.ability.AbilityUtils;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
@@ -102,7 +103,7 @@ public class CountersRemoveAi extends SpellAbilityAi {
         final Game game = ai.getGame();
 
         final String type = sa.getParam("CounterType");
-        final String amountStr = sa.getParam("CounterNum");
+        final String amountStr = sa.getParamOrDefault("CounterNum", "1");
 
         // remove counter with Time might use Exile Zone too
         final TargetRestrictions tgt = sa.getTargetRestrictions();
@@ -117,16 +118,21 @@ public class CountersRemoveAi extends SpellAbilityAi {
         // Filter AI-specific targets if provided
         list = ComputerUtil.filterAITgts(sa, ai, list, false);
 
-        boolean noLegendary = game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noLegendRule);
+        CardCollectionView marit = ai.getCardsIn(ZoneType.Battlefield, "Marit Lage");
+        boolean maritEmpty = marit.isEmpty() || Iterables.contains(marit, new Predicate<Card>() {
+            @Override
+            public boolean apply(Card input) {
+                return input.ignoreLegendRule();
+            }
+        });
 
         if (type.matches("All")) {
             // Logic Part for Vampire Hexmage
             // Break Dark Depths
-            if (!ai.isCardInPlay("Marit Lage") || noLegendary) {
+            if (maritEmpty) {
                 CardCollectionView depthsList = ai.getCardsIn(ZoneType.Battlefield, "Dark Depths");
                 depthsList = CardLists.filter(depthsList, CardPredicates.isTargetableBy(sa),
                         CardPredicates.hasCounter(CounterEnumType.ICE, 3));
-
                 if (!depthsList.isEmpty()) {
                     sa.getTargets().add(depthsList.getFirst());
                     return true;
@@ -161,7 +167,7 @@ public class CountersRemoveAi extends SpellAbilityAi {
             }
             // try to remove them from Dark Depths and Planeswalkers too
 
-            if (!ai.isCardInPlay("Marit Lage") || noLegendary) {
+            if (maritEmpty) {
                 CardCollectionView depthsList = ai.getCardsIn(ZoneType.Battlefield, "Dark Depths");
                 depthsList = CardLists.filter(depthsList, CardPredicates.isTargetableBy(sa),
                         CardPredicates.hasCounter(CounterEnumType.ICE));
@@ -407,9 +413,6 @@ public class CountersRemoveAi extends SpellAbilityAi {
      */
     @Override
     public CounterType chooseCounterType(List<CounterType> options, SpellAbility sa, Map<String, Object> params) {
-        if (options.size() <= 1) {
-            return super.chooseCounterType(options, sa, params);
-        }
         Player ai = sa.getActivatingPlayer();
         GameEntity target = (GameEntity) params.get("Target");
 

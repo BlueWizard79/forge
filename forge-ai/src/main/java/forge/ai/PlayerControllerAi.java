@@ -3,7 +3,6 @@ package forge.ai;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +34,7 @@ import forge.game.GameObject;
 import forge.game.GameType;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
+import forge.game.ability.effects.CharmEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
@@ -270,8 +270,8 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
-    public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message) {
-        return getAi().confirmAction(sa, mode, message);
+    public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
+        return getAi().confirmAction(sa, mode, message, params);
     }
 
     @Override
@@ -377,7 +377,7 @@ public class PlayerControllerAi extends PlayerController {
         }
 
         // put the rest on top in random order
-        Collections.shuffle(toTop, MyRandom.getRandom());
+        CardLists.shuffle(toTop);
         return ImmutablePair.of(toTop, toBottom);
     }
 
@@ -403,7 +403,7 @@ public class PlayerControllerAi extends PlayerController {
             }
         }
 
-        Collections.shuffle(toTop, MyRandom.getRandom());
+        CardLists.shuffle(toTop);
         return ImmutablePair.of(toTop, toGraveyard);
     }
 
@@ -728,7 +728,6 @@ public class PlayerControllerAi extends PlayerController {
 
     @Override
     public List<SpellAbility> chooseSaToActivateFromOpeningHand(List<SpellAbility> usableFromOpeningHand) {
-        // AI would play everything. But limits to one copy of (Leyline of Singularity) and (Gemstone Caverns)
         return brains.chooseSaToActivateFromOpeningHand(usableFromOpeningHand);
     }
 
@@ -1041,31 +1040,32 @@ public class PlayerControllerAi extends PlayerController {
                 if (sa.isCopied()) {
                     if (sa.isSpell()) {
                         if (!sa.getHostCard().isInZone(ZoneType.Stack)) {
-                            sa.setHostCard(player.getGame().getAction().moveToStack(sa.getHostCard(), sa));
+                            sa.setHostCard(getGame().getAction().moveToStack(sa.getHostCard(), sa));
                         } else {
-                            player.getGame().getStackZone().add(sa.getHostCard());
+                            getGame().getStackZone().add(sa.getHostCard());
                         }
                     }
 
-                    /* FIXME: the new implementation (below) requires implementing setupNewTargets in the AI controller, among other possible changes, otherwise breaks AI
                     if (sa.isMayChooseNewTargets()) {
-                        sa.setupNewTargets(player);
-                    }
-                    */
-                    if (sa.isMayChooseNewTargets() && !sa.setupTargets()) {
-                        if (sa.isSpell()) {
-                            player.getGame().getAction().ceaseToExist(sa.getHostCard(), false);
+                        TargetChoices tc = sa.getTargets();
+                        if (!sa.setupTargets()) {
+                            // if AI can't choose targets need to keep old one even if illegal
+                            sa.setTargets(tc);
                         }
-                        continue;
+                        // FIXME: the new implementation (below) requires implementing setupNewTargets in the AI controller, among other possible changes, otherwise breaks AI
+                        // sa.setupNewTargets(player);
                     }
                 }
                 // need finally add the new spell to the stack
-                player.getGame().getStack().add(sa);
+                getGame().getStack().add(sa);
             }
         }
     }
 
     private boolean prepareSingleSa(final Card host, final SpellAbility sa, boolean isMandatory) {
+        if (sa.getApi() == ApiType.Charm) {
+            return CharmEffect.makeChoices(sa);
+        }
         if (sa.hasParam("TargetingPlayer")) {
             Player targetingPlayer = AbilityUtils.getDefinedPlayers(host, sa.getParam("TargetingPlayer"), sa).get(0);
             sa.setTargetingPlayer(targetingPlayer);
@@ -1089,7 +1089,7 @@ public class PlayerControllerAi extends PlayerController {
         if (tgtSA instanceof Spell) { // Isn't it ALWAYS a spell?
             Spell spell = (Spell) tgtSA;
             // TODO if mandatory AI is only forced to use mana when it's already in the pool
-            if (tgtSA.checkRestrictions(brains.getPlayer()) && (brains.canPlayFromEffectAI(spell, !optional, noManaCost) == AiPlayDecision.WillPlay || !optional)) {
+            if (brains.canPlayFromEffectAI(spell, !optional, noManaCost) == AiPlayDecision.WillPlay || !optional) {
                 if (noManaCost) {
                     return ComputerUtil.playSpellAbilityWithoutPayingManaCost(player, tgtSA, getGame());
                 }

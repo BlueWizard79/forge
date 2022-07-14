@@ -4,6 +4,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonWriter;
+import forge.Forge;
 import forge.adventure.data.ConfigData;
 import forge.adventure.data.SettingData;
 import forge.deck.Deck;
@@ -25,7 +26,6 @@ public class Config {
     private static Config currentConfig;
     private final String prefix;
     private final HashMap<String, FileHandle> Cache = new HashMap<String, FileHandle>();
-    private final HashMap<String, TextureAtlas> atlasCache = new HashMap<>();
     private final ConfigData configData;
     private final String[] adventures;
     private SettingData settingsData;
@@ -44,7 +44,7 @@ public class Config {
          adventures = new File(GuiBase.isAndroid() ? ForgeConstants.ADVENTURE_DIR : path + "/res/adventure").list();
         try
         {
-            settingsData = new Json().fromJson(SettingData.class, new FileHandle(ForgeConstants.USER_DIR +  "/adventure/settings.json"));
+            settingsData = new Json().fromJson(SettingData.class, new FileHandle(ForgeConstants.USER_ADVENTURE_DIR +  "settings.json"));
 
         }
         catch (Exception e)
@@ -113,16 +113,18 @@ public class Config {
 
         Deck[] deck = new Deck[configData.starterDecks.length];
         for (int i = 0; i < configData.starterDecks.length; i++) {
-            deck[i] = CardUtil.getDeck(configData.starterDecks[i]);
+            deck[i] = CardUtil.getDeck(configData.starterDecks[i], false, false, "", false, false);
         }
         return deck;
     }
 
     public TextureAtlas getAtlas(String spriteAtlas) {
-        if (!atlasCache.containsKey(spriteAtlas)) {
-            atlasCache.put(spriteAtlas, new TextureAtlas(getFile(spriteAtlas)));
+        String fileName = getFile(spriteAtlas).path();
+        if (!Forge.getAssets().manager.contains(fileName, TextureAtlas.class)) {
+            Forge.getAssets().manager.load(fileName, TextureAtlas.class);
+            Forge.getAssets().manager.finishLoadingAsset(fileName);
         }
-        return atlasCache.get(spriteAtlas);
+        return Forge.getAssets().manager.get(fileName);
     }
     public SettingData getSettingData()
     {

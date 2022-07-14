@@ -1,6 +1,9 @@
 package forge.adventure.scene;
 
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
@@ -14,6 +17,7 @@ import forge.adventure.data.EnemyData;
 import forge.adventure.data.WorldData;
 import forge.adventure.player.AdventurePlayer;
 import forge.adventure.stage.GameHUD;
+import forge.adventure.util.Config;
 import forge.adventure.util.Controls;
 import forge.adventure.util.Current;
 import forge.adventure.world.WorldSave;
@@ -24,22 +28,25 @@ import java.util.Map;
 
 public class PlayerStatisticScene extends UIScene {
     Image avatar, avatarBorder, lifeIcon, goldIcon;
+    Image colorFrame;
     Label money, life;
     Label wins, totalWins;
     Label loss, totalLoss;
     Label winloss, lossWinRatio;
     Label playerName;
     TextButton back;
+    Texture colorFrames;
     private Table enemiesGroup;
-    boolean init;
+    Label blessingScroll;
 
     public PlayerStatisticScene() {
-        super("ui/statistic.json");
+        super(Forge.isLandscapeMode() ? "ui/statistic.json" : "ui/statistic_portrait.json");
     }
 
 
     @Override
     public void dispose() {
+        colorFrames.dispose(); //Get rid of the cached color ID texture.
     }
 
 
@@ -55,6 +62,20 @@ public class PlayerStatisticScene extends UIScene {
         GameHUD.getInstance().getTouchpad().setVisible(false);
         Forge.switchToLast();
         return true;
+    }
+    private TextureRegion getColorFrame(String C){
+        int x, y;
+        switch(C){
+            case "B": { x = 0 ; y = 0 ; break; }
+            case "G": { x = 64; y = 0 ; break; }
+            case "R": { x = 0 ; y = 32; break; }
+            case "U": { x = 32; y = 32; break; }
+            case "W": { x = 64; y = 32; break; }
+            default:
+            case "C": { x = 32; y = 0 ; break; }
+        }
+        TextureRegion result = new TextureRegion(colorFrames, x, y, 32, 32);
+        return result;
     }
 
     @Override
@@ -100,6 +121,16 @@ public class PlayerStatisticScene extends UIScene {
         if (lossWinRatio != null) {
             lossWinRatio.setText(Float.toString(Current.player().getStatistic().winLossRatio()));
         }
+        if(colorFrame != null){
+            colorFrame.setDrawable(new TextureRegionDrawable(getColorFrame(Current.player().getColorIdentity())));
+        }
+        if(blessingScroll != null){
+            if(Current.player().getBlessing() != null) {
+                blessingScroll.setText(Current.player().getBlessing().getDescription());
+            } else {
+                blessingScroll.setText("No blessing.");
+            }
+        }
 
         for (Map.Entry<String, Pair<Integer, Integer>> entry : Current.player().getStatistic().getWinLossRecord().entrySet()) {
             EnemyData data = WorldData.getEnemy(entry.getKey());
@@ -107,8 +138,6 @@ public class PlayerStatisticScene extends UIScene {
             Image enemyImage = new Image();
             enemyImage.setDrawable(new TextureRegionDrawable(new EnemySprite(data).getAvatar()));
             enemyImage.setSize(8, 8);
-            if (!Forge.isLandscapeMode())
-                enemyImage.setScaleX(2);
 
             enemiesGroup.add(enemyImage).align(Align.center).space(3, 10, 3, 10);
             enemiesGroup.add((data.name)).fillX().align(Align.center).fillX().space(3, 10, 3, 10);
@@ -118,94 +147,53 @@ public class PlayerStatisticScene extends UIScene {
             enemiesGroup.row().space(8);
         }
 
-        if (!Forge.isLandscapeMode()) {
-            float w = Scene.GetIntendedWidth();
-            back.setHeight(20);
-            back.setX(w / 2 - back.getWidth() / 2);
-            back.setY(0);
-            ScrollPane enemies = ui.findActor("enemies");
-            enemies.setWidth(w - 20);
-            enemies.setX(w / 2 - enemies.getWidth() / 2);
-            enemies.setHeight(150);
-            enemies.setY(21);
-            ScrollPane stats = ui.findActor("stats");
-            stats.setWidth(w - 20);
-            stats.setX(w / 2 - enemies.getWidth() / 2);
-            stats.setHeight(90);
-            stats.setY(enemies.getY() + 153);
-            avatar.setScaleX(2);
-            avatar.setX(40);
-            avatar.setY(stats.getY() + 15);
-            avatarBorder.setScaleX(2);
-            avatarBorder.setX(40);
-            avatarBorder.setY(stats.getY() + 15);
-            playerName.setX(avatar.getRight() + 105);
-            playerName.getStyle().font.getData().setScale(2, 1);
-            playerName.setY(avatar.getY() + 45);
-            wins.setY(avatar.getY() + 30);
-            wins.setX(avatar.getRight() + 105);
-            totalWins.setY(wins.getY());
-            totalWins.setX(wins.getRight() + 85);
-            loss.setY(avatar.getY() + 15);
-            loss.setX(avatar.getRight() + 105);
-            totalLoss.setX(loss.getRight() + 85);
-            totalLoss.setY(loss.getY());
-            winloss.setY(avatar.getY());
-            winloss.setX(avatar.getRight() + 105);
-            lossWinRatio.setY(winloss.getY());
-            lossWinRatio.setX(winloss.getRight() + 85);
-            lifeIcon.setScaleX(2);
-            lifeIcon.setY(stats.getY() + 5);
-            lifeIcon.setX(wins.getX()-35);
-            life.setX(lifeIcon.getX() + 35);
-            life.setY(lifeIcon.getY());
-            goldIcon.setScaleX(2);
-            goldIcon.setY(stats.getY() + 5);
-            goldIcon.setX(totalWins.getX()-35);
-            money.setY(goldIcon.getY());
-            money.setX(goldIcon.getX() + 35);
-        }
 
     }
 
     @Override
     public void resLoaded() {
         super.resLoaded();
-        if (!this.init) {
-            enemiesGroup = new Table(Controls.GetSkin());
-            enemiesGroup.row();
-            ui.onButtonPress("return", new Runnable() {
-                @Override
-                public void run() {
-                    PlayerStatisticScene.this.back();
-                }
-            });
-            avatar = ui.findActor("avatar");
-            avatarBorder = ui.findActor("avatarBorder");
-            playerName = ui.findActor("playerName");
-            life = ui.findActor("lifePoints");
-            money = ui.findActor("money");
-            lifeIcon = ui.findActor("lifeIcon");
-            goldIcon = ui.findActor("goldIcon");
-            wins = ui.findActor("wins");
-            wins.setText(Forge.getLocalizer().getMessage("lblWinProper")+":");
-            totalWins = ui.findActor("totalWins");
-            loss = ui.findActor("loss");
-            loss.setText(Forge.getLocalizer().getMessage("lblLossProper")+":");
-            totalLoss = ui.findActor("totalLoss");
-            winloss = ui.findActor("winloss");
-            winloss.setText(Forge.getLocalizer().getMessage("lblWinProper")+"/"+Forge.getLocalizer().getMessage("lblLossProper"));
-            lossWinRatio = ui.findActor("lossWinRatio");
-            back = ui.findActor("return");
-            back.getLabel().setText(Forge.getLocalizer().getMessage("lblBack"));
-            ScrollPane scrollPane = ui.findActor("enemies");
-            scrollPane.setActor(enemiesGroup);
-            this.init = true;
-        }
+        enemiesGroup = new Table(Controls.GetSkin());
+        enemiesGroup.row();
+        blessingScroll = Controls.newLabel("");
+        blessingScroll.setStyle(new Label.LabelStyle(Controls.getBitmapFont("default"), Color.BLACK));
+        blessingScroll.setAlignment(Align.topLeft);
+        blessingScroll.setWrap(true);
+        ui.onButtonPress("return", new Runnable() {
+            @Override
+            public void run() {
+                PlayerStatisticScene.this.back();
+            }
+        });
+
+        avatar = ui.findActor("avatar");
+        avatarBorder = ui.findActor("avatarBorder");
+        playerName = ui.findActor("playerName");
+        life = ui.findActor("lifePoints");
+        money = ui.findActor("money");
+        lifeIcon = ui.findActor("lifeIcon");
+        goldIcon = ui.findActor("goldIcon");
+        wins = ui.findActor("wins");
+        colorFrame = ui.findActor("colorFrame");
+        wins.setText(Forge.getLocalizer().getMessage("lblWinProper")+":");
+        totalWins = ui.findActor("totalWins");
+        loss = ui.findActor("loss");
+        loss.setText(Forge.getLocalizer().getMessage("lblLossProper")+":");
+        totalLoss = ui.findActor("totalLoss");
+        winloss = ui.findActor("winloss");
+        winloss.setText(Forge.getLocalizer().getMessage("lblWinProper")+"/"+Forge.getLocalizer().getMessage("lblLossProper"));
+        lossWinRatio = ui.findActor("lossWinRatio");
+        back = ui.findActor("return");
+        back.getLabel().setText(Forge.getLocalizer().getMessage("lblBack"));
+        ScrollPane scrollPane = ui.findActor("enemies");
+        scrollPane.setActor(enemiesGroup);
+        colorFrames = new Texture(Config.instance().getFile("ui/color_frames.png"));
+        ScrollPane blessing = ui.findActor("blessingInfo");
+        blessing.setActor(blessingScroll);
+
     }
 
     @Override
     public void create() {
-
     }
 }

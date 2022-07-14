@@ -155,7 +155,7 @@ public class Cost implements Serializable {
      * @return a boolean.
      */
     public final boolean isOnlyManaCost() {
-        // Only used by Morph and Equip... why do we need this?
+        // used by Morph, Equip and some string builders
         for (final CostPart part : this.costParts) {
             if (!(part instanceof CostPartMana)) {
                 return false;
@@ -890,21 +890,21 @@ public class Cost implements Serializable {
                 } else {
                     costParts.add(0, new CostPartMana(oldManaCost.toManaCost(), r));
                 }
-            } else if (part instanceof CostDiscard || part instanceof CostTapType ||
+            } else if (part instanceof CostDiscard || part instanceof CostDraw ||
                     part instanceof CostAddMana || part instanceof CostPayLife
-                    || part instanceof CostPutCounter) {
+                    || part instanceof CostPutCounter || part instanceof CostTapType) {
                 boolean alreadyAdded = false;
                 for (final CostPart other : costParts) {
                     if ((other.getClass().equals(part.getClass()) || (part instanceof CostPutCounter && ((CostPutCounter)part).getCounter().is(CounterEnumType.LOYALTY))) &&
                             part.getType().equals(other.getType()) &&
                             StringUtils.isNumeric(part.getAmount()) &&
                             StringUtils.isNumeric(other.getAmount())) {
-                        String amount = String.valueOf(Integer.parseInt(part.getAmount()) + Integer.parseInt(other.getAmount()));
-                        if (part instanceof CostPutCounter) { // path for Carth
-                            if (other instanceof CostPutCounter && ((CostPutCounter)other).getCounter().is(CounterEnumType.LOYALTY)) {
-                                costParts.add(new CostPutCounter(amount, CounterType.get(CounterEnumType.LOYALTY), part.getType(), part.getTypeDescription()));
+                        String amount = String.valueOf(part.convertAmount() + other.convertAmount());
+                        if (part instanceof CostPutCounter) { // path for Carth & Cumulative Upkeep
+                            if (other instanceof CostPutCounter && ((CostPutCounter)other).getCounter().equals(((CostPutCounter) part).getCounter())) {
+                                costParts.add(new CostPutCounter(amount, ((CostPutCounter) part).getCounter(), part.getType(), part.getTypeDescription()));
                             } else if (other instanceof CostRemoveCounter && ((CostRemoveCounter)other).counter.is(CounterEnumType.LOYALTY)) {
-                                Integer counters = Integer.parseInt(other.getAmount()) - Integer.parseInt(part.getAmount());
+                                Integer counters = other.convertAmount() - part.convertAmount();
                                 // the cost can turn positive if multiple Carth raise it
                                 if (counters < 0) {
                                     costParts.add(new CostPutCounter(String.valueOf(counters *-1), CounterType.get(CounterEnumType.LOYALTY), part.getType(), part.getTypeDescription()));
@@ -916,6 +916,8 @@ public class Cost implements Serializable {
                             }
                         } else if (part instanceof CostDiscard) {
                             costParts.add(new CostDiscard(amount, part.getType(), part.getTypeDescription()));
+                        } else if (part instanceof CostDraw) {
+                            costParts.add(new CostDraw(amount, part.getType()));
                         } else if (part instanceof CostTapType) {
                             CostTapType tappart = (CostTapType)part;
                             costParts.add(new CostTapType(amount, part.getType(), part.getTypeDescription(), !tappart.canTapSource));

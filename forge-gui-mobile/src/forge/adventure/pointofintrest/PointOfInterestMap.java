@@ -39,7 +39,20 @@ public class PointOfInterestMap implements SaveFileContent {
             return;
         mapObjects[chunkX][chunkY].add(obj);
     }
-
+    public PointOfInterest findPointsOfInterest(String name) {
+        for(List<PointOfInterest>[] poiList1:mapObjects)
+        {
+            for(List<PointOfInterest> poiList:poiList1)
+            {
+                for(PointOfInterest poi:poiList)
+                {
+                    if(poi.getData().name.equals(name))
+                        return poi;
+                }
+            }
+        }
+        return null;
+    }
     public List<PointOfInterest> pointsOfInterest(int chunkX, int chunkY) {
         if (chunkX >= numberOfChunksX || chunkY >= numberOfChunksY || chunkX < 0 || chunkY < 0)
             return new ArrayList<PointOfInterest>();
@@ -77,7 +90,6 @@ public class PointOfInterestMap implements SaveFileContent {
         data.store("numberOfChunksY",numberOfChunksY);
         data.store("tileSize",tileSize);
         data.store("chunkSize",chunkSize);
-        data.store("numberOfChunksX",numberOfChunksX);
 
         for (int x = 0; x < numberOfChunksX; x++) {
             for (int y = 0; y < numberOfChunksY; y++) {

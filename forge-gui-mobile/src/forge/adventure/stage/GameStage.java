@@ -12,12 +12,14 @@ import com.badlogic.gdx.utils.viewport.ScalingViewport;
 import forge.Forge;
 import forge.adventure.character.MapActor;
 import forge.adventure.character.PlayerSprite;
+import forge.adventure.data.PointOfInterestData;
+import forge.adventure.pointofintrest.PointOfInterest;
 import forge.adventure.scene.Scene;
 import forge.adventure.scene.SceneType;
 import forge.adventure.scene.TileMapScene;
-import forge.adventure.util.Current;
 import forge.adventure.world.WorldSave;
 import forge.gui.GuiBase;
+import forge.util.MyRandom;
 
 /**
  * Base class to render a player sprite on a map
@@ -50,7 +52,7 @@ public abstract class GameStage extends Stage {
     }
 
     public GameStage() {
-        super(new ScalingViewport(Scaling.stretch, Scene.GetIntendedWidth(), Scene.GetIntendedHeight(), new OrthographicCamera()));
+        super(new ScalingViewport(Scaling.stretch, Scene.getIntendedWidth(), Scene.getIntendedHeight(), new OrthographicCamera()));
         WorldSave.getCurrentSave().onLoad(new Runnable() {
             @Override
             public void run() {
@@ -137,8 +139,8 @@ public abstract class GameStage extends Stage {
         else
             player.setMoveModifier(1);*/
 
-        camera.position.x = Math.min(Math.max(Scene.GetIntendedWidth() / 2f, player.pos().x), getViewport().getWorldWidth() - Scene.GetIntendedWidth() / 2f);
-        camera.position.y = Math.min(Math.max(Scene.GetIntendedHeight() / 2f, player.pos().y), getViewport().getWorldHeight() - Scene.GetIntendedHeight() / 2f);
+        camera.position.x = Math.min(Math.max(Scene.getIntendedWidth() / 2f, player.pos().x), getViewport().getWorldWidth() - Scene.getIntendedWidth() / 2f);
+        camera.position.y = Math.min(Math.max(Scene.getIntendedHeight() / 2f, player.pos().y), getViewport().getWorldHeight() - Scene.getIntendedHeight() / 2f);
 
 
         onActing(delta);
@@ -192,6 +194,13 @@ public abstract class GameStage extends Stage {
             setDebugAll(true);
             player.setBoundDebug(true);
         }
+        if (keycode == Input.Keys.F2) {
+            TileMapScene S = ((TileMapScene)SceneType.TileMapScene.instance);
+            PointOfInterestData P = PointOfInterestData.getPointOfInterest("DEBUGZONE");
+            PointOfInterest PoI = new PointOfInterest(P,new Vector2(0,0), MyRandom.getRandom());
+            S.load(PoI);
+            Forge.switchScene(S);
+        }
         if (keycode == Input.Keys.F11) {
             debugCollision(false);
             for (Actor actor : foregroundSprites.getChildren()) {
@@ -201,16 +210,6 @@ public abstract class GameStage extends Stage {
             }
             player.setBoundDebug(false);
             setDebugAll(false);
-        }
-        if (keycode == Input.Keys.F10) {
-            Current.setDebug(true);
-             Current.player().addItem("Cheat");
-            Current.player().takeGold(-1000);
-        }
-        if (keycode == Input.Keys.F9) {
-            Current.setDebug(false);
-            Current.player().removeItem("Cheat");
-            Current.player().takeGold(1000);
         }
         return true;
     }
@@ -223,8 +222,8 @@ public abstract class GameStage extends Stage {
         if (isPaused())
             return true;
         camera.zoom += (amountY * 0.03);
-        if (camera.zoom < 0.2f)
-            camera.zoom = 0.2f;
+        if (camera.zoom < 0.3f)
+            camera.zoom = 0.3f;
         if (camera.zoom > 1.5f)
             camera.zoom = 1.5f;
         return super.scrolled(amountX, amountY);

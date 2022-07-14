@@ -18,6 +18,8 @@
 
 package forge.game.card;
 
+import java.util.Locale;
+
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -67,7 +69,11 @@ public enum CounterEnumType {
 
     COIN("COIN",255,215,0),
 
+    COLLECTION("CLLCT", 255, 215, 0),
+
     COMPONENT("COMPN", 224, 160, 48),
+
+    CONTESTED("CONTES", 255, 76, 2),
 
     CORPSE("CRPSE", 230, 186, 209),
 
@@ -311,6 +317,8 @@ public enum CounterEnumType {
 
     SPORE("SPORE", 122, 218, 150),
 
+    STASH("STASH", 248, 191, 0),
+
     STORAGE("STORG", 255, 177, 121),
 
     STRIFE("STRFE", 255, 89, 223),
@@ -429,7 +437,7 @@ public enum CounterEnumType {
     }
 
     public static CounterEnumType getType(final String name) {
-        final String replacedName = name.replace("/", "").replaceAll("\\+", "p").replaceAll("\\-", "m").toUpperCase();
+        final String replacedName = name.replace("/", "").replaceAll("\\+", "p").replaceAll("\\-", "m").toUpperCase(Locale.ROOT);
         return Enum.valueOf(CounterEnumType.class, replacedName);
     }
 

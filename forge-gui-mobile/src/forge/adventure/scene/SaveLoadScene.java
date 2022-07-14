@@ -4,20 +4,18 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
-import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.TextField;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.IntMap;
+import com.badlogic.gdx.utils.Scaling;
 import forge.Forge;
+import forge.adventure.data.DifficultyData;
+import forge.adventure.util.Config;
 import forge.adventure.util.Controls;
+import forge.adventure.util.Current;
 import forge.adventure.world.WorldSave;
 import forge.adventure.world.WorldSaveHeader;
 import forge.screens.TransitionScreen;
@@ -26,6 +24,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.text.DateFormat;
+import java.util.function.Function;
 import java.util.zip.InflaterInputStream;
 
 /**
@@ -36,20 +36,21 @@ public class SaveLoadScene extends UIScene {
     IntMap<WorldSaveHeader> previews = new IntMap<>();
     Color defColor;
     Table layout;
-    boolean save = true;
+    Modes mode;
     Dialog dialog;
     TextField textInput;
     Label header;
     int currentSlot = -3, lastSelectedSlot = 0;
     Image previewImage;
+    Label previewDate;
     Image previewBorder;
     TextButton saveLoadButton, back;
     TextButton quickSave;
     TextButton autoSave;
-    boolean init;
+    SelectBox difficulty;
 
     public SaveLoadScene() {
-        super(Forge.isLandscapeMode() ? "ui/save_load_mobile.json" : "ui/save_load.json");
+        super(Forge.isLandscapeMode() ? "ui/save_load.json" : "ui/save_load_portrait.json");
     }
 
 
@@ -86,12 +87,20 @@ public class SaveLoadScene extends UIScene {
             WorldSaveHeader header = previews.get(slot);
             if (header.preview != null) {
                 previewImage.setDrawable(new TextureRegionDrawable(new Texture(header.preview)));
+                previewImage.setScaling(Scaling.fit);
                 previewImage.layout();
                 previewImage.setVisible(true);
+                previewDate.setVisible(true);
+                if (header.saveDate != null)
+                    previewDate.setText(DateFormat.getDateInstance().format(header.saveDate)+"\n"+DateFormat.getTimeInstance(DateFormat.SHORT).format(header.saveDate));
+                else
+                    previewDate.setText("");
             }
         } else {
             if (previewImage != null)
                 previewImage.setVisible(false);
+            if (previewDate != null)
+                previewDate.setVisible(false);
         }
         for (IntMap.Entry<TextButton> butt : new IntMap.Entries<TextButton>(buttons)) {
             butt.value.setColor(defColor);
@@ -105,24 +114,46 @@ public class SaveLoadScene extends UIScene {
     }
 
     public void loadSave() {
-        if (save) {
-            if (currentSlot > 0) {
-                //prevent NPE, allowed saveslot is 1 to 10..
-                textInput.setText(buttons.get(currentSlot).getText().toString());
-                dialog.show(stage);
-                stage.setKeyboardFocus(textInput);
-            }
-        } else {
-            if (WorldSave.load(currentSlot)) {
-                Forge.setTransitionScreen(new TransitionScreen(new Runnable() {
-                    @Override
-                    public void run() {
-                        Forge.switchScene(SceneType.GameScene.instance);
-                    }
-                }, null, false, true));
-            } else {
-                Forge.clearTransitionScreen();
-            }
+        switch (mode) {
+            case Save:
+                if (currentSlot > 0) {
+                    //prevent NPE, allowed saveslot is 1 to 10..
+                    textInput.setText(buttons.get(currentSlot).getText().toString());
+                    dialog.show(stage);
+                    stage.setKeyboardFocus(textInput);
+                }
+                break;
+            case Load:
+                if (WorldSave.load(currentSlot)) {
+                    Forge.setTransitionScreen(new TransitionScreen(new Runnable() {
+                        @Override
+                        public void run() {
+                            Forge.switchScene(SceneType.GameScene.instance);
+                        }
+                    }, null, false, true));
+                } else {
+                    Forge.clearTransitionScreen();
+                }
+                break;
+            case NewGamePlus:
+                if (WorldSave.load(currentSlot)) {
+                    WorldSave.getCurrentSave().clearChanges();
+                    WorldSave.getCurrentSave().getWorld().generateNew(0);
+                    if (difficulty != null)
+                        Current.player().updateDifficulty(Config.instance().getConfigData().difficulties[difficulty.getSelectedIndex()]);
+                    Current.player().setWorldPosY((int) (WorldSave.getCurrentSave().getWorld().getData().playerStartPosY * WorldSave.getCurrentSave().getWorld().getData().height * WorldSave.getCurrentSave().getWorld().getTileSize()));
+                    Current.player().setWorldPosX((int) (WorldSave.getCurrentSave().getWorld().getData().playerStartPosX * WorldSave.getCurrentSave().getWorld().getData().width * WorldSave.getCurrentSave().getWorld().getTileSize()));
+                    Forge.setTransitionScreen(new TransitionScreen(new Runnable() {
+                        @Override
+                        public void run() {
+                            Forge.switchScene(SceneType.GameScene.instance);
+                        }
+                    }, null, false, true));
+                } else {
+                    Forge.clearTransitionScreen();
+                }
+                break;
+
         }
     }
 
@@ -144,10 +175,10 @@ public class SaveLoadScene extends UIScene {
         dialog.hide();
         if (WorldSave.getCurrentSave().save(textInput.getText(), currentSlot)) {
             updateFiles();
+            //ensure the dialog is hidden before switching
+            dialog.getColor().a = 0f;
             Forge.switchScene(SceneType.GameScene.instance);
         }
-
-
     }
 
     private void updateFiles() {
@@ -182,18 +213,30 @@ public class SaveLoadScene extends UIScene {
 
     }
 
+    public enum Modes {
+        Save,
+        Load,
+        NewGamePlus
+    }
 
-    public void setSaveGame(boolean save) {
-        if (save) {
-            header.setText(Forge.getLocalizer().getMessage("lblSaveGame"));
-            saveLoadButton.setText(Forge.getLocalizer().getMessage("lblSave"));
-        } else {
-            header.setText(Forge.getLocalizer().getMessage("lblLoadGame"));
-            saveLoadButton.setText(Forge.getLocalizer().getMessage("lblLoad"));
+    public void setMode(Modes mode) {
+        switch (mode) {
+            case Save:
+                header.setText(Forge.getLocalizer().getMessage("lblSaveGame"));
+                saveLoadButton.setText(Forge.getLocalizer().getMessage("lblSave"));
+                break;
+            case Load:
+                header.setText(Forge.getLocalizer().getMessage("lblLoadGame"));
+                saveLoadButton.setText(Forge.getLocalizer().getMessage("lblLoad"));
+                break;
+            case NewGamePlus:
+                header.setText(Forge.getLocalizer().getMessage("lblNewGame")+"+");
+                saveLoadButton.setText(Forge.getLocalizer().getMessage("lblStart"));
+                break;
         }
-        autoSave.setDisabled(save);
-        quickSave.setDisabled(save);
-        this.save = save;
+        autoSave.setDisabled(mode == Modes.Save);
+        quickSave.setDisabled(mode == Modes.Save);
+        this.mode = mode;
     }
 
     @Override
@@ -205,108 +248,102 @@ public class SaveLoadScene extends UIScene {
         updateFiles();
         autoSave.getLabel().setText(Forge.getLocalizer().getMessage("lblAutoSave"));
         quickSave.getLabel().setText(Forge.getLocalizer().getMessage("lblQuickSave"));
+        if (mode == Modes.NewGamePlus) {
+            if (difficulty != null) {
+                difficulty.setVisible(true);
+                difficulty.setSelectedIndex(1);
+            }
+        } else {
+            if (difficulty != null) {
+                difficulty.setVisible(false);
+            }
+        }
         super.enter();
     }
 
     @Override
     public void resLoaded() {
         super.resLoaded();
-        if (!this.init) {
-            layout = new Table();
-            stage.addActor(layout);
-            dialog = Controls.newDialog(Forge.getLocalizer().getMessage("lblSave"));
-            textInput = Controls.newTextField("");
-            if (!Forge.isLandscapeMode()) {
-                dialog.getButtonTable().add(Controls.newLabel(Forge.getLocalizer().getMessage("lblNameYourSaveFile"))).colspan(2).pad(2, 15, 2, 15);
-                dialog.getButtonTable().row();
-                dialog.getButtonTable().add(Controls.newLabel(Forge.getLocalizer().getMessage("lblName")+": ")).align(Align.left).pad(2, 15, 2, 2);
-                dialog.getButtonTable().add(textInput).fillX().expandX().padRight(15);
-                dialog.getButtonTable().row();
-                dialog.getButtonTable().add(Controls.newTextButton(Forge.getLocalizer().getMessage("lblSave"), new Runnable() {
-                    @Override
-                    public void run() {
-                        SaveLoadScene.this.save();
-                    }
-                })).align(Align.left).padLeft(15);
-                dialog.getButtonTable().add(Controls.newTextButton(Forge.getLocalizer().getMessage("lblAbort"), new Runnable() {
-                    @Override
-                    public void run() {
-                        SaveLoadScene.this.saveAbort();
-                    }
-                })).align(Align.right).padRight(15);
-            } else {
-                dialog.getButtonTable().add(Controls.newLabel(Forge.getLocalizer().getMessage("lblNameYourSaveFile"))).colspan(2);
-                dialog.getButtonTable().row();
-                dialog.getButtonTable().add(Controls.newLabel(Forge.getLocalizer().getMessage("lblName")+": ")).align(Align.left);
-                dialog.getButtonTable().add(textInput).fillX().expandX();
-                dialog.getButtonTable().row();
-                dialog.getButtonTable().add(Controls.newTextButton(Forge.getLocalizer().getMessage("lblSave"), new Runnable() {
-                    @Override
-                    public void run() {
-                        SaveLoadScene.this.save();
-                    }
-                })).align(Align.left);
-                dialog.getButtonTable().add(Controls.newTextButton(Forge.getLocalizer().getMessage("lblAbort"), new Runnable() {
-                    @Override
-                    public void run() {
-                        SaveLoadScene.this.saveAbort();
-                    }
-                })).align(Align.right);
+        layout = new Table();
+        stage.addActor(layout);
+        dialog = Controls.newDialog(Forge.getLocalizer().getMessage("lblSave"));
+        textInput = Controls.newTextField("");
+        int c = 0;
+        String[] diffList = new String[Config.instance().getConfigData().difficulties.length];
+        for (DifficultyData diff : Config.instance().getConfigData().difficulties) {
+            diffList[c] = diff.name;
+            c++;
+        }
+        ;
+
+        difficulty = Controls.newComboBox(diffList, null, new Function<Object, Void>() {
+            @Override
+            public Void apply(Object o) {
+                //DifficultyData difficulty1 = Config.instance().getConfigData().difficulties[difficulty.getSelectedIndex()];
+                return null;
             }
-            previewImage = ui.findActor("preview");
-            previewBorder = ui.findActor("preview_border");
-            header = Controls.newLabel(Forge.getLocalizer().getMessage("lblSave"));
-            header.setAlignment(Align.center);
-            layout.add(header).pad(2).colspan(4).align(Align.center).expandX();
-            layout.row();
-            autoSave = addSaveSlot(Forge.getLocalizer().getMessage("lblAutoSave"), WorldSave.AUTO_SAVE_SLOT);
-            quickSave = addSaveSlot(Forge.getLocalizer().getMessage("lblQuickSave"), WorldSave.QUICK_SAVE_SLOT);
-            for (int i = 1; i < 11; i++)
-                addSaveSlot(Forge.getLocalizer().getMessage("lblSlot")+": " + i, i);
-
-            saveLoadButton = ui.findActor("save");
-            saveLoadButton.getLabel().setText(Forge.getLocalizer().getMessage("lblSave"));
-            ui.onButtonPress("save", new Runnable() {
-                @Override
-                public void run() {
-                    SaveLoadScene.this.loadSave();
-                }
-            });
-            back = ui.findActor("return");
-            back.getLabel().setText(Forge.getLocalizer().getMessage("lblBack"));
-            ui.onButtonPress("return", new Runnable() {
-                @Override
-                public void run() {
-                    SaveLoadScene.this.back();
-                }
-            });
-
-            defColor = saveLoadButton.getColor();
-
-            ScrollPane scrollPane = ui.findActor("saveSlots");
-            scrollPane.setActor(layout);
-            if (!Forge.isLandscapeMode()) {
-                float w = Scene.GetIntendedWidth();
-                float sW = w - 20;
-                float oX = w/2 - sW/2;
-                float h = Scene.GetIntendedHeight();
-                float sH = (h - 10)/12;
-                scrollPane.setWidth(sW);
-                scrollPane.setHeight(sH*11);
-                scrollPane.setX(oX);
-                previewImage.setScale(1, 1.2f);
-                previewImage.setX(scrollPane.getRight()-105);
-                previewImage.setY(scrollPane.getTop()-71);
-                float bW = w - 165;
-                float bX = w/2 - bW/2;
-                back.setWidth(bW/2);
-                back.setHeight(20);
-                back.setX(bX);
-                saveLoadButton.setWidth(bW/2);
-                saveLoadButton.setHeight(20);
-                saveLoadButton.setX(back.getRight());
+        });
+        dialog.getButtonTable().add(Controls.newLabel(Forge.getLocalizer().getMessage("lblNameYourSaveFile"))).colspan(2).pad(2, 15, 2, 15);
+        dialog.getButtonTable().row();
+        dialog.getButtonTable().add(Controls.newLabel(Forge.getLocalizer().getMessage("lblName") + ": ")).align(Align.left).pad(2, 15, 2, 2);
+        dialog.getButtonTable().add(textInput).fillX().expandX().padRight(15);
+        dialog.getButtonTable().row();
+        dialog.getButtonTable().add(Controls.newTextButton(Forge.getLocalizer().getMessage("lblSave"), new Runnable() {
+            @Override
+            public void run() {
+                SaveLoadScene.this.save();
             }
-            this.init = true;
+        })).align(Align.left).padLeft(15);
+        dialog.getButtonTable().add(Controls.newTextButton(Forge.getLocalizer().getMessage("lblAbort"), new Runnable() {
+            @Override
+            public void run() {
+                SaveLoadScene.this.saveAbort();
+            }
+        })).align(Align.right).padRight(15);
+
+        //makes dialog hidden immediately when you open saveload scene..
+        dialog.getColor().a = 0;
+        previewImage = ui.findActor("preview");
+        previewDate = ui.findActor("saveDate");
+        header = Controls.newLabel(Forge.getLocalizer().getMessage("lblSave"));
+        header.setAlignment(Align.center);
+        layout.add(header).pad(2).colspan(4).align(Align.center).expandX();
+        layout.row();
+        autoSave = addSaveSlot(Forge.getLocalizer().getMessage("lblAutoSave"), WorldSave.AUTO_SAVE_SLOT);
+        quickSave = addSaveSlot(Forge.getLocalizer().getMessage("lblQuickSave"), WorldSave.QUICK_SAVE_SLOT);
+        for (int i = 1; i < 11; i++)
+            addSaveSlot(Forge.getLocalizer().getMessage("lblSlot") + ": " + i, i);
+
+        saveLoadButton = ui.findActor("save");
+        saveLoadButton.getLabel().setText(Forge.getLocalizer().getMessage("lblSave"));
+        ui.onButtonPress("save", new Runnable() {
+            @Override
+            public void run() {
+                SaveLoadScene.this.loadSave();
+            }
+        });
+        back = ui.findActor("return");
+        back.getLabel().setText(Forge.getLocalizer().getMessage("lblBack"));
+        ui.onButtonPress("return", new Runnable() {
+            @Override
+            public void run() {
+                SaveLoadScene.this.back();
+            }
+        });
+
+        defColor = saveLoadButton.getColor();
+
+        ScrollPane scrollPane = ui.findActor("saveSlots");
+        scrollPane.setActor(layout);
+        ui.addActor(difficulty);
+        difficulty.setSelectedIndex(1);
+        difficulty.setAlignment(Align.center);
+        if (Forge.isLandscapeMode()) {
+            difficulty.setX(280);
+            difficulty.setY(230);
+        } else {
+            difficulty.setX(190);
+            difficulty.setY(346);
         }
     }
 }

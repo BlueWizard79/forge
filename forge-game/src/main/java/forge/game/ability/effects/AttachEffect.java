@@ -84,7 +84,7 @@ public class AttachEffect extends SpellAbilityEffect {
                 choices = AbilityUtils.getDefinedEntities(source, sa.getParam("PlayerChoices"), sa);
                 for (final Card attachment : attachments) {
                     for (GameEntity g : choices) {
-                        if (!g.canBeAttached(attachment)) {
+                        if (!g.canBeAttached(attachment, sa)) {
                             choices.remove(g);
                         }
                     }
@@ -100,7 +100,7 @@ public class AttachEffect extends SpellAbilityEffect {
                         if (e != null)
                             cardChoices.remove(e);
                     }
-                    cardChoices = CardLists.filter(cardChoices, CardPredicates.canBeAttached(attachment));
+                    cardChoices = CardLists.filter(cardChoices, CardPredicates.canBeAttached(attachment, sa));
                 }
                 choices.addAll(cardChoices);
             }
@@ -134,11 +134,11 @@ public class AttachEffect extends SpellAbilityEffect {
         // If Cast Targets will be checked on the Stack
         for (final Card attachment : attachments) {
             String message = Localizer.getInstance().getMessage("lblDoYouWantAttachSourceToTarget", CardTranslation.getTranslatedName(attachment.getName()), attachToName);
-            if (sa.hasParam("Optional") && !p.getController().confirmAction(sa, null, message))
+            if (sa.hasParam("Optional") && !p.getController().confirmAction(sa, null, message, null))
             // TODO add params for message
                 continue;
 
-            attachment.attachToEntity(attachTo);
+            attachment.attachToEntity(attachTo, sa);
             if (sa.hasParam("RememberAttached") && attachment.isAttachedToEntity(attachTo)) {
                 source.addRemembered(attachment);
             }

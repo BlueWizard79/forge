@@ -30,6 +30,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import forge.GameCommand;
 import forge.card.CardStateName;
@@ -56,11 +57,9 @@ import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.player.Player;
 import forge.game.replacement.ReplacementEffect;
-import forge.game.replacement.ReplacementHandler;
 import forge.game.spellability.AbilityStatic;
 import forge.game.spellability.SpellAbility;
 import forge.game.trigger.Trigger;
-import forge.game.trigger.TriggerHandler;
 import forge.game.zone.ZoneType;
 import forge.util.TextUtil;
 
@@ -112,11 +111,17 @@ public final class StaticAbilityContinuous {
         final List<Player> affectedPlayers = StaticAbilityContinuous.getAffectedPlayers(stAb);
         final Game game = hostCard.getGame();
 
-        final StaticEffect se = game.getStaticEffects().getStaticEffect(stAb);
+        final StaticEffects effects = game.getStaticEffects();
+        final StaticEffect se = effects.getStaticEffect(stAb);
         se.setAffectedCards(affectedCards);
         se.setAffectedPlayers(affectedPlayers);
         se.setParams(params);
         se.setTimestamp(hostCard.getTimestamp());
+
+        // nothing more to do
+        if (stAb.hasParam("Affected") && affectedPlayers.isEmpty() && affectedCards.isEmpty()) {
+            return affectedCards;
+        }
 
         String addP = "";
         int powerBonus = 0;
@@ -162,7 +167,6 @@ public final class StaticAbilityContinuous {
 
         //Global rules changes
         if (layer == StaticAbilityLayer.RULES && params.containsKey("GlobalRule")) {
-            final StaticEffects effects = game.getStaticEffects();
             effects.setGlobalRuleChange(GlobalRuleChange.fromString(params.get("GlobalRule")));
         }
 
@@ -197,8 +201,6 @@ public final class StaticAbilityContinuous {
 
                 // update keywords with Chosen parts
                 final String hostCardUID = Integer.toString(hostCard.getId()); // Protection with "doesn't remove" effect
-
-                final ColorSet colorsYouCtrl = CardUtil.getColorsYouCtrl(controller);
 
                 Iterables.removeIf(addKeywords, new Predicate<String>() {
                     @Override
@@ -247,6 +249,8 @@ public final class StaticAbilityContinuous {
                         }
                         // two variants for Red vs. red in keyword
                         if (input.contains("ColorsYouCtrl") || input.contains("colorsYouCtrl")) {
+                            final ColorSet colorsYouCtrl = CardUtil.getColorsYouCtrl(controller);
+
                             for (byte color : colorsYouCtrl) {
                                 final String colorWord = MagicColor.toLongString(color);
                                 String y = input.replaceAll("ColorsYouCtrl", StringUtils.capitalize(colorWord));
@@ -675,6 +679,10 @@ public final class StaticAbilityContinuous {
                 if (stAb.hasParam("AddNames")) { // currently only for AllNonLegendaryCreatureNames
                     affectedCard.addChangedName(null, true, se.getTimestamp(), stAb.getId());
                 }
+                if (stAb.hasParam("SetName")) {
+                    affectedCard.addChangedName(stAb.getParam("SetName"), false,
+                            se.getTimestamp(), stAb.getId());
+                }
 
                 // Change color words
                 if (params.containsKey("ChangeColorWordsTo")) {
@@ -715,6 +723,7 @@ public final class StaticAbilityContinuous {
             // add P/T bonus
             if (layer == StaticAbilityLayer.MODIFYPT) {
                 if (addP.contains("Affected")) {
+                    // TODO don't calculate these above if this gets used instead
                     powerBonus = AbilityUtils.calculateAmount(affectedCard, addP, stAb, true);
                 }
                 if (addT.contains("Affected")) {
@@ -724,8 +733,6 @@ public final class StaticAbilityContinuous {
             }
 
             // add keywords
-            // TODO regular keywords currently don't try to use keyword multiplier
-            // (Although nothing uses it at this time)
             if (addKeywords != null || removeKeywords != null || removeAllAbilities) {
                 List<String> newKeywords = null;
                 if (addKeywords != null) {
@@ -779,6 +786,7 @@ public final class StaticAbilityContinuous {
 
             // add SVars
             if (addSVars != null) {
+                Map<String, String> map = Maps.newHashMap();
                 for (final String sVar : addSVars) {
                     String actualSVar = AbilityUtils.getSVar(stAb, sVar);
                     String name = sVar;
@@ -787,8 +795,9 @@ public final class StaticAbilityContinuous {
                         name = actualSVar.split(":")[0];
                         actualSVar = actualSVar.split(":")[1];
                     }
-                    affectedCard.setSVar(name, actualSVar);
+                    map.put(name, actualSVar);
                 }
+                affectedCard.addChangedSVars(map, se.getTimestamp(), stAb.getId());
             }
 
             if (layer == StaticAbilityLayer.ABILITIES) {
@@ -806,17 +815,13 @@ public final class StaticAbilityContinuous {
                             abilty = TextUtil.fastReplace(abilty, "ConvertedManaCost", costcmc);
                         }
                         if (abilty.startsWith("AB") || abilty.startsWith("ST")) { // grant the ability
-                            final SpellAbility sa = AbilityFactory.getAbility(abilty, affectedCard, stAb);
-                            sa.setIntrinsic(false);
-                            sa.setGrantorStatic(stAb);
-                            addedAbilities.add(sa);
+                            addedAbilities.add(affectedCard.getSpellAbilityForStaticAbility(abilty, stAb));
                         }
                     }
                 }
 
                 if (params.containsKey("GainsAbilitiesOf") || params.containsKey("GainsAbilitiesOfDefined")) {
                     CardCollection cardsIGainedAbilitiesFrom = new CardCollection();
-                    final boolean loyaltyAB = params.containsKey("GainsLoyaltyAbilities");
 
                     if (params.containsKey("GainsAbilitiesOf")) {
                         final String[] valids = params.get("GainsAbilitiesOf").split(",");
@@ -835,13 +840,16 @@ public final class StaticAbilityContinuous {
                     for (Card c : cardsIGainedAbilitiesFrom) {
                         for (SpellAbility sa : c.getSpellAbilities()) {
                             if (sa.isActivatedAbility()) {
-                                if (loyaltyAB && !sa.isPwAbility()) {
+                                if (!stAb.matchesValidParam("GainsValidAbilities", sa)) {
                                     continue;
                                 }
                                 SpellAbility newSA = sa.copy(affectedCard, false);
                                 if (params.containsKey("GainsAbilitiesLimitPerTurn")) {
                                     newSA.setRestrictions(sa.getRestrictions());
                                     newSA.getRestrictions().setLimitToCheck(params.get("GainsAbilitiesLimitPerTurn"));
+                                }
+                                if (params.containsKey("GainsAbilitiesActivateIgnoreColor")) {
+                                    newSA.putParam("ActivateIgnoreColor", params.get("GainsAbilitiesActivateIgnoreColor"));
                                 }
                                 newSA.setOriginalAbility(sa); // need to be set to get the Once Per turn Clause correct
                                 newSA.setGrantorStatic(stAb);
@@ -855,15 +863,14 @@ public final class StaticAbilityContinuous {
                 // add Replacement effects
                 if (addReplacements != null) {
                     for (String rep : addReplacements) {
-                        final ReplacementEffect actualRep = ReplacementHandler.parseReplacement(rep, affectedCard, false, stAb);
-                        addedReplacementEffects.add(actualRep);
+                        addedReplacementEffects.add(affectedCard.getReplacementEffectForStaticAbility(rep, stAb));
                     }
                 }
 
                 // add triggers
                 if (addTriggers != null) {
                     for (final String trigger : addTriggers) {
-                        final Trigger actualTrigger = TriggerHandler.parseTrigger(trigger, affectedCard, false, stAb);
+                        final Trigger actualTrigger = affectedCard.getTriggerForStaticAbility(trigger, stAb);
                         // if the trigger has Execute param, which most trigger gained by Static Abilties should have
                         // turn them into SpellAbility object before adding to card
                         // with that the TargetedCard does not need the Svars added to them anymore
@@ -888,7 +895,7 @@ public final class StaticAbilityContinuous {
                             s = TextUtil.fastReplace(s, "ConvertedManaCost", costcmc);
                         }
 
-                        addedStaticAbility.add(StaticAbility.create(s, affectedCard, stAb.getCardState(), false));
+                        addedStaticAbility.add(affectedCard.getStaticAbilityForStaticAbility(s, stAb));
                     }
                 }
 
@@ -937,25 +944,32 @@ public final class StaticAbilityContinuous {
 
             if (controllerMayPlay && (mayPlayLimit == null || stAb.getMayPlayTurn() < mayPlayLimit)) {
                 String mayPlayAltCost = mayPlayAltManaCost;
+                boolean additional = mayPlayAltCost != null && mayPlayAltCost.contains("RegularCost");
 
-                if (mayPlayAltCost != null && mayPlayAltCost.contains("ConvertedManaCost")) {
-                    final String costcmc = Integer.toString(affectedCard.getCMC());
-                    mayPlayAltCost = mayPlayAltCost.replace("ConvertedManaCost", costcmc);
+                if (mayPlayAltCost != null) {
+                    if (mayPlayAltCost.contains("ConvertedManaCost")) {
+                        final String costcmc = Integer.toString(affectedCard.getCMC());
+                        mayPlayAltCost = mayPlayAltCost.replace("ConvertedManaCost", costcmc);
+                    } else if (additional) {
+                        final String regCost = affectedCard.getManaCost().getShortString();
+                        mayPlayAltCost = mayPlayAltManaCost.replace("RegularCost", regCost);
+
+                    }
                 }
 
                 Player mayPlayController = params.containsKey("MayPlayPlayer") ?
                     AbilityUtils.getDefinedPlayers(affectedCard, params.get("MayPlayPlayer"), stAb).get(0) :
                     controller;
                 affectedCard.setMayPlay(mayPlayController, mayPlayWithoutManaCost,
-                        mayPlayAltCost != null ? new Cost(mayPlayAltCost, false) : null,
-                        mayPlayWithFlash, mayPlayGrantZonePermissions, stAb);
+                        mayPlayAltCost != null ? new Cost(mayPlayAltCost, false) : null, additional, mayPlayWithFlash,
+                        mayPlayGrantZonePermissions, stAb);
 
                 // If the MayPlay effect only affected itself, check if it is in graveyard and give other player who cast Shaman's Trance MayPlay
                 if (stAb.hasParam("Affected") && stAb.getParam("Affected").equals("Card.Self") && affectedCard.isInZone(ZoneType.Graveyard)) {
                     for (final Player p : game.getPlayers()) {
                         if (p.hasKeyword("Shaman's Trance") && mayPlayController != p) {
                             affectedCard.setMayPlay(p, mayPlayWithoutManaCost,
-                                    mayPlayAltCost != null ? new Cost(mayPlayAltCost, false) : null,
+                                    mayPlayAltCost != null ? new Cost(mayPlayAltCost, false) : null, additional,
                                     mayPlayWithFlash, mayPlayGrantZonePermissions, stAb);
                         }
                     }

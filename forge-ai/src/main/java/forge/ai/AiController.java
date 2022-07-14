@@ -88,6 +88,13 @@ public class AiController {
     private SpellAbilityPicker simPicker;
     private int lastAttackAggression;
 
+    public AiController(final Player computerPlayer, final Game game0) {
+        player = computerPlayer;
+        game = game0;
+        memory = new AiCardMemory();
+        simPicker = new SpellAbilityPicker(game, player);
+    }
+
     public boolean canCheatShuffle() {
         return cheatShuffle;
     }
@@ -139,13 +146,6 @@ public class AiController {
             aiAtk.declareAttackers(predictedCombatNextTurn);
         }
         return predictedCombatNextTurn;
-    }
-
-    public AiController(final Player computerPlayer, final Game game0) {
-        player = computerPlayer;
-        game = game0;
-        memory = new AiCardMemory();
-        simPicker = new SpellAbilityPicker(game, player);
     }
 
     private List<SpellAbility> getPossibleETBCounters() {
@@ -642,20 +642,18 @@ public class AiController {
             // Ideally this should cast canPlaySa to determine that the AI is truly able/willing to cast a spell,
             // but that is currently difficult to implement due to various side effects leading to stack overflow.
             Card host = sa.getHostCard();
-            if (!ComputerUtil.castPermanentInMain1(player, sa) && host != null && !host.isLand() && ComputerUtilCost.canPayCost(sa, player, false)) {
-                if (sa instanceof SpellPermanent) {
-                    return sa;
-                }
+            if (sa instanceof SpellPermanent && host != null && !host.isLand() && !ComputerUtil.castPermanentInMain1(player, sa) && ComputerUtilCost.canPayCost(sa, player, false)) {
+                return sa;
             }
         }
         return null;
     }
 
-    public boolean reserveManaSources(SpellAbility sa) {
-        return reserveManaSources(sa, PhaseType.MAIN2, false, false, null);
-    }
     public boolean reserveManaSourcesForNextSpell(SpellAbility sa, SpellAbility exceptForSa) {
         return reserveManaSources(sa, null, false, true, exceptForSa);
+    }
+    public boolean reserveManaSources(SpellAbility sa) {
+        return reserveManaSources(sa, PhaseType.MAIN2, false, false, null);
     }
     public boolean reserveManaSources(SpellAbility sa, PhaseType phaseType, boolean enemy) {
         return reserveManaSources(sa, phaseType, enemy, true, null);
@@ -711,9 +709,10 @@ public class AiController {
             return AiPlayDecision.CantPlaySa;
         }
 
+        final Card host = sa.getHostCard();
+
         // Check a predefined condition
         if (sa.hasParam("AICheckSVar")) {
-            final Card host = sa.getHostCard();
             final String svarToCheck = sa.getParam("AICheckSVar");
             String comparator = "GE";
             int compareTo = 1;
@@ -736,7 +735,7 @@ public class AiController {
         }
 
         int oldCMC = -1;
-        boolean xCost = sa.costHasX() || sa.getHostCard().hasStartOfKeyword("Strive");
+        boolean xCost = sa.costHasX() || host.hasStartOfKeyword("Strive");
         if (!xCost) {
             if (!ComputerUtilCost.canPayCost(sa, player, sa.isTrigger())) {
                 // for most costs, it's OK to check if they can be paid early in order to avoid running a heavy API check
@@ -750,15 +749,15 @@ public class AiController {
         }
 
         // state needs to be switched here so API checks evaluate the right face
-        CardStateName currentState = sa.getCardState() != null && sa.getHostCard().getCurrentStateName() != sa.getCardStateName() && !sa.getHostCard().isInPlay() ? sa.getHostCard().getCurrentStateName() : null;
+        CardStateName currentState = sa.getCardState() != null && host.getCurrentStateName() != sa.getCardStateName() && !host.isInPlay() ? host.getCurrentStateName() : null;
         if (currentState != null) {
-            sa.getHostCard().setState(sa.getCardStateName(), false);
+            host.setState(sa.getCardStateName(), false);
         }
 
         AiPlayDecision canPlay = canPlaySa(sa); // this is the "heaviest" check, which also sets up targets, defines X, etc.
 
         if (currentState != null) {
-            sa.getHostCard().setState(currentState, false);
+            host.setState(currentState, false);
         }
 
         if (canPlay != AiPlayDecision.WillPlay) {
@@ -768,10 +767,10 @@ public class AiController {
         // Account for possible Ward after the spell is fully targeted
         // TODO: ideally, this should be done while targeting, so that a different target can be preferred if the best
         // one is warded and can't be paid for.
-        if (sa.usesTargeting()) {
+        if (sa.usesTargeting() && CardFactoryUtil.isCounterable(host)) {
             for (Card tgt : sa.getTargets().getTargetCards()) {
                 // TODO some older cards don't use the keyword, so check for trigger instead
-                if (tgt.hasKeyword(Keyword.WARD) && tgt.isInPlay() && tgt.getController().isOpponentOf(sa.getHostCard().getController())) {
+                if (tgt.hasKeyword(Keyword.WARD) && tgt.isInPlay() && tgt.getController().isOpponentOf(host.getController())) {
                     int amount = 0;
                     Cost wardCost = ComputerUtilCard.getTotalWardCost(tgt);
                     if (wardCost.hasManaCost()) {
@@ -889,6 +888,10 @@ public class AiController {
             spellHost.setLKICMC(-1); // to reset the cmc
             spellHost.setLastKnownZone(game.getStackZone()); // need to add to stack to make check Restrictions respect stack cmc
             spellHost.setCastFrom(card.getZone());
+        }
+        // TODO maybe other location for this?
+        if (!sa.isLegalAfterStack()) {
+            return AiPlayDecision.AnotherTime;
         }
         if (!sa.checkRestrictions(spellHost, player)) {
             return AiPlayDecision.AnotherTime;
@@ -1323,7 +1326,7 @@ public class AiController {
         return discardList;
     }
 
-    public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message) {
+    public boolean confirmAction(SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
         if (mode == PlayerActionConfirmMode.AlternativeDamageAssignment) {
             return true;
         }
@@ -1336,7 +1339,7 @@ public class AiController {
                     mode);
             throw new IllegalArgumentException(exMsg);
         }
-        return SpellApiToAi.Converter.get(api).confirmAction(player, sa, mode, message);
+        return SpellApiToAi.Converter.get(api).confirmAction(player, sa, mode, message, params);
     }
 
     public boolean confirmBidAction(SpellAbility sa, PlayerActionConfirmMode mode, String message, int bid, Player winner) {
@@ -1774,7 +1777,7 @@ public class AiController {
         }
         return toExile;
     }
-    
+
     public boolean doTrigger(SpellAbility spell, boolean mandatory) {
         if (spell instanceof WrappedAbility)
             return doTrigger(((WrappedAbility)spell).getWrappedAbility(), mandatory);
@@ -1786,7 +1789,7 @@ public class AiController {
         }
         return false;
     }
-    
+
     /**
      * Ai should run.
      *
@@ -1841,12 +1844,11 @@ public class AiController {
         } else if (effect.hasParam("AICheckDredge")) {
             return player.getCardsIn(ZoneType.Library).size() > 8 || player.isCardInPlay("Laboratory Maniac");
         } else return sa != null && doTrigger(sa, false);
-
     }
 
     public List<SpellAbility> chooseSaToActivateFromOpeningHand(List<SpellAbility> usableFromOpeningHand) {
         // AI would play everything. But limits to one copy of (Leyline of Singularity) and (Gemstone Caverns)
-        
+
         List<SpellAbility> result = Lists.newArrayList();
         for (SpellAbility sa : usableFromOpeningHand) {
             // Is there a better way for the AI to decide this?
@@ -1854,7 +1856,7 @@ public class AiController {
                 result.add(sa);
             }
         }
-        
+
         boolean hasLeyline1 = false;
         SpellAbility saGemstones = null;
 
@@ -1880,7 +1882,7 @@ public class AiController {
             result.remove(saGemstones);
             result.add(saGemstones);
         }
-        
+
         return result;
     }
 
@@ -1927,8 +1929,8 @@ public class AiController {
             return Math.min(player.getLife() -1,MyRandom.getRandom().nextInt(Math.max(player.getLife() / 3, player.getWeakestOpponent().getLife())) + 1);
         } else if ("HighestGetCounter".equals(logic)) {
             return MyRandom.getRandom().nextInt(3);
-        } else if (source.hasSVar("EnergyToPay")) {
-            return AbilityUtils.calculateAmount(source, source.getSVar("EnergyToPay"), sa);
+        } else if (sa.hasSVar("EnergyToPay")) {
+            return AbilityUtils.calculateAmount(source, sa.getSVar("EnergyToPay"), sa);
         } else if ("Vermin".equals(logic)) {
             return MyRandom.getRandom().nextInt(Math.max(player.getLife() - 5, 0));
         } else if ("SweepCreatures".equals(logic)) {

@@ -131,10 +131,9 @@ public class ComputerUtil {
 
         sa = GameActionUtil.addExtraKeywordCost(sa);
 
-        if (sa.getApi() == ApiType.Charm && !sa.isWrapper()) {
-            if (!CharmEffect.makeChoices(sa)) {
-                return false;
-            }
+        if (sa.getApi() == ApiType.Charm && !CharmEffect.makeChoices(sa)) {
+            // 603.3c If no mode is chosen, the ability is removed from the stack.
+            return false;
         }
         if (chooseTargets != null) {
             chooseTargets.run();
@@ -250,6 +249,13 @@ public class ComputerUtil {
             return false;
 
         final Card source = sa.getHostCard();
+
+        Zone fromZone = game.getZoneOf(source);
+        int zonePosition = 0;
+        if (fromZone != null) {
+            zonePosition = fromZone.getCards().indexOf(source);
+        }
+
         if (sa.isSpell() && !source.isCopiedSpell()) {
             sa.setHostCard(game.getAction().moveToStack(source, sa));
         }
@@ -257,11 +263,18 @@ public class ComputerUtil {
         sa = GameActionUtil.addExtraKeywordCost(sa);
 
         final Cost cost = sa.getPayCosts();
+        final CostPayment pay = new CostPayment(cost, sa);
+
+        // do this after card got added to stack
+        if (!sa.checkRestrictions(ai)) {
+            GameActionUtil.rollbackAbility(sa, fromZone, zonePosition, pay, source);
+            return false;
+        }
+
         if (cost == null) {
             ComputerUtilMana.payManaCost(ai, sa, false);
             game.getStack().add(sa);
         } else {
-            final CostPayment pay = new CostPayment(cost, sa);
             if (pay.payComputerCosts(new AiCostDecision(ai, sa, false))) {
                 game.getStack().add(sa);
             }
@@ -292,17 +305,30 @@ public class ComputerUtil {
         newSA = GameActionUtil.addExtraKeywordCost(newSA);
 
         final Card source = newSA.getHostCard();
+
+        Zone fromZone = game.getZoneOf(source);
+        int zonePosition = 0;
+        if (fromZone != null) {
+            zonePosition = fromZone.getCards().indexOf(source);
+        }
+
         if (newSA.isSpell() && !source.isCopiedSpell()) {
             newSA.setHostCard(game.getAction().moveToStack(source, newSA));
 
-            if (newSA.getApi() == ApiType.Charm && !newSA.isWrapper()) {
-                if (!CharmEffect.makeChoices(newSA)) {
-                    return false;
-                }
+            if (newSA.getApi() == ApiType.Charm && !CharmEffect.makeChoices(newSA)) {
+                // 603.3c If no mode is chosen, the ability is removed from the stack.
+                return false;
             }
         }
 
         final CostPayment pay = new CostPayment(newSA.getPayCosts(), newSA);
+
+        // do this after card got added to stack
+        if (!sa.checkRestrictions(ai)) {
+            GameActionUtil.rollbackAbility(sa, fromZone, zonePosition, pay, source);
+            return false;
+        }
+        
         pay.payComputerCosts(new AiCostDecision(ai, newSA, false));
 
         game.getStack().add(newSA);
@@ -329,9 +355,6 @@ public class ComputerUtil {
             }
 
             AbilityUtils.resolve(sa);
-
-            // destroys creatures if they have lethal damage, etc..
-            //game.getAction().checkStateEffects();
         }
     }
 
@@ -827,7 +850,7 @@ public class ComputerUtil {
                         }
                     }
 
-                    if ("DesecrationDemon".equals(source.getParam("AILogic"))) {
+                    if ("DesecrationDemon".equals(logic)) {
                         sacThreshold = SpecialCardAi.DesecrationDemon.getSacThreshold();
                     } else if (considerSacThreshold != -1) {
                         sacThreshold = considerSacThreshold;
@@ -1077,7 +1100,7 @@ public class ComputerUtil {
                     playNow = false;
                     break;
                 }
-                if (!playNow && c.isCreature() && ComputerUtilCombat.canAttackNextTurn(c) && c.canBeAttached(card)) {
+                if (!playNow && c.isCreature() && ComputerUtilCombat.canAttackNextTurn(c) && c.canBeAttached(card, null)) {
                     playNow = true;
                 }
             }
@@ -1227,12 +1250,12 @@ public class ComputerUtil {
         final Game game = sa.getActivatingPlayer().getGame();
         final PhaseHandler ph = game.getPhaseHandler();
 
-        return (sa.getHostCard().isCreature()
+        return sa.getHostCard().isCreature()
                 && sa.getPayCosts().hasTapCost()
                 && (ph.getPhase().isBefore(PhaseType.COMBAT_DECLARE_BLOCKERS)
                         && !ph.getNextTurn().equals(sa.getActivatingPlayer()))
                 && !sa.getHostCard().hasSVar("EndOfTurnLeavePlay")
-                && !sa.hasParam("ActivationPhases"));
+                && !sa.hasParam("ActivationPhases");
     }
 
     //returns true if it's better to wait until blockers are declared).
@@ -1663,7 +1686,7 @@ public class ComputerUtil {
         }
 
         if (saviourApi == ApiType.PutCounter || saviourApi == ApiType.PutCounterAll) {
-            if (saviour != null && saviour.getParam("CounterType").equals("P1P1")) {
+            if (saviour != null && saviour.hasParam("CounterType") && saviour.getParam("CounterType").equals("P1P1")) {
                 toughness = AbilityUtils.calculateAmount(saviour.getHostCard(), saviour.getParamOrDefault("CounterNum", "1"), saviour);
             } else {
                 return threatened;
@@ -1676,7 +1699,7 @@ public class ComputerUtil {
         // Lethal Damage => prevent damage/regeneration/bounce/shroud
         if (threatApi == ApiType.DealDamage || threatApi == ApiType.DamageAll) {
             // If PredictDamage is >= Lethal Damage
-            final int dmg = AbilityUtils.calculateAmount(topStack.getHostCard(),
+            final int dmg = AbilityUtils.calculateAmount(source,
                     topStack.getParam("NumDmg"), topStack);
             final SpellAbility sub = topStack.getSubAbility();
             boolean noRegen = false;
@@ -1756,7 +1779,7 @@ public class ComputerUtil {
                 && (saviourApi == ApiType.ChangeZone || saviourApi == ApiType.Pump || saviourApi == ApiType.PumpAll
                 || saviourApi == ApiType.Protection || saviourApi == ApiType.PutCounter || saviourApi == ApiType.PutCounterAll
                 || saviourApi == null)) {
-            final int dmg = -AbilityUtils.calculateAmount(topStack.getHostCard(),
+            final int dmg = -AbilityUtils.calculateAmount(source,
                     topStack.getParam("NumDef"), topStack);
             for (final Object o : objects) {
                 if (o instanceof Card) {
@@ -2057,7 +2080,7 @@ public class ComputerUtil {
         final CardCollectionView castables = CardLists.filter(handList, new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
-                return c.getManaCost().getCMC() <= 0 || c.getManaCost().getCMC() > landSize;
+                return c.getManaCost().getCMC() <= 0 || c.getManaCost().getCMC() <= landSize;
             }
         });
 
@@ -2601,8 +2624,7 @@ public class ComputerUtil {
     }
 
     public static CardCollection getSafeTargets(final Player ai, SpellAbility sa, CardCollectionView validCards) {
-        CardCollection safeCards = new CardCollection(validCards);
-        safeCards = CardLists.filter(safeCards, new Predicate<Card>() {
+        CardCollection safeCards = CardLists.filter(validCards, new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
                 if (c.getController() == ai) {
@@ -2615,8 +2637,7 @@ public class ComputerUtil {
     }
 
     public static Card getKilledByTargeting(final SpellAbility sa, CardCollectionView validCards) {
-        CardCollection killables = new CardCollection(validCards);
-        killables = CardLists.filter(killables, new Predicate<Card>() {
+        CardCollection killables = CardLists.filter(validCards, new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
                 return c.getController() != sa.getActivatingPlayer() && c.getSVar("Targeting").equals("Dies");
@@ -2803,7 +2824,7 @@ public class ComputerUtil {
         }
 
         return type.is(CounterEnumType.AWAKENING) || type.is(CounterEnumType.MANIFESTATION) || type.is(CounterEnumType.PETRIFICATION)
-                || type.is(CounterEnumType.TRAINING);
+                || type.is(CounterEnumType.TRAINING) || type.is(CounterEnumType.GHOSTFORM);
     }
 
     public static Player evaluateBoardPosition(final List<Player> listToEvaluate) {

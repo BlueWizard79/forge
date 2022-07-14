@@ -20,11 +20,13 @@ package forge.game.trigger;
 import java.util.*;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimaps;
 
 import forge.game.CardTraitBase;
+import forge.game.CardTraitPredicates;
 import forge.game.Game;
 import forge.game.GlobalRuleChange;
 import forge.game.IHasSVars;
@@ -99,7 +101,9 @@ public class TriggerHandler {
     }
 
     public final void handlePlayerDefinedDelTriggers(final Player player) {
-        delayedTriggers.addAll(playerDefinedDelayedTriggers.removeAll(player));
+        final List<Trigger> playerTriggers = playerDefinedDelayedTriggers.removeAll(player);
+        Iterables.addAll(thisTurnDelayedTriggers, Iterables.filter(playerTriggers, CardTraitPredicates.hasParam("ThisTurn")));
+        delayedTriggers.addAll(playerTriggers);
     }
 
     public final void suppressMode(final TriggerType mode) {
@@ -239,7 +243,8 @@ public class TriggerHandler {
                     TriggerType.Exploited.equals(t.getMode()) ||
                     TriggerType.Sacrificed.equals(t.getMode()) ||
                     TriggerType.Destroyed.equals(t.getMode()) ||
-                    (TriggerType.ChangesZone.equals(t.getMode()) && "Battlefield".equals(t.getParam("Origin")))) { // TODO needs additional logic in case origin=Any
+                    ((TriggerType.ChangesZone.equals(t.getMode()) || TriggerType.ChangesZoneAll.equals(t.getMode()))
+                            && "Battlefield".equals(t.getParam("Origin")))) { // TODO needs additional logic in case origin=Any
                 registerOneTrigger(t);
             }
         }
@@ -339,15 +344,6 @@ public class TriggerHandler {
 
     public void clearWaitingTriggers() {
         waitingTriggers.clear();
-    }
-
-    public void resetTurnTriggerState() {
-        for (final Trigger t : activeTriggers) {
-            t.resetTurnState();
-        }
-        for (final Trigger t : delayedTriggers) {
-            t.resetTurnState();
-        }
     }
 
     private boolean runNonStaticTriggersForPlayer(final Player player, final TriggerWaiting wt, final List<Trigger> delayedTriggersWorkingCopy) {
@@ -509,6 +505,12 @@ public class TriggerHandler {
         // All tests passed, execute ability.
         if (regtrig instanceof TriggerTapsForMana) {
             final SpellAbility abMana = (SpellAbility) runParams.get(AbilityKey.AbilityMana);
+            if (null != abMana && null != abMana.getManaPart()) {
+                abMana.setUndoable(false);
+            }
+        }
+        if (regtrig instanceof TriggerSpellAbilityCastOrCopy) {
+            final SpellAbility abMana = (SpellAbility) runParams.get(AbilityKey.CastSA);
             if (null != abMana && null != abMana.getManaPart()) {
                 abMana.setUndoable(false);
             }

@@ -166,10 +166,6 @@ public abstract class PumpAiBase extends SpellAbilityAi {
                 return false;
             }
             return ph.isPlayerTurn(ai) || (combat != null && combat.isAttacking(card) && card.getNetCombatDamage() > 0);
-        } else if (keyword.endsWith("CARDNAME attacks each turn if able.")
-                || keyword.endsWith("CARDNAME attacks each combat if able.")) {
-            return !ph.isPlayerTurn(ai) && CombatUtil.canAttack(card, ai) && CombatUtil.canBeBlocked(card, ai)
-                    && !ph.getPhase().isAfter(PhaseType.COMBAT_DECLARE_ATTACKERS);
         } else if (keyword.endsWith("CARDNAME can't be regenerated.")) {
             if (card.getShieldCount() > 0) {
                 return true;
@@ -403,10 +399,6 @@ public abstract class PumpAiBase extends SpellAbilityAi {
                     && newPower > 0
                     && !CardLists.getType(opp.getLandsInPlay(), "Forest").isEmpty()
                     && Iterables.any(opp.getCreaturesInPlay(), CardPredicates.possibleBlockers(card));
-        } else if (keyword.endsWith("CARDNAME can attack as though it didn't have defender.")) {
-            return ph.isPlayerTurn(ai) && card.hasKeyword(Keyword.DEFENDER)
-                    && !ph.getPhase().isAfter(PhaseType.COMBAT_BEGIN)
-                    && !card.isTapped() && newPower > 0;
         } else if (keyword.equals("Prevent all combat damage that would be dealt to CARDNAME.")) {
             return combat != null && (combat.isBlocking(card) || combat.isBlocked(card));
         } else if (keyword.equals("Menace")) {
@@ -432,7 +424,7 @@ public abstract class PumpAiBase extends SpellAbilityAi {
             }
         });
         return list;
-    } // getPumpCreatures()
+    }
 
     /**
      * <p>
@@ -523,7 +515,7 @@ public abstract class PumpAiBase extends SpellAbilityAi {
         }
 
         return list;
-    } // getCurseCreatures()
+    }
 
     protected boolean containsNonCombatKeyword(final List<String> keywords) {
         for (final String keyword : keywords) {
