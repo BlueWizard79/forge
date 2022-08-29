@@ -366,7 +366,9 @@ public class GameAction {
                 }
             }
 
-            if (zoneFrom == null) {
+            // in addition to actual tokens, cards "made" by digital-only mechanics
+            // are also added to inbound tokens so their etb replacements will work
+            if (zoneFrom == null || zoneFrom.is(ZoneType.None)) {
                 copied.getOwner().addInboundToken(copied);
             }
 
@@ -606,6 +608,10 @@ public class GameAction {
         if (c.hasIntensity()) {
             copied.setIntensity(c.getIntensity(false));
         }
+        // specialize is perpetual
+        if (c.isSpecialized()) {
+            copied.setState(c.getCurrentStateName(), false);
+        }
 
         // update state for view
         copied.updateStateForView();
@@ -686,7 +692,7 @@ public class GameAction {
         }
 
         if (fromBattlefield) {
-            if (!c.isRealToken()) {
+            if (!c.isRealToken() && !c.isSpecialized()) {
                 copied.setState(CardStateName.Original, true);
             }
             // Soulbond unpairing
@@ -2413,7 +2419,7 @@ public class GameAction {
         }
 
         // for Zangief do this before runWaitingTriggers DamageDone
-        damageMap.triggerExcessDamage(isCombat, lethalDamage, game);
+        damageMap.triggerExcessDamage(isCombat, lethalDamage, game, lkiCache);
 
         // lose life simultaneously
         if (isCombat) {

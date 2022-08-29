@@ -15,11 +15,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Clipboard;
-import com.badlogic.gdx.utils.ScreenUtils;
-import forge.adventure.scene.ForgeScene;
-import forge.adventure.scene.GameScene;
-import forge.adventure.scene.Scene;
-import forge.adventure.scene.SceneType;
+import forge.adventure.scene.*;
 import forge.adventure.stage.MapStage;
 import forge.adventure.util.Config;
 import forge.animation.ForgeAnimation;
@@ -52,10 +48,7 @@ import forge.toolbox.*;
 import forge.util.*;
 
 import java.io.File;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
 
 public class Forge implements ApplicationListener {
     public static final String CURRENT_VERSION = "1.6.53.001";
@@ -123,6 +116,7 @@ public class Forge implements ApplicationListener {
     private static Cursor cursor0, cursor1, cursor2, cursorA0, cursorA1, cursorA2;
     public static boolean forcedEnglishonCJKMissing = false;
     public static boolean adventureLoaded = false;
+    public static boolean createNewAdventureMap = false;
     private static Localizer localizer;
 
     public static ApplicationListener getApp(Clipboard clipboard0, IDeviceAdapter deviceAdapter0, String assetDir0, boolean value, boolean androidOrientation, int totalRAM, boolean isTablet, int AndroidAPI, String AndroidRelease, String deviceName) {
@@ -328,6 +322,9 @@ public class Forge implements ApplicationListener {
             altZoneTabs = true;
         //pixl cursor for adventure
         setCursor(null, "0");
+        loadAdventureResources(true);
+    }
+    private static void loadAdventureResources(boolean startScene) {
         try {
             if(!adventureLoaded)
             {
@@ -336,7 +333,8 @@ public class Forge implements ApplicationListener {
                 }
                 adventureLoaded=true;
             }
-            switchScene(SceneType.StartScene.instance);
+            if (startScene)
+                switchScene(SceneType.StartScene.instance);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -362,19 +360,28 @@ public class Forge implements ApplicationListener {
                 //load Drafts
                 preloadBoosterDrafts();
                 FThreads.invokeInEdtLater(() -> {
+                    if (selector.equals("Adventure")) {
+                        //preload adventure resources to speedup startup if selector is adventure. Needs in edt when setting up worldstage
+                        loadAdventureResources(false);
+                    }
                     //selection transition
                     setTransitionScreen(new TransitionScreen(() -> {
-                        if (selector.equals("Classic")) {
-                            openHomeDefault();
-                            clearSplashScreen();
-                        } else if (selector.equals("Adventure")) {
+                        if (createNewAdventureMap) {
                             openAdventure();
                             clearSplashScreen();
-                        } else if (splashScreen != null) {
-                            splashScreen.setShowModeSelector(true);
-                        } else {//default mode in case splashscreen is null at some point as seen on resume..
-                            openHomeDefault();
-                            clearSplashScreen();
+                        } else {
+                            if (selector.equals("Classic")) {
+                                openHomeDefault();
+                                clearSplashScreen();
+                            } else if (selector.equals("Adventure")) {
+                                openAdventure();
+                                clearSplashScreen();
+                            } else if (splashScreen != null) {
+                                splashScreen.setShowModeSelector(true);
+                            } else {//default mode in case splashscreen is null at some point as seen on resume..
+                                openHomeDefault();
+                                clearSplashScreen();
+                            }
                         }
                         //start background music
                         SoundSystem.instance.setBackgroundMusic(MusicPlaylist.MENUS);
@@ -390,13 +397,13 @@ public class Forge implements ApplicationListener {
         if (GuiBase.isAndroid())
             return;
         if (isMobileAdventureMode) {
-            if (cursorA0 != null && name == "0") {
+            if (cursorA0 != null && Objects.equals(name, "0")) {
                 setGdxCursor(cursorA0);
                 return;
-            } else if (cursorA1 != null && name == "1") {
+            } else if (cursorA1 != null && Objects.equals(name, "1")) {
                 setGdxCursor(cursorA1);
                 return;
-            } else if (cursorA2 != null && name == "2") {
+            } else if (cursorA2 != null && Objects.equals(name, "2")) {
                 setGdxCursor(cursorA2);
                 return;
             }
@@ -750,8 +757,19 @@ public class Forge implements ApplicationListener {
         splashScreen = null;
     }
     public static TextureRegion takeScreenshot() {
-        TextureRegion screenShot = ScreenUtils.getFrameBufferTexture();
-        return screenShot;
+        FThreads.invokeInEdtNowOrLater(() -> {
+            if (lastScreenTexture != null)
+                lastScreenTexture.getTexture().dispose();
+            //some Android device don't support RGBA on FrameBuffer like Unisoc T618 with Mali G52 MP2 and maybe others...
+            Texture texture = new Texture(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), Pixmap.Format.RGB888);
+            Gdx.gl.glEnable(GL20.GL_TEXTURE_2D);
+            Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0);
+            texture.bind();
+            Gdx.gl.glCopyTexImage2D(GL20.GL_TEXTURE_2D, 0, GL20.GL_RGB, 0, 0,Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), 0);
+            Gdx.gl.glDisable(GL20.GL_TEXTURE_2D);
+            lastScreenTexture = new TextureRegion(texture, 0, Gdx.graphics.getHeight(), Gdx.graphics.getWidth(), -Gdx.graphics.getHeight());
+        });
+        return lastScreenTexture;
     }
 
     private static void setCurrentScreen(FScreen screen0) {
@@ -887,6 +905,8 @@ public class Forge implements ApplicationListener {
             //check if sentry is enabled, if not it will call the gui interface but here we end the graphics so we only send it via sentry..
             if (BugReporter.isSentryEnabled())
                 BugReporter.reportException(ex);
+            else
+                ex.printStackTrace();
         }
         if (showFPS)
             frameRate.render();
@@ -944,10 +964,10 @@ public class Forge implements ApplicationListener {
     @Override
     public void dispose() {
         if (currentScreen != null) {
-            FOverlay.hideAll();
             currentScreen.onClose(null);
             currentScreen = null;
         }
+        FOverlay.hideAll();
         assets.dispose();
         Dscreens.clear();
         graphics.dispose();
@@ -958,7 +978,6 @@ public class Forge implements ApplicationListener {
         }
     }
     /** Retrieve assets.
-     * @param other if set to true returns otherAssets otherwise returns cardAssets
      */
     public static Assets getAssets() {
         return ((Forge)Gdx.app.getApplicationListener()).assets;
@@ -974,18 +993,15 @@ public class Forge implements ApplicationListener {
         if (newScene instanceof GameScene)
             MapStage.getInstance().clearIsInMap();
         currentScene = newScene;
+
         currentScene.enter();
         return true;
     }
 
     protected static void storeScreen() {
         if (!(currentScene instanceof ForgeScene)) {
-            if (lastScreenTexture != null)
-                lastScreenTexture.getTexture().dispose();
-            lastScreenTexture = Forge.takeScreenshot();
+            Forge.takeScreenshot();
         }
-
-
     }
 
     public static Scene switchToLast() {

@@ -11,11 +11,7 @@ import forge.adventure.character.EnemySprite;
 import forge.adventure.data.BiomeData;
 import forge.adventure.data.EnemyData;
 import forge.adventure.data.WorldData;
-import forge.adventure.scene.DuelScene;
-import forge.adventure.scene.RewardScene;
-import forge.adventure.scene.Scene;
-import forge.adventure.scene.SceneType;
-import forge.adventure.scene.TileMapScene;
+import forge.adventure.scene.*;
 import forge.adventure.util.Current;
 import forge.adventure.util.SaveFileContent;
 import forge.adventure.util.SaveFileData;
@@ -62,6 +58,8 @@ public class WorldStage extends GameStage implements SaveFileContent {
     }
 
 
+    final Rectangle tempBoundingRect=new Rectangle();
+    final Vector2 enemyMoveVector =new Vector2();
     @Override
     protected void onActing(float delta) {
         if (player.isMoving()) {
@@ -79,7 +77,33 @@ public class WorldStage extends GameStage implements SaveFileContent {
                     continue;
                 }
                 EnemySprite mob=pair.getValue();
-                mob.moveTo(player,delta);
+
+                enemyMoveVector.set(player.getX(), player.getY()).sub(mob.pos());
+                enemyMoveVector.setLength(mob.speed()*delta);
+                tempBoundingRect.set(mob.getX()+ enemyMoveVector.x,mob.getY()+ enemyMoveVector.y,mob.getWidth(),mob.getHeight()*mob.getCollisionHeight());
+
+                if(!mob.getData().flying && WorldSave.getCurrentSave().getWorld().collidingTile(tempBoundingRect))//if direct path is not possible
+                {
+                    tempBoundingRect.set(mob.getX()+ enemyMoveVector.x,mob.getY(),mob.getWidth(),mob.getHeight());
+                    if(WorldSave.getCurrentSave().getWorld().collidingTile(tempBoundingRect))//if only x path is not possible
+                    {
+                        tempBoundingRect.set(mob.getX(),mob.getY()+ enemyMoveVector.y,mob.getWidth(),mob.getHeight());
+                        if(!WorldSave.getCurrentSave().getWorld().collidingTile(tempBoundingRect))//if y path is possible
+                        {
+                            mob.moveBy(0, enemyMoveVector.y);
+                        }
+                    }
+                    else
+                    {
+
+                        mob.moveBy(enemyMoveVector.x, 0);
+                    }
+                }
+                else
+                {
+                    mob.moveBy(enemyMoveVector.x, enemyMoveVector.y);
+                }
+
                 if (player.collideWith(mob)) {
                     player.setAnimation(CharacterSprite.AnimationTypes.Attack);
                     mob.setAnimation(CharacterSprite.AnimationTypes.Attack);
@@ -128,25 +152,19 @@ public class WorldStage extends GameStage implements SaveFileContent {
         if (playerIsWinner) {
             player.setAnimation(CharacterSprite.AnimationTypes.Attack);
             currentMob.setAnimation(CharacterSprite.AnimationTypes.Death);
-            startPause(0.5f, new Runnable() {
-                @Override
-                public void run() {
-                    ((RewardScene) SceneType.RewardScene.instance).loadRewards(currentMob.getRewards(), RewardScene.Type.Loot, null);
-                    WorldStage.this.removeEnemy(currentMob);
-                    currentMob = null;
-                    Forge.switchScene(SceneType.RewardScene.instance);
-                }
+            startPause(0.5f, () -> {
+                ((RewardScene) SceneType.RewardScene.instance).loadRewards(currentMob.getRewards(), RewardScene.Type.Loot, null);
+                WorldStage.this.removeEnemy(currentMob);
+                currentMob = null;
+                Forge.switchScene(SceneType.RewardScene.instance);
             });
         } else {
             player.setAnimation(CharacterSprite.AnimationTypes.Hit);
             currentMob.setAnimation(CharacterSprite.AnimationTypes.Attack);
-            startPause(0.5f, new Runnable() {
-                @Override
-                public void run() {
-                    Current.player().defeated();
-                    WorldStage.this.removeEnemy(currentMob);
-                    currentMob = null;
-                }
+            startPause(0.5f, () -> {
+                Current.player().defeated();
+                WorldStage.this.removeEnemy(currentMob);
+                currentMob = null;
             });
 
         }
@@ -176,19 +194,11 @@ public class WorldStage extends GameStage implements SaveFileContent {
     public boolean isColliding(Rectangle boundingRect)
     {
 
-        World world = WorldSave.getCurrentSave().getWorld();
-        int currentBiome = World.highestBiome(world.getBiome((int) boundingRect.getX() / world.getTileSize(), (int) boundingRect.getY() / world.getTileSize()));
-        if(currentBiome==0)
-            return true;
-         currentBiome = World.highestBiome(world.getBiome((int) (boundingRect.getX()+boundingRect.getWidth()) / world.getTileSize(), (int) boundingRect.getY() / world.getTileSize()));
-        if(currentBiome==0)
-            return true;
-         currentBiome = World.highestBiome(world.getBiome((int) (boundingRect.getX()+boundingRect.getWidth())/ world.getTileSize(), (int) (boundingRect.getY()+boundingRect.getHeight()) / world.getTileSize()));
-        if(currentBiome==0)
-            return true;
-         currentBiome = World.highestBiome(world.getBiome((int) boundingRect.getX() / world.getTileSize(), (int) (boundingRect.getY()+boundingRect.getHeight()) / world.getTileSize()));
-
-        return (currentBiome==0);
+        return WorldSave.getCurrentSave().getWorld().collidingTile(boundingRect);
+    }
+    public boolean spawn(String enemy)
+    {
+        return spawn(WorldData.getEnemy(enemy));
     }
 
     private void HandleMonsterSpawn(float delta) {
@@ -211,17 +221,35 @@ public class WorldStage extends GameStage implements SaveFileContent {
         if (list == null)
             return;
         EnemyData enemyData = data.getEnemy( 1.0f );
+        spawn(enemyData);
+    }
+
+    private boolean spawn(EnemyData enemyData) {
         if (enemyData == null)
-            return;
+            return false;
         EnemySprite sprite = new EnemySprite(enemyData);
         float unit = Scene.getIntendedHeight() / 6f;
         Vector2 spawnPos = new Vector2(1, 1);
-        spawnPos.setLength(unit + (unit * 3) * rand.nextFloat());
-        spawnPos.setAngleDeg(360 * rand.nextFloat());
-        sprite.setX(player.getX() + spawnPos.x);
-        sprite.setY(player.getY() + spawnPos.y);
-        enemies.add(Pair.of(globalTimer,sprite));
-        foregroundSprites.addActor(sprite);
+        for(int j=0;j<10;j++)
+        {
+            spawnPos.setLength(unit + (unit * 3) * rand.nextFloat());
+            spawnPos.setAngleDeg(360 * rand.nextFloat());
+            for(int i=0;i<10;i++)
+            {
+                boolean enemyXIsBigger=sprite.getX()>player.getX();
+                boolean enemyYIsBigger=sprite.getY()>player.getY();
+                sprite.setX(player.getX() + spawnPos.x+(i*sprite.getWidth()*(enemyXIsBigger?1:-1)));//maybe find a better way to get spawn points
+                sprite.setY(player.getY() + spawnPos.y+(i*sprite.getHeight()*(enemyYIsBigger?1:-1)));
+                if(sprite.getData().flying || !WorldSave.getCurrentSave().getWorld().collidingTile(sprite.boundingRect()))
+                {
+                    enemies.add(Pair.of(globalTimer,sprite));
+                    foregroundSprites.addActor(sprite);
+                    return true;
+                }
+                int g=0;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -229,6 +257,17 @@ public class WorldStage extends GameStage implements SaveFileContent {
         background.setPlayerPos(player.getX(), player.getY());
         //spriteGroup.setCullingArea(new Rectangle(player.getX()-getViewport().getWorldHeight()/2,player.getY()-getViewport().getWorldHeight()/2,getViewport().getWorldHeight(),getViewport().getWorldHeight()));
         super.draw();
+        if (WorldSave.getCurrentSave().getPlayer().hasAnnounceFantasy()) {
+            MapStage.getInstance().showDeckAwardDialog("{BLINK=WHITE;RED}Chaos Mode!{ENDBLINK}\n"+ WorldSave.getCurrentSave().getPlayer().getName()+ "'s Deck: "+
+                    WorldSave.getCurrentSave().getPlayer().getSelectedDeck().getName()+
+                    "\nEnemy will use Preconstructed or Random Generated Decks. Genetic AI Decks will be available to some enemies on Hard difficulty.", WorldSave.getCurrentSave().getPlayer().getSelectedDeck());
+            WorldSave.getCurrentSave().getPlayer().clearAnnounceFantasy();
+        } else if (WorldSave.getCurrentSave().getPlayer().hasAnnounceCustom()) {
+            MapStage.getInstance().showDeckAwardDialog("{GRADIENT}Custom Deck Mode!{ENDGRADIENT}\n"+ WorldSave.getCurrentSave().getPlayer().getName()+ "'s Deck: "+
+                    WorldSave.getCurrentSave().getPlayer().getSelectedDeck().getName()+
+                    "\nSome enemies will use Genetic AI Decks randomly.", WorldSave.getCurrentSave().getPlayer().getSelectedDeck());
+            WorldSave.getCurrentSave().getPlayer().clearAnnounceCustom();
+        }
     }
 
     @Override
@@ -246,12 +285,6 @@ public class WorldStage extends GameStage implements SaveFileContent {
 
         }
         setBounds(WorldSave.getCurrentSave().getWorld().getWidthInPixels(), WorldSave.getCurrentSave().getWorld().getHeightInPixels());
-        if (WorldSave.getCurrentSave().getPlayer().hasAnnounceFantasy()) {
-            MapStage.getInstance().showDeckAwardDialog("Chaos Mode!\n"+ WorldSave.getCurrentSave().getPlayer().getName()+ "'s Deck: "+
-                    WorldSave.getCurrentSave().getPlayer().getSelectedDeck().getName()+
-                    "\nEnemy will use Preconstructed or Random Generated Decks. Genetic AI Decks will be available to some enemies on Hard difficulty.", WorldSave.getCurrentSave().getPlayer().getSelectedDeck());
-            WorldSave.getCurrentSave().getPlayer().clearAnnounceFantasy();
-        }
     }
 
     @Override

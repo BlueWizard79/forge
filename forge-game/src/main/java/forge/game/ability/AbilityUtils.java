@@ -12,16 +12,12 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.collect.*;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import forge.card.CardStateName;
 import forge.card.CardType;
@@ -2046,6 +2042,10 @@ public class AbilityUtils {
             return doXMath(ce == null ? 0 : getNumberOfTypes(ce), expr, c, ctb);
         }
 
+        if (sq[0].contains("CardNumNotedTypes")) {
+            return doXMath(c.getNumNotedTypes(), expr, c, ctb);
+        }
+
         if (sq[0].contains("CardNumColors")) {
             return doXMath(c.getColor().countColors(), expr, c, ctb);
         }
@@ -2737,10 +2737,10 @@ public class AbilityUtils {
                     SpellAbility sa = (SpellAbility) ctb;
                     if (sa.isReplacementAbility()) {
                         if (zones.get(0).equals(ZoneType.Battlefield)) {
-                            cardsInZones = sa.getLastStateBattlefield();
+                            cardsInZones = sa.getRootAbility().getLastStateBattlefield();
                             usedLastState = true;
                         } else if (zones.get(0).equals(ZoneType.Graveyard)) {
-                            cardsInZones = sa.getLastStateGraveyard();
+                            cardsInZones = sa.getRootAbility().getLastStateGraveyard();
                             usedLastState = true;
                         }
                     }
@@ -3478,8 +3478,8 @@ public class AbilityUtils {
         }
 
         if (value.equals("OpponentsAttackedThisTurn")) {
-            final List<Player> opps = player.getAttackedPlayersMyTurn();
-            return doXMath(opps == null ? 0 : opps.size(), m, source, ctb);
+            final Iterable<Player> opps = player.getAttackedPlayersMyTurn();
+            return doXMath(opps == null ? 0 : Iterables.size(opps), m, source, ctb);
         }
 
         if (value.equals("OpponentsAttackedThisCombat")) {

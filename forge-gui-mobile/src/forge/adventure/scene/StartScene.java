@@ -7,9 +7,11 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.utils.Align;
 import forge.Forge;
 import forge.adventure.stage.GameHUD;
+import forge.adventure.stage.GameStage;
 import forge.adventure.stage.MapStage;
 import forge.adventure.util.Config;
 import forge.adventure.util.Controls;
+import forge.adventure.util.Current;
 import forge.adventure.world.WorldSave;
 import forge.screens.TransitionScreen;
 
@@ -55,15 +57,18 @@ public class StartScene extends UIScene {
     public boolean Continue() {
         final String lastActiveSave = Config.instance().getSettingData().lastActiveSave;
 
-        if (WorldSave.isSafeFile(lastActiveSave) && WorldSave.load(WorldSave.filenameToSlot(lastActiveSave))) {
-            Forge.setTransitionScreen(new TransitionScreen(new Runnable() {
-                @Override
-                public void run() {
-                    Forge.switchScene(SceneType.GameScene.instance);
-                }
-            }, null, false, true));
-        } else {
-            Forge.clearTransitionScreen();
+        if (WorldSave.isSafeFile(lastActiveSave)) {
+            try {
+                Forge.setTransitionScreen(new TransitionScreen(() -> {
+                    if (WorldSave.load(WorldSave.filenameToSlot(lastActiveSave))) {
+                        Forge.switchScene(SceneType.GameScene.instance);
+                    } else {
+                        Forge.clearTransitionScreen();
+                    }
+                }, null, false, true, "Loading World..."));
+            } catch (Exception e) {
+                Forge.clearTransitionScreen();
+            }
         }
 
         return true;
@@ -104,6 +109,13 @@ public class StartScene extends UIScene {
         }
 
         Gdx.input.setInputProcessor(stage); //Start taking input from the ui
+
+        if(Forge.createNewAdventureMap)
+        {
+            this.NewGame();
+            Current.setDebug(true);
+            GameStage.maximumScrollDistance=4f;
+        }
     }
 
     @Override

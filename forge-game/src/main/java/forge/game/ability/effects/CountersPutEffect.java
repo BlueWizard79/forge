@@ -439,6 +439,9 @@ public class CountersPutEffect extends SpellAbilityEffect {
                 }
 
                 if (obj instanceof Card) {
+                    if (sa.hasParam("CounterNumPerDefined")) {
+                        counterAmount = AbilityUtils.calculateAmount(gameCard, sa.getParam("CounterNumPerDefined"), sa);
+                    }
                     counterAmount = sa.usesTargeting() && sa.isDividedAsYouChoose() ? sa.getDividedValue(gameCard)
                             : counterAmount;
                     if (!sa.usesTargeting() || gameCard.canBeTargetedBy(sa)) {
@@ -447,11 +450,12 @@ public class CountersPutEffect extends SpellAbilityEffect {
                                     0);
                         }
                         if (sa.hasParam("UpTo")) {
+                            int min = AbilityUtils.calculateAmount(card, sa.getParamOrDefault("UpToMin", "0"), sa);
                             Map<String, Object> params = Maps.newHashMap();
                             params.put("Target", obj);
                             params.put("CounterType", counterType);
                             counterAmount = pc.chooseNumber(sa,
-                                    Localizer.getInstance().getMessage("lblHowManyCounters"), 0, counterAmount, params);
+                                    Localizer.getInstance().getMessage("lblHowManyCounters"), min, counterAmount, params);
                         }
                         if (sa.isDividedAsYouChoose() && !sa.usesTargeting()) {
                             Map<String, Object> params = Maps.newHashMap();
@@ -474,6 +478,10 @@ public class CountersPutEffect extends SpellAbilityEffect {
                                     || StaticAbilityAdapt.anyWithAdapt(sa, gameCard))) {
                                 continue;
                             }
+                        }
+
+                        if (sa.hasParam("ReadAhead")) {
+                            gameCard.setReadAhead(counterAmount);
                         }
 
                         if (sa.hasParam("Tribute")) {
@@ -665,6 +673,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
             final SpellAbility newSa = AbilityFactory.getAbility(trigSA, host);
             newSa.setIntrinsic(intrinsic);
             trig.setOverridingAbility(newSa);
+            trig.setSpawningAbility(sa.copy(host, sa.getActivatingPlayer(), true));
             sa.getActivatingPlayer().getGame().getTriggerHandler().registerDelayedTrigger(trig);
         }
     }

@@ -65,10 +65,6 @@ public class CardProperty {
             if (card.sharesNameWith(name)) {
                 return false;
             }
-        } else if (property.startsWith("sameName")) {
-            if (!card.sharesNameWith(source)) {
-                return false;
-            }
         } else if (property.equals("NamedCard")) {
             if (!card.sharesNameWith(source.getNamedCard())) {
                 return false;
@@ -601,7 +597,10 @@ public class CardProperty {
                 return false;
             }
         } else if (property.startsWith("BottomLibrary")) {
-            final CardCollection cards = new CardCollection(card.getOwner().getCardsIn(ZoneType.Library));
+            CardCollection cards = new CardCollection(card.getOwner().getCardsIn(ZoneType.Library));
+            if (property.startsWith("BottomLibrary_")) {
+                cards = CardLists.getValidCards(cards, property.substring(14), sourceController, source, spellAbility);
+            }
             Collections.reverse(cards);
             if (cards.isEmpty() || !card.equals(cards.get(0))) {
                 return false;
@@ -813,6 +812,10 @@ public class CardProperty {
             return false;
         } else if (property.equals("canProduceMana")) {
             return !card.getManaAbilities().isEmpty();
+        } else if (property.startsWith("sameName")) {
+            if (!card.sharesNameWith(source)) {
+                return false;
+            }
         } else if (property.startsWith("sharesNameWith")) {
             if (property.equals("sharesNameWith")) {
                 if (!card.sharesNameWith(source)) {
@@ -1386,6 +1389,10 @@ public class CardProperty {
             }
         } else if (property.equals("powerGTtoughness")) {
             if (card.getNetPower() <= card.getNetToughness()) {
+                return false;
+            }
+        } else if (property.equals("powerGTbasePower")) {
+            if (card.getNetPower() <= card.getCurrentPower()) {
                 return false;
             }
         } else if (property.equals("powerLTtoughness")) {

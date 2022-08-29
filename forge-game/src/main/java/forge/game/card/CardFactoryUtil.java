@@ -1131,7 +1131,7 @@ public class CardFactoryUtil {
             SpellAbility loseLifeSA = AbilityFactory.getAbility(loseLifeStr, card);
 
             AbilitySub gainLifeSA = (AbilitySub) AbilityFactory.getAbility(gainLifeStr, card);
-            gainLifeSA.setSVar("AFLifeLost", "Number$0");
+            loseLifeSA.setSVar("AFLifeLost", "Number$0");
             loseLifeSA.setSubAbility(gainLifeSA);
             loseLifeSA.setIntrinsic(intrinsic);
 
@@ -1697,7 +1697,7 @@ public class CardFactoryUtil {
             parsedTrigger.setOverridingAbility(sa);
 
             inst.addTrigger(parsedTrigger);
-        } else if (keyword.startsWith("Saga")) {
+        } else if (keyword.startsWith("Saga") || keyword.startsWith("Read ahead")) {
             final String[] k = keyword.split(":");
             final List<String> abs = Arrays.asList(k[2].split(","));
             if (abs.size() != Integer.valueOf(k[1])) {
@@ -1724,9 +1724,10 @@ public class CardFactoryUtil {
                 for (int i = idx; i <= skipId; i++) {
                     SpellAbility sa = AbilityFactory.getAbility(card, ab);
                     sa.setChapter(i);
+                    sa.setLastChapter(idx == abs.size());
 
                     StringBuilder trigStr = new StringBuilder("Mode$ CounterAdded | ValidCard$ Card.Self | TriggerZones$ Battlefield");
-                    trigStr.append("| CounterType$ LORE | CounterAmount$ EQ").append(i);
+                    trigStr.append("| Chapter$ True | CounterType$ LORE | CounterAmount$ EQ").append(i);
                     if (i != idx) {
                         trigStr.append(" | Secondary$ True");
                     }
@@ -1739,21 +1740,21 @@ public class CardFactoryUtil {
         } else if (keyword.equals("Soulbond")) {
             // Setup ETB trigger for card with Soulbond keyword
             final String actualTriggerSelf = "Mode$ ChangesZone | Destination$ Battlefield | "
-                    + "ValidCard$ Card.Self | OptionalDecider$ You | "
+                    + "ValidCard$ Card.Self | "
                     + "IsPresent$ Creature.Other+YouCtrl+NotPaired | Secondary$ True | "
                     + "TriggerDescription$ When CARDNAME enters the battlefield, "
                     + "you may pair CARDNAME with another unpaired creature you control";
-            final String abStringSelf = "DB$ Bond | Defined$ Self | ValidCards$ Creature.Other+YouCtrl+NotPaired";
+            final String abStringSelf = "DB$ Bond | Defined$ TriggeredCardLKICopy | ValidCards$ Creature.Other+YouCtrl+NotPaired";
             final Trigger parsedTriggerSelf = TriggerHandler.parseTrigger(actualTriggerSelf, card, intrinsic);
             parsedTriggerSelf.setOverridingAbility(AbilityFactory.getAbility(abStringSelf, card));
 
             // Setup ETB trigger for other creatures you control
             final String actualTriggerOther = "Mode$ ChangesZone | Destination$ Battlefield | "
-                    + "ValidCard$ Creature.Other+YouCtrl | TriggerZones$ Battlefield | OptionalDecider$ You | "
+                    + "ValidCard$ Creature.Other+YouCtrl | TriggerZones$ Battlefield | "
                     + " IsPresent$ Creature.Self+NotPaired | Secondary$ True | "
                     + " TriggerDescription$ When another unpaired creature you control enters the battlefield, "
                     + "you may pair it with CARDNAME";
-            final String abStringOther = "DB$ Bond | Defined$ TriggeredCard | ValidCards$ Creature.Self+NotPaired";
+            final String abStringOther = "DB$ Bond | Defined$ TriggeredCardLKICopy | ValidCards$ Creature.Self+NotPaired";
             final Trigger parsedTriggerOther = TriggerHandler.parseTrigger(actualTriggerOther, card, intrinsic);
             parsedTriggerOther.setOverridingAbility(AbilityFactory.getAbility(abStringOther, card));
 
@@ -2311,6 +2312,23 @@ public class CardFactoryUtil {
                 re.getOverridingAbility().setSVar("Sunburst", "Count$Converge");
             }
             inst.addReplacement(re);
+        } else if (keyword.startsWith("Read ahead")) {
+            final String[] k = keyword.split(":");
+            String repeffstr = "Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | Secondary$ True | ReplacementResult$ Updated | Description$ Choose a chapter and start with that many lore counters.";
+
+            String effStr = "DB$ PutCounter | Defined$ Self | CounterType$ LORE | ETB$ True | UpTo$ True | UpToMin$ 1 | ReadAhead$ True | CounterNum$ " + k[1];
+
+            SpellAbility saCounter = AbilityFactory.getAbility(effStr, card);
+
+            if (!intrinsic) {
+                saCounter.setIntrinsic(false);
+            }
+
+            ReplacementEffect re = ReplacementHandler.parseReplacement(repeffstr, host, intrinsic, card);
+
+            re.setOverridingAbility(saCounter);
+
+            inst.addReplacement(re); 
         } else if (keyword.equals("Rebound")) {
             String repeffstr = "Event$ Moved | ValidLKI$ Card.Self+wasCastFromHand+YouOwn+YouCtrl "
             + " | Origin$ Stack | Destination$ Graveyard | Fizzle$ False "
@@ -3215,6 +3233,22 @@ public class CardFactoryUtil {
             final AbilitySub cleanSub = (AbilitySub) AbilityFactory.getAbility(cleanStr, card);
             effectSub.setSubAbility(cleanSub);
 
+            sa.setIntrinsic(intrinsic);
+            inst.addSpellAbility(sa);
+        } else if (keyword.startsWith("Specialize")) {
+            final String[] k = keyword.split(":");
+            final String cost = k[1];
+            String flavor = k.length > 2 && !k[2].isEmpty() ? k[2] + " – " : "";
+            String condition = k.length > 3 && !k[3].isEmpty() ? ". " + k[3] : "";
+            String extra = k.length > 4 && !k[4].isEmpty() ? k[4] + " | " : "";
+
+            final String effect = "AB$ SetState | Cost$ " + cost + " ChooseColor<1> Discard<1/Card.ChosenColor;" +
+                    "Card.AssociatedWithChosenColor/card of the chosen color or its associated basic land type> | " +
+                    "Mode$ Specialize | SorcerySpeed$ True | " + extra + "PrecostDesc$ " + flavor + "Specialize | " +
+                    "CostDesc$ " + ManaCostParser.parse(cost) + condition + " | SpellDescription$ (" +
+                    inst.getReminderText() + ")";
+
+            final SpellAbility sa = AbilityFactory.getAbility(effect, card);
             sa.setIntrinsic(intrinsic);
             inst.addSpellAbility(sa);
         } else if (keyword.startsWith("Spectacle")) {
