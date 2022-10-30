@@ -220,6 +220,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     private long bestowTimestamp = -1;
     private long transformedTimestamp = 0;
+    private long convertedTimestamp = 0;
     private long mutatedTimestamp = -1;
     private int timesMutated = 0;
     private boolean tributed = false;
@@ -241,6 +242,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     // for Vanguard / Manapool / Emblems etc.
     private boolean isImmutable = false;
     private boolean isEmblem = false;
+    private boolean isBoon = false;
 
     private int exertThisTurn = 0;
     private PlayerCollection exertedByPlayer = new PlayerCollection();
@@ -391,6 +393,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public long getTransformedTimestamp() { return transformedTimestamp; }
     public void incrementTransformedTimestamp() { this.transformedTimestamp++; }
 
+    public long getConvertedTimestamp() { return convertedTimestamp; }
+    public void incrementConvertedTimestamp() { this.convertedTimestamp++; }
+
     public CardState getCurrentState() {
         return currentState;
     }
@@ -503,7 +508,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             view.updateState(this);
             view.updateNeedsTransformAnimation(needsTransformAnimation);
 
-            final Game game = getGame();
             if (game != null) {
                 // update Type, color and keywords again if they have changed
                 if (!changedCardTypes.isEmpty()) {
@@ -622,6 +626,29 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             }
             incrementTransformedTimestamp();
 
+            return retResult;
+
+        } else if (mode.equals("Convert") && (isConvertable() || hasMergedCard())) {
+            // Need to remove mutated states, otherwise the changeToState() will fail
+            if (hasMergedCard()) {
+                removeMutatedStates();
+            }
+            CardCollectionView cards = hasMergedCard() ? getMergedCards() : new CardCollection(this);
+            boolean retResult = false;
+            for (final Card c : cards) {
+                if (!c.isConvertable()) {
+                    continue;
+                }
+                c.backside = !c.backside;
+
+                boolean result = c.changeToState(c.backside ? CardStateName.Converted : CardStateName.Original);
+                retResult = retResult || result;
+            }
+            if (hasMergedCard()) {
+                rebuildMutatedStates(cause);
+                game.getTriggerHandler().clearActiveTriggers(this, null);
+                game.getTriggerHandler().registerActiveTrigger(this, false);
+            }
             return retResult;
 
         } else if (mode.equals("Flip")) {
@@ -929,12 +956,16 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return getRules() != null && getRules().getSplitType() == CardSplitType.Meld;
     }
 
+    public final boolean isConvertable() {
+        return getRules() != null && getRules().getSplitType() == CardSplitType.Convert;
+    }
+
     public final boolean isModal() {
         return getRules() != null && getRules().getSplitType() == CardSplitType.Modal;
     }
 
     public final boolean hasBackSide() {
-        return isDoubleFaced() || isMeldable() || isModal();
+        return isDoubleFaced() || isMeldable() || isModal() || isConvertable();
     }
 
     public final boolean isFlipCard() {
@@ -1387,6 +1418,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     public final boolean hasDoubleStrike() {
         return hasKeyword(Keyword.DOUBLE_STRIKE);
+    }
+    
+    public final boolean hasDoubleTeam() {
+        return hasKeyword(Keyword.DOUBLE_TEAM);
     }
 
     public final boolean hasSecondStrike() {
@@ -1959,8 +1994,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             if (keyword.startsWith("CantBeCounteredBy")) {
                 final String[] p = keyword.split(":");
                 sbLong.append(p[2]).append("\r\n");
-            } else if (keyword.equals("Unblockable")) {
-                sbLong.append(getName()).append(" can't be blocked.\r\n");
             } else if (keyword.startsWith("IfReach")) {
                 String[] k = keyword.split(":");
                 sbLong.append(getName()).append(" can block ")
@@ -2031,7 +2064,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                 } else if (keyword.startsWith("Morph") || keyword.startsWith("Megamorph")
                         || keyword.startsWith("Escape") || keyword.startsWith("Foretell:")
                         || keyword.startsWith("Disturb") || keyword.startsWith("Madness:")
-                        || keyword.startsWith("Reconfigure")) {
+                        || keyword.startsWith("Reconfigure") || keyword.startsWith("Squad")
+                        || keyword.startsWith("Miracle") || keyword.startsWith("More Than Meets the Eye")
+                        || keyword.startsWith("Level up")) {
                     String[] k = keyword.split(":");
                     sbLong.append(k[0]);
                     if (k.length > 1) {
@@ -2114,12 +2149,18 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                     sbLong.append("Trample over planeswalkers").append(" (").append(inst.getReminderText()).append(")").append("\r\n");
                 } else if (keyword.startsWith("Hexproof:")) {
                     final String[] k = keyword.split(":");
-                    sbLong.append("Hexproof from ");
-                    if (k[2].equals("chosen")) {
-                        k[2] = k[1].substring(5).toLowerCase();
+                    if(!k[2].equals("Secondary")) {
+                        sbLong.append("Hexproof from ");
+                        if (k[2].equals("chosen")) {
+                            k[2] = k[1].substring(5).toLowerCase();
+                        }
+                        sbLong.append(k[2]);
+                        if (!k[2].contains(" and ")) { // skip reminder text for more complicated Hexproofs
+                            sbLong.append(" (").append(inst.getReminderText().replace("chosen", k[2]));
+                            sbLong.append(")");
+                        }
+                        sbLong.append("\r\n");
                     }
-                    sbLong.append(k[2]).append(" (").append(inst.getReminderText().replace("chosen", k[2]))
-                            .append(")").append("\r\n");
                 } else if (inst.getKeyword().equals(Keyword.COMPANION)) {
                     sbLong.append("Companion — ");
                     sbLong.append(((Companion)inst).getDescription());
@@ -2138,6 +2179,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         || keyword.equals("Living Weapon") || keyword.equals("Myriad") || keyword.equals("Exploit")
                         || keyword.equals("Changeling") || keyword.equals("Delve") || keyword.equals("Decayed")
                         || keyword.equals("Split second") || keyword.equals("Sunburst")
+                        || keyword.equals("Double team") || keyword.equals("Living metal")
                         || keyword.equals("Suspend") // for the ones without amount
                         || keyword.equals("Foretell") // for the ones without cost
                         || keyword.equals("Ascend") || keyword.equals("Totem armor")
@@ -2235,7 +2277,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         || keyword.startsWith("Bestow") || keyword.startsWith("Dash") || keyword.startsWith("Surge")
                         || keyword.startsWith("Transmute") || keyword.startsWith("Suspend")
                         || keyword.equals("Undaunted") || keyword.startsWith("Monstrosity")
-                        || keyword.startsWith("Embalm") || keyword.startsWith("Level up") || keyword.equals("Prowess")
+                        || keyword.startsWith("Embalm") || keyword.equals("Prowess")
                         || keyword.startsWith("Eternalize") || keyword.startsWith("Reinforce")
                         || keyword.startsWith("Champion") || keyword.startsWith("Prowl") || keyword.startsWith("Adapt")
                         || keyword.startsWith("Amplify") || keyword.startsWith("Ninjutsu") || keyword.startsWith("Saga") || keyword.startsWith("Read ahead")
@@ -2243,10 +2285,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         || keyword.startsWith("Cycling") || keyword.startsWith("TypeCycling")
                         || keyword.startsWith("Encore") || keyword.startsWith("Mutate") || keyword.startsWith("Dungeon")
                         || keyword.startsWith("Class") || keyword.startsWith("Blitz")
-                        || keyword.startsWith("Specialize")) {
+                        || keyword.startsWith("Specialize") || keyword.equals("Ravenous")) {
                     // keyword parsing takes care of adding a proper description
-                } else if (keyword.equals("Unblockable")) {
-                    sbLong.append(getName()).append(" can't be blocked.\r\n");
                 } else if (keyword.startsWith("IfReach")) {
                     String[] k = keyword.split(":");
                     sbLong.append(getName()).append(" can block ")
@@ -2264,7 +2304,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         keyword = keyword.replace("Strike", "strike");
                     }
                     sb.append(i !=0 && sb.length() !=0 ? ", " : "");
-                    sb.append(i > 0 && sb.length() !=0 ? keyword.toLowerCase() : keyword);
+                    sb.append(i > 0 && sb.length() !=0 ? StringUtils.uncapitalize(keyword) : keyword);
                 }
                 if (sbLong.length() > 0) {
                     sbLong.append("\r\n");
@@ -2833,21 +2873,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return sb.toString();
     }
 
-    public final boolean canProduceSameManaTypeWith(final Card c) {
-        final FCollectionView<SpellAbility> manaAb = getManaAbilities();
-        if (manaAb.isEmpty()) {
-            return false;
-        }
-        Set<String> colors = new HashSet<>();
-        for (final SpellAbility ab : c.getManaAbilities()) {
-            if (ab.getApi() == ApiType.ManaReflected) {
-                colors.addAll(CardUtil.getReflectableManaColors(ab));
-            } else {
-                colors = CardUtil.canProduce(6, ab, colors);
-            }
-        }
-
-        for (final SpellAbility mana : manaAb) {
+    public final boolean canProduceColorMana(final Set<String> colors) {
+        for (final SpellAbility mana : getManaAbilities()) {
             for (String s : colors) {
                 if (mana.getApi() == ApiType.ManaReflected) {
                     if (CardUtil.getReflectableManaColors(mana).contains(s)) {
@@ -2861,6 +2888,21 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             }
         }
         return false;
+    }
+
+    public final boolean canProduceSameManaTypeWith(final Card c) {
+        if (getManaAbilities().isEmpty()) {
+            return false;
+        }
+        Set<String> colors = new HashSet<>();
+        for (final SpellAbility ab : c.getManaAbilities()) {
+            if (ab.getApi() == ApiType.ManaReflected) {
+                colors.addAll(CardUtil.getReflectableManaColors(ab));
+            } else {
+                colors = CardUtil.canProduce(6, ab, colors);
+            }
+        }
+        return canProduceColorMana(colors);
     }
 
     public final void clearFirstSpell() {
@@ -3656,7 +3698,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public final void addType(final String type0) {
         currentState.addType(type0);
     }
-
     public final void addType(final Iterable<String> type0) {
         currentState.addType(type0);
     }
@@ -3865,8 +3906,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         currentState.getView().updateHasChangeColors(!Iterables.isEmpty(getChangedCardColors()));
     }
 
-    public final void setColor(final String color) {
-        currentState.setColor(color);
+    public final void setColor(final String... color) {
+        setColor(ColorSet.fromNames(color).getColor());
     }
     public final void setColor(final byte color) {
         currentState.setColor(color);
@@ -5209,6 +5250,15 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public final boolean isEmblem() {
         return isEmblem;
     }
+    public final void setBoon(final boolean isBoon0) {
+        isBoon = isBoon0;
+        view.updateBoon(this);
+    }
+
+    public final boolean isBoon() {
+        return isBoon;
+    }
+
     public final void setEmblem(final boolean isEmblem0) {
         isEmblem = isEmblem0;
         view.updateEmblem(this);
@@ -5225,6 +5275,13 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public final boolean isGreen() { return getColor().hasGreen(); }
     public final boolean isWhite() { return getColor().hasWhite(); }
     public final boolean isColorless() { return getColor().isColorless(); }
+    public final boolean associatedWithColor(final String col) {
+        final Set<String> color = new HashSet<>();
+        if (col != null) {
+            color.add(col);
+        }
+        return isOfColor(col) || canProduceColorMana(color);
+    }
 
     public final boolean sharesNameWith(final Card c1) {
         // in a corner case where c1 is null, there is no name to share with.
@@ -7143,5 +7200,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public void setReadAhead(int value) {
         readAhead = value;
+    }
+
+    public boolean attackVigilance() {
+        return StaticAbilityAttackVigilance.attackVigilance(this);
     }
 }

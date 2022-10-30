@@ -275,6 +275,28 @@ public final class GameActionUtil {
                         foretold.setPayCosts(new Cost(k[1], false));
 
                         alternatives.add(foretold);
+                    } else if (keyword.startsWith("More Than Meets the Eye")) {
+                        final String[] k = keyword.split(":");
+                        final Cost convertCost = new Cost(k[1], true);
+
+                        final SpellAbility newSA = new SpellPermanent(source);
+                        newSA.setCardState(source.getAlternateState());
+                        newSA.setPayCosts(convertCost);
+                        newSA.setActivatingPlayer(activator);
+
+                        newSA.putParam("PrecostDesc", k[0] + " ");
+                        newSA.putParam("CostDesc", convertCost.toString());
+
+                        // makes new SpellDescription
+                        final StringBuilder desc = new StringBuilder();
+                        desc.append(newSA.getCostDescription());
+                        desc.append("(").append(inst.getReminderText()).append(")");
+                        newSA.setDescription(desc.toString());
+                        newSA.putParam("AfterDescription", "(Converted)");
+
+                        newSA.setAlternativeCost(AlternativeCost.MTMtE);
+
+                        alternatives.add(newSA);
                     }
                 }
 
@@ -580,11 +602,9 @@ public final class GameActionUtil {
                 if (tr != null) {
                     String n = o.split(":")[1];
                     if (host.wasCast() && n.equals("X")) {
-                        CardCollectionView creatures = CardLists.filter(CardLists.filterControlledBy(game.getCardsIn
-                                (ZoneType.Battlefield), activator), CardPredicates.Presets.CREATURES);
+                        CardCollectionView creatures = activator.getCreaturesInPlay();
                         int max = Aggregates.max(creatures, CardPredicates.Accessors.fnGetNetPower);
-                        int min = Aggregates.min(creatures, CardPredicates.Accessors.fnGetNetPower);
-                        n = Integer.toString(pc.chooseNumber(sa, "Choose X for Casualty", min, max));
+                        n = Integer.toString(pc.chooseNumber(sa, "Choose X for Casualty", 0, max));
                     }
                     final String casualtyCost = "Sac<1/Creature.powerGE" + n + "/creature with power " + n +
                             " or greater>";
@@ -592,6 +612,8 @@ public final class GameActionUtil {
                     String str = "Pay for Casualty? " + cost.toSimpleString();
                     boolean v = pc.addKeywordCost(sa, cost, ki, str);
 
+                    tr.setSVar("CasualtyPaid", v ? "1" : "0");
+                    tr.getOverridingAbility().setSVar("CasualtyPaid", v ? "1" : "0");
                     tr.setSVar("Casualty", v ? n : "0");
                     tr.getOverridingAbility().setSVar("Casualty", v ? n : "0");
 
@@ -607,7 +629,7 @@ public final class GameActionUtil {
                 Trigger tr = Iterables.getFirst(ki.getTriggers(), null);
                 if (tr != null) {
                     final String conspireCost = "tapXType<2/Creature.SharesColorWith/" +
-                        "untapped creature you control that shares a color with " + host.getName() + ">";
+                        "creature that shares a color with " + host.getName() + ">";
                     final Cost cost = new Cost(conspireCost, false);
                     String str = "Pay for Conspire? " + cost.toSimpleString();
 
@@ -634,6 +656,27 @@ public final class GameActionUtil {
 
                     tr.setSVar("ReplicateAmount", String.valueOf(v));
                     tr.getOverridingAbility().setSVar("ReplicateAmount", String.valueOf(v));
+
+                    for (int i = 0; i < v; i++) {
+                        if (result == null) {
+                            result = sa.copy();
+                        }
+                        result.getPayCosts().add(cost);
+                        reset = true;
+                    }
+                }
+            } else if (o.startsWith("Squad")) {
+                Trigger tr = Iterables.getFirst(ki.getTriggers(), null);
+                if (tr != null) {
+                    String costStr = o.split(":")[1];
+                    final Cost cost = new Cost(costStr, false);
+
+                    String str = "Choose amount for Squad: " + cost.toSimpleString();
+
+                    int v = pc.chooseNumberForKeywordCost(sa, cost, ki, str, Integer.MAX_VALUE);
+
+                    tr.setSVar("SquadAmount", String.valueOf(v));
+                    tr.getOverridingAbility().setSVar("SquadAmount", String.valueOf(v));
 
                     for (int i = 0; i < v; i++) {
                         if (result == null) {
@@ -857,6 +900,7 @@ public final class GameActionUtil {
             ability.setHostCard(oldCard);
             ability.setXManaCostPaid(null);
             ability.setSpendPhyrexianMana(false);
+            ability.setPaidLife(0);
             if (ability.hasParam("Announce")) {
                 for (final String aVar : ability.getParam("Announce").split(",")) {
                     final String varName = aVar.trim();

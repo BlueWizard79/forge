@@ -28,9 +28,12 @@
 	"Shell"
 ],
 "enemies": [
+	"Aether Channeler",
 	"Bird",
 	"Djinn",
 	"Elemental",
+	"Frost Titan",
+	"Horror",
 	"Merfolk",
 	"Merfolk Avatar",
 	"Merfolk Fighter",
@@ -49,6 +52,7 @@
 "pointsOfInterest": [
 	"Blue Castle",
 	"Island Town",
+	"Island Capital",
 	"NestU",
 	"MerfolkPool",
 	"MerfolkPool1",

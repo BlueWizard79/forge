@@ -22,6 +22,7 @@
       "type": "TextButton",
       "name": "tempHitPointCost",
       "text": "Cost",
+      "binding": "Status",
       "width": 100,
       "height": 30,
       "x": 165,
@@ -30,6 +31,7 @@
     {
       "type": "Label",
       "name": "tempHitPoints",
+      "text": "tr(lblTempHitPoints)",
       "font": "default",
       "width": 100,
       "height": 30,
@@ -48,7 +50,8 @@
     {
       "type": "TextButton",
       "name": "sell",
-      "text": "Sell cards",
+      "text": "tr(lblSell)",
+      "binding": "Equip",
       "width": 100,
       "height": 30,
       "x": 165,
@@ -66,7 +69,8 @@
     {
       "type": "TextButton",
       "name": "done",
-      "text": "Leave",
+      "text": "tr(lblBack)",
+      "binding": "Back",
       "width": 100,
       "height": 30,
       "x": 165,

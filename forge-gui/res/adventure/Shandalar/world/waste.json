@@ -36,6 +36,7 @@
 	"Gargoyle 2",
 	"Golem",
 	"Sliver",
+	"Symbiote",
 	"Black Wiz1",
 	"Black Wiz2",
 	"Black Wiz3",
@@ -54,6 +55,7 @@
 	"Doppelganger"
 ],
 "pointsOfInterest": [
+	"Spawn",
 	"Final Castle",
 	"Colorless Castle",
 	"Skep",
@@ -87,7 +89,9 @@
 	"CaveC9",
 	"CaveCA",
 	"CaveCB",
-	"CaveCD"
+	"CaveCD",
+	"Crawlspace",
+	"Lich's Mirror"
 ],
 "structures": [
 	{

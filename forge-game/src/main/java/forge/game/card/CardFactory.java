@@ -77,7 +77,7 @@ public class CardFactory {
      */
     public final static Card copyCard(final Card in, boolean assignNewId) {
         Card out;
-        if (!(in.isToken() || in.getCopiedPermanent() != null)) {
+        if (!(in.isRealToken() || in.getCopiedPermanent() != null)) {
             out = assignNewId ? getCard(in.getPaperCard(), in.getOwner(), in.getGame())
                               : getCard(in.getPaperCard(), in.getOwner(), in.getId(), in.getGame());
         } else { // token
@@ -280,6 +280,27 @@ public class CardFactory {
             } else if (c.isAdventureCard()) {
                 c.setState(CardStateName.Adventure, false);
                 c.setImageKey(originalPicture);
+            } else if (c.canSpecialize()) {
+                c.setState(CardStateName.SpecializeW, false);
+                c.setImageKey(cp.getImageKey(false) + ImageKeys.SPECFACE_W);
+                c.setSetCode(cp.getEdition());
+                c.setRarity(cp.getRarity());
+                c.setState(CardStateName.SpecializeU, false);
+                c.setImageKey(cp.getImageKey(false) + ImageKeys.SPECFACE_U);
+                c.setSetCode(cp.getEdition());
+                c.setRarity(cp.getRarity());
+                c.setState(CardStateName.SpecializeB, false);
+                c.setImageKey(cp.getImageKey(false) + ImageKeys.SPECFACE_B);
+                c.setSetCode(cp.getEdition());
+                c.setRarity(cp.getRarity());
+                c.setState(CardStateName.SpecializeR, false);
+                c.setImageKey(cp.getImageKey(false) + ImageKeys.SPECFACE_R);
+                c.setSetCode(cp.getEdition());
+                c.setRarity(cp.getRarity());
+                c.setState(CardStateName.SpecializeG, false);
+                c.setImageKey(cp.getImageKey(false) + ImageKeys.SPECFACE_G);
+                c.setSetCode(cp.getEdition());
+                c.setRarity(cp.getRarity());
             }
 
             c.setSetCode(cp.getEdition());
@@ -641,31 +662,30 @@ public class CardFactory {
         final CardCloneStates result = new CardCloneStates(in, sa);
 
         final String newName = sa.getParamOrDefault("NewName", null);
-        String shortColors = "";
+        ColorSet colors = null;
 
         if (sa.hasParam("AddTypes")) {
             types.addAll(Arrays.asList(sa.getParam("AddTypes").split(" & ")));
+        }
+
+        if (sa.hasParam("SetCreatureTypes")) {
+            creatureTypes = ImmutableList.copyOf(sa.getParam("SetCreatureTypes").split(" "));
         }
 
         if (sa.hasParam("AddKeywords")) {
             keywords.addAll(Arrays.asList(sa.getParam("AddKeywords").split(" & ")));
         }
 
-        if (sa.hasParam("AddColors")) {
-            shortColors = CardUtil.getShortColorsString(Arrays.asList(sa.getParam("AddColors")
-                    .split(" & ")));
-        }
-
         if (sa.hasParam("RemoveKeywords")) {
             removeKeywords.addAll(Arrays.asList(sa.getParam("RemoveKeywords").split(" & ")));
         }
 
-        if (sa.hasParam("SetColor")) {
-            shortColors = CardUtil.getShortColorsString(Arrays.asList(sa.getParam("SetColor").split(",")));
+        if (sa.hasParam("AddColors")) {
+            colors = ColorSet.fromNames(sa.getParam("AddColors").split(","));
         }
 
-        if (sa.hasParam("SetCreatureTypes")) {
-            creatureTypes = ImmutableList.copyOf(sa.getParam("SetCreatureTypes").split(" "));
+        if (sa.hasParam("SetColor")) {
+            colors = ColorSet.fromNames(sa.getParam("SetColor").split(","));
         }
 
         // TODO handle Volrath's Shapeshifter
@@ -713,11 +733,11 @@ public class CardFactory {
             }
 
             if (sa.hasParam("AddColors")) {
-                state.addColor(shortColors);
+                state.addColor(colors.getColor());
             }
 
             if (sa.hasParam("SetColor")) {
-                state.setColor(shortColors);
+                state.setColor(colors.getColor());
             }
 
             if (sa.hasParam("NonLegendary")) {

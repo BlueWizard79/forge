@@ -385,6 +385,9 @@ public class ComputerUtilCard {
      * @return the card
      */
     public static Card getBestCreatureAI(final Iterable<Card> list) {
+        if (Iterables.size(list) == 1) {
+            return Iterables.get(list, 0);
+        }
         return Aggregates.itemWithMax(Iterables.filter(list, CardPredicates.Presets.CREATURES), ComputerUtilCard.creatureEvaluator);
     }
 
@@ -397,6 +400,9 @@ public class ComputerUtilCard {
      * @return a {@link forge.game.card.Card} object.
      */
     public static Card getWorstCreatureAI(final Iterable<Card> list) {
+        if (Iterables.size(list) == 1) {
+            return Iterables.get(list, 0);
+        }
         return Aggregates.itemWithMin(Iterables.filter(list, CardPredicates.Presets.CREATURES), ComputerUtilCard.creatureEvaluator);
     }
 
@@ -410,6 +416,9 @@ public class ComputerUtilCard {
      * @return a {@link forge.game.card.Card} object.
      */
     public static Card getBestCreatureToBounceAI(final CardCollectionView list) {
+        if (Iterables.size(list) == 1) {
+            return Iterables.get(list, 0);
+        }
         final int tokenBonus = 60;
         Card biggest = null;
         int biggestvalue = -1;
@@ -864,6 +873,41 @@ public class ComputerUtilCard {
         return maxType;
     }
 
+    public static String getMostProminentCardType(final CardCollectionView list, final Collection<String> valid) {
+        if (list.isEmpty() || valid.isEmpty()) {
+            return "";
+        }
+
+        final Map<String, Integer> typesInDeck = Maps.newHashMap();
+        for (String type : valid) {
+            typesInDeck.put(type, 0);
+        }
+
+        for (final Card c : list) {
+            Iterable<CardType.CoreType> cardTypes = c.getType().getCoreTypes();
+            for (CardType.CoreType type : cardTypes) {
+                Integer count = typesInDeck.get(type.toString());
+                if (count != null) {
+                    typesInDeck.put(type.toString(), count + 1);
+                }
+            }
+        }
+
+        int max = 0;
+        String maxType = "";
+
+        for (final Entry<String, Integer> entry : typesInDeck.entrySet()) {
+            final String type = entry.getKey();
+
+            if (max < entry.getValue()) {
+                max = entry.getValue();
+                maxType = type;
+            }
+        }
+
+        return maxType;
+    }
+
     /**
      * <p>
      * getMostProminentColor.
@@ -1034,7 +1078,8 @@ public class ComputerUtilCard {
 
         }
         if (chosen.isEmpty()) {
-            chosen.add(MagicColor.Constant.GREEN);
+            //chosen.add(MagicColor.Constant.GREEN);
+            chosen.add(getMostProminentColor(ai.getAllCards(), colorChoices));
         }
         return chosen;
     }

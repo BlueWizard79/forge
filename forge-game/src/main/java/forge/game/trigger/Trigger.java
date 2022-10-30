@@ -348,7 +348,7 @@ public abstract class Trigger extends TriggerReplacementBase {
         return true;
     }
 
-    public boolean meetsRequirementsOnTriggeredObjects(Game game,  final Map<AbilityKey, Object> runParams) {
+    public boolean meetsRequirementsOnTriggeredObjects(Game game, final Map<AbilityKey, Object> runParams) {
         if ("True".equals(getParam("EvolveCondition"))) {
             final Card moved = (Card) runParams.get(AbilityKey.Card);
             if (moved == null) {
@@ -373,6 +373,11 @@ public abstract class Trigger extends TriggerReplacementBase {
             final Card moved = (Card) runParams.get(AbilityKey.Card);
             if (null != moved && !moved.isOptionalCostPaid(OptionalCost.AltCost))
                 return false;
+        } else if ("LifePaid".equals(condition)) {
+            final SpellAbility trigSA = (SpellAbility) runParams.get(AbilityKey.CastSA);
+            if (trigSA != null && trigSA.getAmountLifePaid() <= 0) {
+                return false;
+            }
         } else if ("NoOpponentHasMoreLifeThanAttacked".equals(condition)) {
             GameEntity attacked = (GameEntity) runParams.get(AbilityKey.Attacked);
             if (attacked == null) {

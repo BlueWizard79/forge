@@ -116,6 +116,15 @@ public class ForgeScript {
             return cardState.getTypeWithChanges().hasStringType(source.getChosenType2());
         } else if (property.equals("IsNotChosenType2")) {
             return !cardState.getTypeWithChanges().hasStringType(source.getChosenType2());
+        } else if (property.equals("NotedType")) {
+            boolean found = false;
+            for (String s : source.getNotedTypes()) {
+                if (cardState.getTypeWithChanges().hasStringType(s)) {
+                    found = true;
+                    break;
+                }
+            }
+            return found;
         } else if (property.startsWith("HasSubtype")) {
             final String subType = property.substring(11);
             return cardState.getTypeWithChanges().hasSubtype(subType);
@@ -176,6 +185,10 @@ public class ForgeScript {
             return !sa.isManaAbility();
         } else if (property.equals("withoutXCost")) {
             return !sa.costHasManaX();
+        } else if (property.startsWith("XCost")) {
+            String comparator = property.substring(5, 7);
+            int y = AbilityUtils.calculateAmount(sa.getHostCard(), property.substring(7), sa);
+            return Expressions.compare(sa.getXManaCostPaid(), comparator, y);
         } else if (property.equals("hasTapCost")) {
             Cost cost = sa.getPayCosts();
             return cost != null && cost.hasTapCost();
@@ -229,7 +242,7 @@ public class ForgeScript {
             String[] k = property.split(" ", 2);
             String comparator = k[1].substring(0, 2);
             int y = AbilityUtils.calculateAmount(sa.getHostCard(), k[1].substring(2), sa);
-            return Expressions.compare(sa.getPayingMana().size(), comparator, y);
+            return Expressions.compare(sa.getTotalManaSpent(), comparator, y);
         } else if (property.startsWith("ManaFrom")) {
             final String fromWhat = property.substring(8);
             boolean found = false;

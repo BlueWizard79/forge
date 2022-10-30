@@ -1,6 +1,5 @@
 package forge.game.ability.effects;
 
-import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -589,6 +588,14 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                             continue;
                         }
                     }
+                    if (sa.hasParam("Converted")) {
+                        if (gameCard.isConvertable()) {
+                            gameCard.changeCardState("Convert", null, sa);
+                        } else {
+                            // If it can't convert, don't change zones.
+                            continue;
+                        }
+                    }
                     if (sa.hasParam("WithCountersType")) {
                         CounterType cType = CounterType.getType(sa.getParam("WithCountersType"));
                         int cAmount = AbilityUtils.calculateAmount(hostCard, sa.getParamOrDefault("WithCountersAmount", "1"), sa);
@@ -789,6 +796,11 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
                 }
 
+                if (sa.hasParam("RememberToEffectSource")) {
+                    if (hostCard.isImmutable() && hostCard.getEffectSource() != null) {
+                        hostCard.getEffectSource().addRemembered(movedCard);
+                    }
+                }
                 if (remember != null) {
                     hostCard.addRemembered(movedCard);
                     // addRememberedFromCardState ?
@@ -1000,8 +1012,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         final int fetchNum = Math.min(player.getCardsIn(ZoneType.Library).size(), 4);
                         if (fetchNum == 0) {
                             searchedLibrary = false;
-                        }
-                        else {
+                        } else {
                             fetchList.addAll(player.getCardsIn(ZoneType.Library, fetchNum));
                         }
                     }
@@ -1089,7 +1100,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
 
             String selectPrompt = sa.hasParam("SelectPrompt") ? sa.getParam("SelectPrompt") : MessageUtil.formatMessage(Localizer.getInstance().getMessage("lblSelectCardFromPlayerZone", "{player's}", Lang.joinHomogenous(origin, ZoneType.Accessors.GET_TRANSLATED_NAME).toLowerCase()), decider, player);
             final String totalcmc = sa.getParam("WithTotalCMC");
+            final String totalpower = sa.getParam("WithTotalPower");
             int totcmc = AbilityUtils.calculateAmount(source, totalcmc, sa);
+            int totpower = AbilityUtils.calculateAmount(source, totalpower, sa);
 
             fetchList.sort();
 
@@ -1143,21 +1156,25 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                             fetchList = CardLists.filter(fetchList, Predicates.not(CardPredicates.sharesCMCWith(c)));
                         }
                     }
+                    if (sa.hasParam("DifferentPower")) {
+                        for (Card c : chosenCards) {
+                            fetchList = CardLists.filter(fetchList, Predicates.not(Predicates.compose(Predicates.equalTo(c.getNetPower()), CardPredicates.Accessors.fnGetNetPower)));
+                        }
+                    }
                     if (sa.hasParam("ShareLandType")) {
                         // After the first card is chosen, check if the land type is shared
-                        for (final Card card : chosenCards) {
-                            fetchList = CardLists.filter(fetchList, new Predicate<Card>() {
-                                @Override
-                                public boolean apply(final Card c) {
-                                    return c.sharesLandTypeWith(card);
-                                }
-
-                            });
+                        for (final Card c : chosenCards) {
+                            fetchList = CardLists.filter(fetchList, CardPredicates.sharesLandTypeWith(c));
                         }
                     }
                     if (totalcmc != null) {
                         if (totcmc >= 0) {
                             fetchList = CardLists.getValidCards(fetchList, "Card.cmcLE" + totcmc, source.getController(), source, sa);
+                        }
+                    }
+                    if (totalpower != null) {
+                        if (totpower >= 0) {
+                            fetchList = CardLists.getValidCards(fetchList, "Card.powerLE" + totpower, source.getController(), source, sa);
                         }
                     }
 
@@ -1199,6 +1216,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
 
                     if (totalcmc != null) {
                         totcmc -= c.getCMC();
+                    }
+                    if (totalpower != null) {
+                        totpower -= c.getCurrentPower();
                     }
                 }
             }
@@ -1494,10 +1514,12 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 && !sa.hasParam("Mandatory")                // only handle optional decisions, for now
                 && !sa.hasParam("ShareLandType")
                 && !sa.hasParam("DifferentNames")
+                && !sa.hasParam("DifferentPower")
                 && !sa.hasParam("DifferentCMC")
                 && !sa.hasParam("AtRandom")
                 && (!sa.hasParam("Defined") || sa.hasParam("ChooseFromDefined"))
-                && sa.getParam("WithTotalCMC") == null;
+                && !sa.hasParam("WithTotalCMC")
+                && !sa.hasParam("WithTotalPower");
     }
 
     /**

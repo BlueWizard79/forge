@@ -2,9 +2,9 @@ package forge.adventure.stage;
 
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.controllers.Controllers;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.maps.MapLayer;
 import com.badlogic.gdx.maps.MapObject;
@@ -15,28 +15,29 @@ import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.objects.TiledMapTileMapObject;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Button;
 import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Scaling;
+import com.badlogic.gdx.utils.Timer;
+import com.github.tommyettinger.textra.TextraButton;
+import com.github.tommyettinger.textra.TextraLabel;
 import com.github.tommyettinger.textra.TypingAdapter;
 import com.github.tommyettinger.textra.TypingLabel;
 import forge.Forge;
 import forge.adventure.character.*;
 import forge.adventure.data.*;
 import forge.adventure.pointofintrest.PointOfInterestChanges;
-import forge.adventure.scene.DuelScene;
-import forge.adventure.scene.RewardScene;
-import forge.adventure.scene.SceneType;
+import forge.adventure.scene.*;
 import forge.adventure.util.*;
 import forge.adventure.world.WorldSave;
-import forge.card.ColorSet;
 import forge.deck.Deck;
 import forge.deck.DeckProxy;
 import forge.gui.FThreads;
@@ -44,24 +45,18 @@ import forge.screens.TransitionScreen;
 import forge.sound.SoundEffectType;
 import forge.sound.SoundSystem;
 
-import java.util.HashMap;
 import java.util.Map;
 
-import static forge.adventure.util.Paths.MANA_ATLAS;
 
 /**
  * Stage to handle tiled maps for points of interests
  */
 public class MapStage extends GameStage {
     public static MapStage instance;
-    Array<MapActor> actors = new Array<>();
+    final Array<MapActor> actors = new Array<>();
 
     TiledMap map;
-    Array<Rectangle>[][] collision;
-    private float tileHeight;
-    private float tileWidth;
-    private float width;
-    private float height;
+    Array<Rectangle> collisionRect=new Array<>();
     private boolean isInMap = false;
     MapLayer spriteLayer;
     private PointOfInterestChanges changes;
@@ -71,9 +66,9 @@ public class MapStage extends GameStage {
     private final Vector2 oldPosition3 = new Vector2();
     private final Vector2 oldPosition4 = new Vector2();
     private boolean isLoadingMatch = false;
-    private HashMap<String, Byte> mapFlags = new HashMap<>(); //Stores local map flags. These aren't available outside this map.
+    //private HashMap<String, Byte> mapFlags = new HashMap<>(); //Stores local map flags. These aren't available outside this map.
 
-    private Dialog dialog;
+    private final Dialog dialog;
     private Stage dialogStage;
     private boolean dialogOnlyInput;
 
@@ -81,6 +76,11 @@ public class MapStage extends GameStage {
     //These maps are defined as embedded properties within the Tiled maps.
     private EffectData effect;             //"Dungeon Effect": Character Effect applied to all adversaries within the map.
     private boolean preventEscape = false; //Prevents player from escaping the dungeon by any means that aren't an exit.
+    private final Array< TextraButton> dialogButtonMap=new Array<>();
+
+    public InputEvent   eventTouchDown, eventTouchUp;
+    TextraButton selectedKey;
+    private boolean respawnEnemies;
 
 
     public boolean getDialogOnlyInput() {
@@ -92,7 +92,7 @@ public class MapStage extends GameStage {
     }
 
     public boolean canEscape() {
-        return (preventEscape ? true : false);
+        return !preventEscape;
     } //Check if escape is possible.
 
     public void clearIsInMap() {
@@ -118,12 +118,18 @@ public class MapStage extends GameStage {
         return changes;
     }
 
+    private MapStage()
+    {
+        dialog = Controls.newDialog("");
+        eventTouchDown = new InputEvent();
+        eventTouchDown.setPointer(-1);
+        eventTouchDown.setType(InputEvent.Type.touchDown);
+        eventTouchUp = new InputEvent();
+        eventTouchUp.setPointer(-1);
+        eventTouchUp.setType(InputEvent.Type.touchUp);
+    }
     public static MapStage getInstance() {
         return instance == null ? instance = new MapStage() : instance;
-    }
-
-    public void resLoaded() {
-        dialog = Controls.newDialog("");
     }
 
     public void addMapActor(MapObject obj, MapActor newActor) {
@@ -142,7 +148,7 @@ public class MapStage extends GameStage {
 
     @Override
     public boolean isColliding(Rectangle adjustedBoundingRect) {
-        for (Rectangle collision : currentCollidingRectangles) {
+        for (Rectangle collision : collisionRect) {
             if (collision.overlaps(adjustedBoundingRect)) {
                 return true;
             }
@@ -150,47 +156,29 @@ public class MapStage extends GameStage {
         return false;
     }
 
-    final Array<Rectangle> currentCollidingRectangles = new Array<>();
 
     @Override
     public void prepareCollision(Vector2 pos, Vector2 direction, Rectangle boundingRect) {
-        currentCollidingRectangles.clear();
-        int x1 = (int) (Math.min(boundingRect.x, boundingRect.x + direction.x) / tileWidth);
-        int y1 = (int) (Math.min(boundingRect.y, boundingRect.y + direction.y) / tileHeight);
-        int x2 = (int) (Math.min(boundingRect.x + boundingRect.width, boundingRect.x + boundingRect.width + direction.x) / tileWidth);
-        int y2 = (int) (Math.min(boundingRect.y + boundingRect.height, boundingRect.y + boundingRect.height + direction.y) / tileHeight);
 
-        for (int x = x1; x <= x2; x++) {
-            for (int y = y1; y <= y2; y++) {
-                if (x < 0 || x >= width || y < 0 || y >= height) {
-                    continue;
-                }
-                currentCollidingRectangles.addAll(collision[x][y]);
-            }
-        }
     }
 
 
     Group collisionGroup;
 
     @Override
-    protected void debugCollision(boolean b) {
+    public void debugCollision(boolean b) {
 
         if (collisionGroup == null) {
             collisionGroup = new Group();
 
-            for (int x = 0; x < collision.length; x++) {
-                for (int y = 0; y < collision[x].length; y++) {
-                    for (Rectangle rectangle : collision[x][y]) {
-                        MapActor collisionActor = new MapActor(0);
-                        collisionActor.setBoundDebug(true);
-                        collisionActor.setWidth(rectangle.width);
-                        collisionActor.setHeight(rectangle.height);
-                        collisionActor.setX(rectangle.x);
-                        collisionActor.setY(rectangle.y);
-                        collisionGroup.addActor(collisionActor);
-                    }
-                }
+            for (Rectangle rectangle : collisionRect) {
+                MapActor collisionActor = new MapActor(0);
+                collisionActor.setBoundDebug(true);
+                collisionActor.setWidth(rectangle.width);
+                collisionActor.setHeight(rectangle.height);
+                collisionActor.setX(rectangle.x);
+                collisionActor.setY(rectangle.y);
+                collisionGroup.addActor(collisionActor);
             }
 
         }
@@ -199,15 +187,15 @@ public class MapStage extends GameStage {
         } else {
             collisionGroup.remove();
         }
-
+        super.debugCollision(b);
     }
 
-    private void effectDialog(EffectData E) {
+    private void effectDialog(EffectData effectData) {
         dialog.getButtonTable().clear();
         dialog.getContentTable().clear();
-        TextButton ok = Controls.newTextButton("OK", this::hideDialog);
+        TextraButton ok = Controls.newTextButton("OK", this::hideDialog);
         ok.setVisible(false);
-        TypingLabel L = Controls.newTypingLabel("{GRADIENT=CYAN;WHITE;1;1}Strange magical energies flow within this place...{ENDGRADIENT}\nAll opponents get:\n" + E.getDescription());
+        TypingLabel L = Controls.newTypingLabel("{GRADIENT=CYAN;WHITE;1;1}Strange magical energies flow within this place...{ENDGRADIENT}\nAll opponents get:\n" + effectData.getDescription());
         L.setWrap(true);
         L.setTypingListener(new TypingAdapter() {
             @Override
@@ -232,7 +220,7 @@ public class MapStage extends GameStage {
             dialog.getContentTable().add(image).height(100);
             dialog.getContentTable().add().row();
         }
-        Label L = Controls.newLabel(message);
+        TextraLabel L = Controls.newTextraLabel(message);
         L.setWrap(true);
         dialog.getContentTable().add(L).width(250f);
         dialog.getButtonTable().add(Controls.newTextButton("OK", this::hideDialog)).width(250f);
@@ -244,87 +232,23 @@ public class MapStage extends GameStage {
     public void showDeckAwardDialog(String message, Deck deck) {
         dialog.getContentTable().clear();
         dialog.getButtonTable().clear();
-        if (deck != null) {
-            TextureAtlas atlas = Config.instance().getAtlas(MANA_ATLAS);
-            ColorSet deckColor = DeckProxy.getColorIdentity(deck);
-            if (deckColor.isColorless()) {
-                Image pixC = new Image(atlas.createSprite("pixC"));
-                pixC.setScaling(Scaling.fit);
-                dialog.getContentTable().add(pixC).height(20).width(20);
-                dialog.getContentTable().add().row();
-            } else if (deckColor.isMonoColor()) {
-                Image pix = new Image(atlas.createSprite("pixC"));
-                if (deckColor.hasWhite())
-                    pix = new Image(atlas.createSprite("pixW"));
-                else if (deckColor.hasBlue())
-                    pix = new Image(atlas.createSprite("pixU"));
-                else if (deckColor.hasBlack())
-                    pix = new Image(atlas.createSprite("pixB"));
-                else if (deckColor.hasRed())
-                    pix = new Image(atlas.createSprite("pixR"));
-                else if (deckColor.hasGreen())
-                    pix = new Image(atlas.createSprite("pixG"));
-                pix.setScaling(Scaling.fit);
-                dialog.getContentTable().add(pix).height(20).width(20);
-                dialog.getContentTable().add().row();
-            } else if (deckColor.isMulticolor()) {
-                Group group = new Group();
-                int mul = 0;
-                if (deckColor.hasWhite()) {
-                    Image pix = new Image(atlas.createSprite("pixW"));
-                    pix.setScaling(Scaling.fit);
-                    pix.setSize(20, 20);
-                    pix.setPosition(0, 0);
-                    group.addActor(pix);
-                    mul++;
-                }
-                if (deckColor.hasBlue()) {
-                    Image pix = new Image(atlas.createSprite("pixU"));
-                    pix.setScaling(Scaling.fit);
-                    pix.setSize(20, 20);
-                    pix.setPosition(20 * mul, 0);
-                    mul++;
-                    group.addActor(pix);
-                }
-                if (deckColor.hasBlack()) {
-                    Image pix = new Image(atlas.createSprite("pixB"));
-                    pix.setScaling(Scaling.fit);
-                    pix.setSize(20, 20);
-                    pix.setPosition(20 * mul, 0);
-                    mul++;
-                    group.addActor(pix);
-                }
-                if (deckColor.hasRed()) {
-                    Image pix = new Image(atlas.createSprite("pixR"));
-                    pix.setScaling(Scaling.fit);
-                    pix.setSize(20, 20);
-                    pix.setPosition(20 * mul, 0);
-                    mul++;
-                    group.addActor(pix);
-                }
-                if (deckColor.hasGreen()) {
-                    Image pix = new Image(atlas.createSprite("pixG"));
-                    pix.setScaling(Scaling.fit);
-                    pix.setSize(20, 20);
-                    pix.setPosition(20 * mul, 0);
-                    mul++;
-                    group.addActor(pix);
-                }
-                group.setHeight(20);
-                group.setWidth(20 * mul);
-                dialog.getContentTable().add(group).align(Align.center);
-                dialog.getContentTable().add().row();
-            }
-        }
+
+        dialog.getContentTable().add(Controls.newTypingLabel(Controls.colorIdToTypingString(DeckProxy.getColorIdentity(deck)))).align(Align.center);
+        dialog.getContentTable().add().row();
+
         TypingLabel L = Controls.newTypingLabel(message);
         L.setWrap(true);
         L.skipToTheEnd();
+
         dialog.getContentTable().add(L).width(240);
         dialog.getButtonTable().add(Controls.newTextButton("OK", this::hideDialog)).width(240);
         dialog.setKeepWithinStage(true);
         setDialogStage(GameHUD.getInstance());
         showDialog();
     }
+    Array<EntryActor> otherEntries=new Array<>();
+    Array<EntryActor> spawnClassified=new Array<>();
+    Array<EntryActor> sourceMapMatch=new Array<>();
 
     public void loadMap(TiledMap map, String sourceMap) {
         isLoadingMatch = false;
@@ -336,13 +260,19 @@ public class MapStage extends GameStage {
             foregroundSprites.removeActor(actor);
         }
 
-        actors = new Array<>();
-        width = Float.parseFloat(map.getProperties().get("width").toString());
-        height = Float.parseFloat(map.getProperties().get("height").toString());
-        tileHeight = Float.parseFloat(map.getProperties().get("tileheight").toString());
-        tileWidth = Float.parseFloat(map.getProperties().get("tilewidth").toString());
+        actors.clear();
+        collisionRect.clear();
+
+        if(collisionGroup!=null)
+            collisionGroup.remove();
+        collisionGroup=null;
+
+        float width = Float.parseFloat(map.getProperties().get("width").toString());
+        float height = Float.parseFloat(map.getProperties().get("height").toString());
+        float tileHeight = Float.parseFloat(map.getProperties().get("tileheight").toString());
+        float tileWidth = Float.parseFloat(map.getProperties().get("tilewidth").toString());
         setBounds(width * tileWidth, height * tileHeight);
-        collision = new Array[(int) width][(int) height];
+        //collision = new Array[(int) width][(int) height];
 
         //Load dungeon effects.
         MapProperties MP = map.getProperties();
@@ -351,14 +281,25 @@ public class MapStage extends GameStage {
             effect = JSONStringLoader.parse(EffectData.class, map.getProperties().get("dungeonEffect").toString(), "");
             effectDialog(effect);
         }
+        if(MP.get("respawnEnemies")!=null&&MP.get("respawnEnemies") instanceof Boolean&&(Boolean)MP.get("respawnEnemies"))
+        {
+            respawnEnemies=true;
+        }
+        else
+        {
+            respawnEnemies=false;
+        }
         if (MP.get("preventEscape") != null) preventEscape = (boolean) MP.get("preventEscape");
 
         if (MP.get("music") != null && !MP.get("music").toString().isEmpty()) {
             //TODO: Add a way to play a music file directly without using a playlist.
         }
 
-        GetPlayer().stop();
+        getPlayerSprite().stop();
         spriteLayer = null;
+        otherEntries.clear();
+        spawnClassified.clear();
+        sourceMapMatch.clear();
         for (MapLayer layer : map.getLayers()) {
             if (layer.getProperties().containsKey("spriteLayer") && layer.getProperties().get("spriteLayer", boolean.class)) {
                 spriteLayer = layer;
@@ -369,23 +310,64 @@ public class MapStage extends GameStage {
                 loadObjects(layer, sourceMap);
             }
         }
+        if(!spawnClassified.isEmpty())
+            spawnClassified.first().spawn();
+        else if(!sourceMapMatch.isEmpty())
+            sourceMapMatch.first().spawn();
+        else if(!otherEntries.isEmpty())
+            otherEntries.first().spawn();
+
+        //reduce geometry in collision rectangles
+        int oldSize;
+        do {
+            oldSize=collisionRect.size;
+            for(int i=0;i<collisionRect.size;i++)
+            {
+                Rectangle r1= collisionRect.get(i);
+                for(int j=i+1;j<collisionRect.size;j++)
+                {
+                    Rectangle r2= collisionRect.get(j);
+                    if(      (Math.abs(r1.x-(r2.x+r2.width))<1&&Math.abs(r1.y-r2.y)<1&&Math.abs(r1.height-r2.height)<1)//left edge is the same as right edge
+
+                            ||(Math.abs((r1.x+r1.width)-r2.x)<1&&Math.abs(r1.y-r2.y)<1&&Math.abs(r1.height-r2.height)<1)//right edge is the same as left edge
+
+                            ||(Math.abs(r1.x - r2.x )<1&& Math.abs((r1.y+r1.height)-r2.y)<1&&Math.abs(r1.width-r2.width)<1)//top edge is the same as bottom edge
+
+                            ||(Math.abs(r1.x - r2.x )<1&& Math.abs(r1.y-(r2.y+r2.height))<1&&Math.abs(r1.width-r2.width)<1)//bottom edge is the same as left edge
+
+                            ||containsOrEquals(r1,r2)||containsOrEquals(r2,r1)
+                    )
+                    {
+                        r1.merge(r2);
+                        collisionRect.removeIndex(j);
+                        i--;
+                        break;
+                    }
+                }
+            }
+        }while (oldSize!=collisionRect.size);
         if (spriteLayer == null) System.err.print("Warning: No spriteLayer present in map.\n");
 
+        getPlayerSprite().stop();
     }
 
+    static public boolean containsOrEquals(Rectangle r1,Rectangle r2) {
+        float xmi = r2.x;
+        float xma = xmi + r2.width;
+        float ymi = r2.y;
+        float yma = ymi + r2.height;
+        return xmi >= r1.x && xmi <= r1.x + r1.width && xma >= r1.x && xma <= r1.x + r1.width && ymi >= r1.y && ymi <= r1.y + r1.height && yma >= r1.y && yma <= r1.y + r1.height;
+    }
     private void loadCollision(TiledMapTileLayer layer) {
         for (int x = 0; x < layer.getWidth(); x++) {
             for (int y = 0; y < layer.getHeight(); y++) {
-                if (collision[x][y] == null)
-                    collision[x][y] = new Array<>();
-                Array<Rectangle> map = collision[x][y];
                 TiledMapTileLayer.Cell cell = layer.getCell(x, y);
                 if (cell == null)
                     continue;
                 for (MapObject collision : cell.getTile().getObjects()) {
                     if (collision instanceof RectangleMapObject) {
                         Rectangle r = ((RectangleMapObject) collision).getRectangle();
-                        map.add(new Rectangle((Math.round(layer.getTileWidth() * x) + r.x), (Math.round(layer.getTileHeight() * y) + r.y), Math.round(r.width), Math.round(r.height)));
+                        collisionRect.add(new Rectangle((Math.round(layer.getTileWidth() * x) + r.x), (Math.round(layer.getTileHeight() * y) + r.y), Math.round(r.width), Math.round(r.height)));
                     }
                 }
             }
@@ -393,13 +375,13 @@ public class MapStage extends GameStage {
     }
 
     private boolean canSpawn(MapProperties prop) {
-        DifficultyData DF = Current.player().getDifficulty();
+        DifficultyData difficultyData = Current.player().getDifficulty();
         boolean spawnEasy = prop.get("spawn.Easy", Boolean.class);
         boolean spawnNorm = prop.get("spawn.Normal", Boolean.class);
         boolean spawnHard = prop.get("spawn.Hard", Boolean.class);
-        if (DF.spawnRank == 2 && !spawnHard) return false;
-        if (DF.spawnRank == 1 && !spawnNorm) return false;
-        if (DF.spawnRank == 0 && !spawnEasy) return false;
+        if (difficultyData.spawnRank == 2 && !spawnHard) return false;
+        if (difficultyData.spawnRank == 1 && !spawnNorm) return false;
+        if (difficultyData.spawnRank == 0 && !spawnEasy) return false;
         return true;
     }
 
@@ -407,8 +389,8 @@ public class MapStage extends GameStage {
         player.setMoveModifier(2);
         for (MapObject obj : layer.getObjects()) {
             MapProperties prop = obj.getProperties();
-            if (prop.containsKey("type")) {
-                String type = prop.get("type", String.class);
+            String type = prop.get("type", String.class);
+            if (type!=null) {
                 int id = prop.get("id", int.class);
                 if (changes.isObjectDeleted(id))
                     continue;
@@ -420,7 +402,23 @@ public class MapStage extends GameStage {
                         float y = Float.parseFloat(prop.get("y").toString());
                         float w = Float.parseFloat(prop.get("width").toString());
                         float h = Float.parseFloat(prop.get("height").toString());
-                        EntryActor entry = new EntryActor(this, sourceMap, id, prop.get("teleport").toString(), x, y, w, h, prop.get("direction").toString());
+
+                        String targetMap=prop.get("teleport").toString();
+                        boolean spawnPlayerThere=(targetMap==null||targetMap.isEmpty()&&sourceMap.isEmpty())||//if target is null and "from world"
+                                !sourceMap.isEmpty()&&targetMap.equals(sourceMap);
+
+                        EntryActor entry=new EntryActor(this, id, prop.get("teleport").toString(), x, y, w, h, prop.get("direction").toString());
+                        if((prop.containsKey("spawn")&& prop.get("spawn").toString().equals("true"))&&spawnPlayerThere)
+                        {
+                            spawnClassified.add(entry);
+                        }else if(spawnPlayerThere)
+                        {
+                            sourceMapMatch.add(entry);
+                        }
+                        else
+                        {
+                            otherEntries.add(entry);
+                        }
                         addMapActor(obj, entry);
                         break;
                     case "reward":
@@ -440,33 +438,33 @@ public class MapStage extends GameStage {
                         break;
                     case "enemy":
                         if (!canSpawn(prop)) break;
-                        Object E = prop.get("enemy");
-                        if (E != null && !E.toString().isEmpty()) {
-                            EnemyData EN = WorldData.getEnemy(E.toString());
+                        Object enemy = prop.get("enemy");
+                        if (enemy != null && !enemy.toString().isEmpty()) {
+                            EnemyData EN = WorldData.getEnemy(enemy.toString());
                             if (EN == null) {
-                                System.err.printf("Enemy \"%s\" not found.", E.toString());
+                                System.err.printf("Enemy \"%s\" not found.", enemy);
                                 break;
                             }
                             EnemySprite mob = new EnemySprite(id, EN);
-                            Object D = prop.get("dialog"); //Check if the enemy has a dialogue attached to it.
-                            if (D != null && !D.toString().isEmpty()) {
-                                mob.dialog = new MapDialog(D.toString(), this, mob.getId());
+                            Object dialogObject = prop.get("dialog"); //Check if the enemy has a dialogue attached to it.
+                            if (dialogObject != null && !dialogObject.toString().isEmpty()) {
+                                mob.dialog = new MapDialog(dialogObject.toString(), this, mob.getId());
                             }
-                            D = prop.get("defeatDialog"); //Check if the enemy has a defeat dialogue attached to it.
-                            if (D != null && !D.toString().isEmpty()) {
-                                mob.defeatDialog = new MapDialog(D.toString(), this, mob.getId());
+                            dialogObject = prop.get("defeatDialog"); //Check if the enemy has a defeat dialogue attached to it.
+                            if (dialogObject != null && !dialogObject.toString().isEmpty()) {
+                                mob.defeatDialog = new MapDialog(dialogObject.toString(), this, mob.getId());
                             }
-                            D = prop.get("name"); //Check for name override.
-                            if (D != null && !D.toString().isEmpty()) {
-                                mob.nameOverride = D.toString();
+                            dialogObject = prop.get("name"); //Check for name override.
+                            if (dialogObject != null && !dialogObject.toString().isEmpty()) {
+                                mob.nameOverride = dialogObject.toString();
                             }
-                            D = prop.get("effect"); //Check for special effects.
-                            if (D != null && !D.toString().isEmpty()) {
-                                mob.effect = JSONStringLoader.parse(EffectData.class, D.toString(), "");
+                            dialogObject = prop.get("effect"); //Check for special effects.
+                            if (dialogObject != null && !dialogObject.toString().isEmpty()) {
+                                mob.effect = JSONStringLoader.parse(EffectData.class, dialogObject.toString(), "");
                             }
-                            D = prop.get("reward"); //Check for additional rewards.
-                            if (D != null && !D.toString().isEmpty()) {
-                                mob.rewards = JSONStringLoader.parse(RewardData[].class, D.toString(), "[]");
+                            dialogObject = prop.get("reward"); //Check for additional rewards.
+                            if (dialogObject != null && !dialogObject.toString().isEmpty()) {
+                                mob.rewards = JSONStringLoader.parse(RewardData[].class, dialogObject.toString(), "[]");
                             }
                             mob.hidden = hidden; //Evil.
                             addMapActor(obj, mob);
@@ -480,18 +478,30 @@ public class MapStage extends GameStage {
                         //TODO: Ability to move them (using a sequence such as "UULU" for up, up, left, up).
                         break;
                     case "inn":
-                        addMapActor(obj, new OnCollide(() -> Forge.switchScene(SceneType.InnScene.instance)));
+                        addMapActor(obj, new OnCollide(() -> Forge.switchScene(InnScene.instance())));
                         break;
                     case "spellsmith":
-                        addMapActor(obj, new OnCollide(() -> Forge.switchScene(SceneType.SpellSmithScene.instance)));
+                        addMapActor(obj, new OnCollide(() -> Forge.switchScene(SpellSmithScene.instance())));
+                        break;
+                    case "arena":
+
+                        addMapActor(obj, new OnCollide(() -> {
+                            ArenaData arenaData = JSONStringLoader.parse(ArenaData.class, prop.get("arena").toString(), "");
+                            ArenaScene.instance().loadArenaData(arenaData,WorldSave.getCurrentSave().getWorld().getRandom().nextLong());
+                                Forge.switchScene(ArenaScene.instance());
+                        }));
                         break;
                     case "exit":
-                        addMapActor(obj, new OnCollide(() -> MapStage.this.exit()));
+                        addMapActor(obj, new OnCollide(MapStage.this::exit));
                         break;
                     case "dialog":
                         if (obj instanceof TiledMapTileMapObject) {
                             TiledMapTileMapObject tiledObj = (TiledMapTileMapObject) obj;
-                            DialogActor dialog = new DialogActor(this, id, prop.get("dialog").toString(), tiledObj.getTextureRegion());
+                            DialogActor dialog;
+                            if(prop.containsKey("sprite"))
+                                dialog= new DialogActor(this, id, prop.get("dialog").toString(), prop.get("sprite").toString());
+                            else
+                                dialog= new DialogActor(this, id, prop.get("dialog").toString(), tiledObj.getTextureRegion());
                             addMapActor(obj, dialog);
                         }
                         break;
@@ -541,7 +551,7 @@ public class MapStage extends GameStage {
         isLoadingMatch = false;
         effect = null; //Reset dungeon effects.
         clearIsInMap();
-        Forge.switchScene(SceneType.GameScene.instance);
+        Forge.switchScene(GameScene.instance());
         return true;
     }
 
@@ -550,9 +560,11 @@ public class MapStage extends GameStage {
     public void setWinner(boolean playerWins) {
         isLoadingMatch = false;
         if (playerWins) {
+
+            Current.player().win();
             player.setAnimation(CharacterSprite.AnimationTypes.Attack);
             currentMob.setAnimation(CharacterSprite.AnimationTypes.Death);
-            startPause(0.3f, () -> MapStage.this.getReward());
+            startPause(0.3f, MapStage.this::getReward);
         } else {
             player.setAnimation(CharacterSprite.AnimationTypes.Hit);
             currentMob.setAnimation(CharacterSprite.AnimationTypes.Attack);
@@ -599,12 +611,13 @@ public class MapStage extends GameStage {
 
     protected void getReward() {
         isLoadingMatch = false;
-        ((RewardScene) SceneType.RewardScene.instance).loadRewards(currentMob.getRewards(), RewardScene.Type.Loot, null);
-        Forge.switchScene(SceneType.RewardScene.instance);
+         RewardScene.instance().loadRewards(currentMob.getRewards(), RewardScene.Type.Loot, null);
+        Forge.switchScene(RewardScene.instance());
         if (currentMob.defeatDialog == null) {
             currentMob.remove();
             actors.removeValue(currentMob, true);
-            changes.deleteObject(currentMob.getId());
+            if(!respawnEnemies||currentMob.getData().boss)
+                changes.deleteObject(currentMob.getId());
         } else {
             currentMob.defeatDialog.activate();
             player.setAnimation(CharacterSprite.AnimationTypes.Idle);
@@ -625,6 +638,8 @@ public class MapStage extends GameStage {
 
     @Override
     protected void onActing(float delta) {
+        float sprintingMod=currentModifications.containsKey(PlayerModification.Sprint)?2:1;
+        player.setMoveModifier(2*sprintingMod);
         oldPosition4.set(oldPosition3);
         oldPosition3.set(oldPosition2);
         oldPosition2.set(oldPosition);
@@ -643,13 +658,15 @@ public class MapStage extends GameStage {
                     break;
                 } else if (actor instanceof RewardSprite) {
                     Gdx.input.vibrate(50);
+                    if (Controllers.getCurrent() != null && Controllers.getCurrent().canVibrate())
+                        Controllers.getCurrent().startVibration(100,1);
                     startPause(0.1f, () -> { //Switch to item pickup scene.
                         RewardSprite RS = (RewardSprite) actor;
-                        ((RewardScene) SceneType.RewardScene.instance).loadRewards(RS.getRewards(), RewardScene.Type.Loot, null);
+                         RewardScene.instance().loadRewards(RS.getRewards(), RewardScene.Type.Loot, null);
                         RS.remove();
                         actors.removeValue(RS, true);
                         changes.deleteObject(RS.getId());
-                        Forge.switchScene(SceneType.RewardScene.instance);
+                        Forge.switchScene(RewardScene.instance());
                     });
                     break;
                 }
@@ -664,10 +681,13 @@ public class MapStage extends GameStage {
         mob.setAnimation(CharacterSprite.AnimationTypes.Attack);
         SoundSystem.instance.play(SoundEffectType.Block, false);
         Gdx.input.vibrate(50);
+        int duration = mob.getData().boss ? 400 : 200;
+        if (Controllers.getCurrent() != null && Controllers.getCurrent().canVibrate())
+            Controllers.getCurrent().startVibration(duration,1);
         startPause(0.8f, () -> {
             Forge.setCursor(null, Forge.magnifyToggle ? "1" : "2");
             SoundSystem.instance.play(SoundEffectType.ManaBurn, false);
-            DuelScene duelScene = ((DuelScene) SceneType.DuelScene.instance);
+            DuelScene duelScene =  DuelScene.instance();
             FThreads.invokeInEdtNowOrLater(() -> {
                 if (!isLoadingMatch) {
                     isLoadingMatch = true;
@@ -676,7 +696,7 @@ public class MapStage extends GameStage {
                         Forge.clearTransitionScreen();
                         startPause(0.3f, () -> {
                             if (isInMap && effect != null) duelScene.setDungeonEffect(effect);
-                            Forge.switchScene(SceneType.DuelScene.instance);
+                            Forge.switchScene(DuelScene.instance());
                         });
                     }, Forge.takeScreenshot(), true, false));
                 }
@@ -691,16 +711,27 @@ public class MapStage extends GameStage {
     public boolean isInMap() {
         return isInMap;
     }
+    public boolean isDialogOnlyInput() {
+        return dialogOnlyInput;
+    }
 
     public void showDialog() {
+
+        dialogButtonMap.clear();
+        for (int i = 0; i < dialog.getButtonTable().getCells().size; i++) {
+            dialogButtonMap.add( (TextraButton) dialog.getButtonTable().getCells().get(i).getActor());
+        }
         dialog.show(dialogStage, Actions.show());
         dialog.setPosition((dialogStage.getWidth() - dialog.getWidth()) / 2, (dialogStage.getHeight() - dialog.getHeight()) / 2);
         dialogOnlyInput = true;
+        if (Forge.hasGamepad()&&!dialogButtonMap.isEmpty())
+            dialogStage.setKeyboardFocus(dialogButtonMap.first());
     }
 
     public void hideDialog() {
         dialog.hide(Actions.sequence(Actions.sizeTo(dialog.getOriginX(), dialog.getOriginY(), 0.3f), Actions.hide()));
         dialogOnlyInput = false;
+        selectedKey = null;
     }
 
     public void setDialogStage(Stage dialogStage) {
@@ -735,5 +766,71 @@ public class MapStage extends GameStage {
 
     public void resetQuestFlags() {
         changes.getMapFlags().clear();
+    }
+
+    public boolean dialogInput(int keycode) {
+        if (dialogOnlyInput) {
+            if (KeyBinding.Up.isPressed(keycode)) {
+                selectPreviousDialogButton();
+            }
+            if (KeyBinding.Down.isPressed(keycode)) {
+                selectNextDialogButton();
+            }
+            if (KeyBinding.Use.isPressed(keycode)) {
+                performTouch(dialogStage.getKeyboardFocus());
+            }
+        }
+        return true;
+    }
+
+    public void performTouch(Actor actor) {
+        if (actor == null)
+            return;
+        actor.fire(eventTouchDown);
+        Timer.schedule(new Timer.Task() {
+            @Override
+            public void run() {
+                actor.fire(eventTouchUp);
+            }
+        }, 0.10f);
+    }
+    private void selectNextDialogButton() {
+        if (dialogButtonMap.size < 2)
+            return;
+        if(!(dialogStage.getKeyboardFocus() instanceof Button))
+        {
+            dialogStage.setKeyboardFocus(dialogButtonMap.first());
+            return;
+        }
+        for(int i=0;i<dialogButtonMap.size;i++)
+        {
+            if(dialogStage.getKeyboardFocus()==dialogButtonMap.get(i))
+            {
+                i+=1;
+                i%=dialogButtonMap.size;
+                dialogStage.setKeyboardFocus(dialogButtonMap.get(i));
+                return;
+            }
+        }
+    }
+    private void selectPreviousDialogButton() {
+        if (dialogButtonMap.size < 2)
+            return;
+        if(!(dialogStage.getKeyboardFocus() instanceof Button))
+        {
+            dialogStage.setKeyboardFocus(dialogButtonMap.first());
+            return;
+        }
+        for(int i=0;i<dialogButtonMap.size;i++)
+        {
+            if(dialogStage.getKeyboardFocus()==dialogButtonMap.get(i))
+            {
+                i-=1;
+                if(i<0)
+                    i=dialogButtonMap.size-1;
+                dialogStage.setKeyboardFocus(dialogButtonMap.get(i));
+                return;
+            }
+        }
     }
 }

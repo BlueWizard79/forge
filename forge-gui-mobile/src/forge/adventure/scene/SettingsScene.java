@@ -1,14 +1,14 @@
 package forge.adventure.scene;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
+import com.github.tommyettinger.textra.TextraButton;
+import com.github.tommyettinger.textra.TextraLabel;
 import forge.Forge;
 import forge.adventure.util.Config;
 import forge.adventure.util.Controls;
@@ -16,135 +16,102 @@ import forge.gui.GuiBase;
 import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
+
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 /**
  * Scene to handle settings of the base forge and adventure mode
  */
 public class SettingsScene extends UIScene {
     static public ForgePreferences Preference;
-    Stage stage;
     Texture Background;
-    private Table settingGroup;
-    TextButton back;
+    private final Table settingGroup;
+    TextraButton backButton;
+    TextraButton newPlane;
+    ScrollPane scrollPane;
 
-    public SettingsScene() {
-        super(Forge.isLandscapeMode() ? "ui/settings.json" : "ui/settings_portrait.json");
-    }
-
-
-    @Override
-    public void dispose() {
-        if (stage != null)
-            stage.dispose();
-    }
-
-    public void renderAct(float delta) {
-        Gdx.gl.glClearColor(1, 0, 1, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        stage.getBatch().begin();
-        stage.getBatch().disableBlending();
-        stage.getBatch().draw(Background, 0, 0, getIntendedWidth(), getIntendedHeight());
-        stage.getBatch().enableBlending();
-        stage.getBatch().end();
-        stage.act(delta);
-        stage.draw();
-    }
-
-    @Override
-    public boolean keyPressed(int keycode) {
-        if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.BACK) {
-            back();
+    SelectBox selectSourcePlane;
+    TextField newPlaneName;
+    private void copyNewPlane() {
+        String plane=(String) selectSourcePlane.getSelected();
+        Path source= Paths.get(Config.instance().getPlanePath(plane));
+        Path destination= Paths.get(Config.instance().getPlanePath("<user>"+newPlaneName.getText()));
+        AtomicBoolean somethingWentWrong= new AtomicBoolean(false);
+        try (Stream<Path> stream = Files.walk(source))
+        {
+            Files.createDirectories(destination);
+            stream.forEach(s -> {
+                try { Files.copy(s, destination.resolve(source.relativize(s)), REPLACE_EXISTING); }
+                catch (IOException e) {
+                    somethingWentWrong.set(true);
+                }
+            });
+        } catch (IOException e) {
+            somethingWentWrong.set(true);
         }
-        return true;
+        if(somethingWentWrong.get())
+        {
+            Dialog dialog=prepareDialog("Something went wrong", ButtonOk|ButtonAbort,null);
+            dialog.text("Copy was not successful check your access right\n and if the folder is in use");
+            showDialog(dialog);
+        }
+        else
+        {
+            Dialog dialog=prepareDialog("Copied plane", ButtonOk|ButtonAbort,null);
+            dialog.text("New plane "+newPlaneName.getText()+" was created\nYou can now start the editor to change the plane\n" +
+                    "or edit it manually from the folder\n" +
+                    Config.instance().getPlanePath("<user>"+newPlaneName.getText()));
+            Config.instance().getSettingData().plane = "<user>"+newPlaneName.getText();
+            Config.instance().saveSettings();
+            showDialog(dialog);
+        }
+
+    }
+    private void createNewPlane() {
+        Dialog dialog=prepareDialog("Create your own Plane", ButtonOk|ButtonAbort,()->copyNewPlane());
+        dialog.text("Select a plane to copy");
+        dialog.getContentTable().row();
+        dialog.getContentTable().add(selectSourcePlane);
+        dialog.getContentTable().row();
+        dialog.text("Set new plane name");
+        dialog.getContentTable().row();
+        dialog.getContentTable().add(newPlaneName);
+        newPlaneName.setText(selectSourcePlane.getSelected().toString()+"_copy");
+        dialog.show(stage);
     }
 
-    public boolean back() {
-        Forge.switchToLast();
-        return true;
-    }
+    private SettingsScene() {
+        super(Forge.isLandscapeMode() ? "ui/settings.json" : "ui/settings_portrait.json");
 
-    private void addInputField(String name, ForgePreferences.FPref pref) {
-        TextField box = Controls.newTextField("");
-        box.setText(Preference.getPref(pref));
-        box.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                Preference.setPref(pref, ((TextField) actor).getText());
-                Preference.save();
-            }
-        });
-
-        addLabel(name);
-        settingGroup.add(box).align(Align.right);
-    }
-
-    private void addCheckBox(String name, ForgePreferences.FPref pref) {
-        CheckBox box = Controls.newCheckBox("");
-        box.setChecked(Preference.getPrefBoolean(pref));
-        box.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                Preference.setPref(pref, ((CheckBox) actor).isChecked());
-                Preference.save();
-            }
-        });
-
-        addLabel(name);
-        settingGroup.add(box).align(Align.right);
-    }
-
-    private void addSettingSlider(String name, ForgePreferences.FPref pref, int min, int max) {
-        Slider slide = Controls.newSlider(min, max, 1, false);
-        slide.setValue(Preference.getPrefInt(pref));
-        slide.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                Preference.setPref(pref, String.valueOf((int) ((Slider) actor).getValue()));
-                Preference.save();
-            }
-        });
-        addLabel(name);
-        settingGroup.add(slide).align(Align.right);
-    }
-
-    private void addSettingField(String name, boolean value, ChangeListener change) {
-        CheckBox box = Controls.newCheckBox("");
-        box.setChecked(value);
-        box.addListener(change);
-        addLabel(name);
-        settingGroup.add(box).align(Align.right);
-    }
-
-    private void addSettingField(String name, int value, ChangeListener change) {
-        TextField text = Controls.newTextField(String.valueOf(value));
-        text.setTextFieldFilter((textField, c) -> Character.isDigit(c));
-        text.addListener(change);
-        addLabel(name);
-        settingGroup.add(text).align(Align.right);
-    }
-
-    void addLabel(String name) {
-        Label label = Controls.newLabel(name);
-        label.setWrap(true);
-        settingGroup.row().space(5);
-        int w = Forge.isLandscapeMode() ? 160 : 80;
-        settingGroup.add(label).align(Align.left).pad(2, 2, 2, 5).width(w).expand();
-    }
-
-    @Override
-    public void resLoaded() {
-        super.resLoaded();
+        selectSourcePlane = Controls.newComboBox();
+        newPlaneName = Controls.newTextField("");
         settingGroup = new Table();
         if (Preference == null) {
             Preference = new ForgePreferences();
         }
-
+        selectSourcePlane.setItems(Config.instance().getAllAdventures());
         SelectBox plane = Controls.newComboBox(Config.instance().getAllAdventures(), Config.instance().getSettingData().plane, o -> {
             Config.instance().getSettingData().plane = (String) o;
             Config.instance().saveSettings();
             return null;
         });
+        newPlane=Controls.newTextButton("Create own plane");
+        newPlane.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                createNewPlane();
+            }
+        });
         addLabel(Forge.getLocalizer().getMessage("lblWorld"));
         settingGroup.add(plane).align(Align.right).pad(2);
+        addLabel(Forge.getLocalizer().getMessage("lblCreate")+Forge.getLocalizer().getMessage("lblWorld"));
+        settingGroup.add(newPlane).align(Align.right).pad(2);
 
         if (!GuiBase.isAndroid()) {
             SelectBox videomode = Controls.newComboBox(new String[]{"720p", "768p", "900p", "1080p"}, Config.instance().getSettingData().videomode, o -> {
@@ -263,17 +230,105 @@ public class SettingsScene extends UIScene {
 
 
         settingGroup.row();
-        back = ui.findActor("return");
-        back.getLabel().setText(Forge.getLocalizer().getMessage("lblBack"));
-        ui.onButtonPress("return", () -> SettingsScene.this.back());
+        backButton = ui.findActor("return");
+        ui.onButtonPress("return", SettingsScene.this::back);
 
         ScrollPane scrollPane = ui.findActor("settings");
         scrollPane.setActor(settingGroup);
-
+        addToSelectable(settingGroup);
     }
+
+
+
+
+    public boolean back() {
+        Forge.switchToLast();
+        return true;
+    }
+
+    private void addInputField(String name, ForgePreferences.FPref pref) {
+        TextField box = Controls.newTextField("");
+        box.setText(Preference.getPref(pref));
+        box.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Preference.setPref(pref, ((TextField) actor).getText());
+                Preference.save();
+            }
+        });
+
+        addLabel(name);
+        settingGroup.add(box).align(Align.right);
+    }
+
+    private void addCheckBox(String name, ForgePreferences.FPref pref) {
+        CheckBox box = Controls.newCheckBox("");
+        box.setChecked(Preference.getPrefBoolean(pref));
+        box.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Preference.setPref(pref, ((CheckBox) actor).isChecked());
+                Preference.save();
+            }
+        });
+
+        addLabel(name);
+        settingGroup.add(box).align(Align.right);
+    }
+
+    private void addSettingSlider(String name, ForgePreferences.FPref pref, int min, int max) {
+        Slider slide = Controls.newSlider(min, max, 1, false);
+        slide.setValue(Preference.getPrefInt(pref));
+        slide.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Preference.setPref(pref, String.valueOf((int) ((Slider) actor).getValue()));
+                Preference.save();
+            }
+        });
+        addLabel(name);
+        settingGroup.add(slide).align(Align.right);
+    }
+
+    private void addSettingField(String name, boolean value, ChangeListener change) {
+        CheckBox box = Controls.newCheckBox("");
+        box.setChecked(value);
+        box.addListener(change);
+        addLabel(name);
+        settingGroup.add(box).align(Align.right);
+    }
+
+    private void addSettingField(String name, int value, ChangeListener change) {
+        TextField text = Controls.newTextField(String.valueOf(value));
+        text.setTextFieldFilter((textField, c) -> Character.isDigit(c));
+        text.addListener(change);
+        addLabel(name);
+        settingGroup.add(text).align(Align.right);
+    }
+
+    void addLabel(String name) {
+        TextraLabel label = Controls.newTextraLabel(name);
+        label.setWrap(true);
+        settingGroup.row().space(5);
+        int w = Forge.isLandscapeMode() ? 160 : 80;
+        settingGroup.add(label).align(Align.left).pad(2, 2, 2, 5).width(w).expand();
+    }
+
+
+    private static SettingsScene object;
+
+    public static SettingsScene instance() {
+        if(object==null)
+            object=new SettingsScene();
+        return object;
+    }
+
+
 
     @Override
-    public void create() {
-
+    public void dispose() {
+        if (stage != null)
+            stage.dispose();
     }
+
 }

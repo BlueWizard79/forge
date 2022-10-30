@@ -5,25 +5,21 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.InputProcessor;
-import com.badlogic.gdx.graphics.Cursor;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.TextureData;
+import com.badlogic.gdx.controllers.Controller;
+import com.badlogic.gdx.controllers.ControllerAdapter;
+import com.badlogic.gdx.controllers.ControllerListener;
+import com.badlogic.gdx.controllers.Controllers;
+import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Clipboard;
 import forge.adventure.scene.*;
-import forge.adventure.stage.MapStage;
 import forge.adventure.util.Config;
+import forge.adventure.world.WorldSave;
 import forge.animation.ForgeAnimation;
-import forge.assets.Assets;
-import forge.assets.AssetsDownloader;
-import forge.assets.FSkin;
-import forge.assets.FSkinFont;
-import forge.assets.ImageCache;
+import forge.assets.*;
 import forge.error.ExceptionHandler;
 import forge.gamemodes.limited.BoosterDraft;
 import forge.gui.FThreads;
@@ -67,6 +63,9 @@ public class Forge implements ApplicationListener {
     private static Graphics graphics;
     private static FrameRate frameRate;
     private static FScreen currentScreen;
+    private static ControllerListener controllerListener;
+    private static boolean hasGamepad = false;
+    public static Texture lastPreview = null;
     protected static SplashScreen splashScreen;
     protected static ClosingScreen closingScreen;
     protected static TransitionScreen transitionScreen;
@@ -115,7 +114,6 @@ public class Forge implements ApplicationListener {
     public static InputProcessor inputProcessor;
     private static Cursor cursor0, cursor1, cursor2, cursorA0, cursorA1, cursorA2;
     public static boolean forcedEnglishonCJKMissing = false;
-    public static boolean adventureLoaded = false;
     public static boolean createNewAdventureMap = false;
     private static Localizer localizer;
 
@@ -250,6 +248,13 @@ public class Forge implements ApplicationListener {
             });
         });
     }
+    public static boolean hasGamepad() {
+        //Classic Mode Various Screen GUI are not yet supported, needs control mapping for each screens
+        if (isMobileAdventureMode) {
+            return hasGamepad && Forge.isLandscapeMode(); //portrait is not supported for Gamepad
+        }
+        return false;
+    }
 
     public static InputProcessor getInputProcessor() {
         return inputProcessor;
@@ -322,19 +327,14 @@ public class Forge implements ApplicationListener {
             altZoneTabs = true;
         //pixl cursor for adventure
         setCursor(null, "0");
+        enableControllerListener();
         loadAdventureResources(true);
     }
     private static void loadAdventureResources(boolean startScene) {
         try {
-            if(!adventureLoaded)
-            {
-                for (SceneType sceneType : SceneType.values()) {
-                    sceneType.instance.resLoaded();
-                }
-                adventureLoaded=true;
-            }
+            Config.instance().loadResources();
             if (startScene)
-                switchScene(SceneType.StartScene.instance);
+                switchScene(StartScene.instance());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -974,6 +974,7 @@ public class Forge implements ApplicationListener {
         SoundSystem.instance.dispose();
         try {
             ExceptionHandler.unregisterErrorHandling();
+            lastPreview.dispose();
         } catch (Exception e) {
         }
     }
@@ -983,6 +984,10 @@ public class Forge implements ApplicationListener {
         return ((Forge)Gdx.app.getApplicationListener()).assets;
     }
     public static boolean switchScene(Scene newScene) {
+        if (newScene instanceof RewardScene || newScene instanceof SpellSmithScene || newScene instanceof DeckSelectScene || newScene instanceof PlayerStatisticScene) {
+            if (!(currentScene instanceof ForgeScene)) //prevent overwriting the last preview if last scene is instance of ForgeScene
+                WorldSave.getCurrentSave().header.createPreview();
+        }
         if (currentScene != null) {
             if (!currentScene.leave())
                 return false;
@@ -990,8 +995,6 @@ public class Forge implements ApplicationListener {
         }
         storeScreen();
         sceneWasSwapped = true;
-        if (newScene instanceof GameScene)
-            MapStage.getInstance().clearIsInMap();
         currentScene = newScene;
 
         currentScene.enter();
@@ -1360,6 +1363,7 @@ public class Forge implements ApplicationListener {
             magnify = true;
             mouseMovedX = screenX;
             mouseMovedY = screenY;
+            hasGamepad = false; //prevent drawing some panels
             //todo: mouse listener for android?
             if (GuiBase.isAndroid())
                 return true;
@@ -1395,5 +1399,172 @@ public class Forge implements ApplicationListener {
             }
             return handled;
         }
+    }
+    public static void enableControllerListener() {
+        if (controllerListener == null) {
+            controllerListener = new ControllerAdapter() {
+                @Override
+                public void connected(final Controller controller) {
+                    Gdx.app.log("Controller", "Controller connected: " + controller.getName()
+                            + "/" + controller.getUniqueId());
+                    hasGamepad = true;
+                    if (controller.canVibrate())
+                        controller.startVibration(200,1);
+                }
+                @Override
+                public void disconnected(Controller controller) {
+                    Gdx.app.log("Controller", "Controller disconnected: " + controller.getName()
+                            + "/" + controller.getUniqueId());
+                    hasGamepad = false;
+                }
+
+                @Override
+                public boolean buttonDown(Controller controller, int buttonIndex) {
+                    //System.out.println(controller.getName()+"["+controller.getUniqueId()+"]: "+buttonIndex);
+                    hasGamepad = true;
+                    translateButtons(controller, buttonIndex, true);
+                    return super.buttonDown(controller, buttonIndex);
+                }
+
+                @Override
+                public boolean buttonUp(Controller controller, int buttonIndex) {
+                    hasGamepad = true;
+                    translateButtons(controller, buttonIndex, false);
+                    return super.buttonUp(controller, buttonIndex);
+                }
+
+                @Override
+                public boolean axisMoved(Controller controller, int axisIndex, float value) {
+                    //System.out.println(controller.getName()+"["+controller.getUniqueId()+"]: axis: "+axisIndex+" - "+value);
+                    hasGamepad = true;
+                    translateAxis(controller, axisIndex, value);//prevent multi press axis
+                    return super.axisMoved(controller, axisIndex, value);
+                }
+                private void translateAxis(Controller controller, int axisIndex, float value) {
+                    if (!hasGamepad())
+                        return;//adventure only
+                    FContainer container = FOverlay.getTopOverlay();
+                    if (container == null) {
+                        container = currentScreen;
+                    }
+                    if (container != null) {
+                        if (currentScreen instanceof MatchScreen) {
+                            if (4 == axisIndex && value == 1f) { //others are L2Button if missing this axis
+                                container.keyDown(Keys.ENTER);
+                            }
+                            if (5 == axisIndex && value == 1f) { //others are R2 Button if missing this axis
+                                container.keyDown(Keys.ESCAPE);
+                            }
+                            if (controller.getMapping().axisLeftY == axisIndex) {
+                                if (value == 1f)
+                                    container.keyDown(Keys.PAGE_DOWN);
+                            }
+                        /*if (controller.getMapping().axisLeftX == axisIndex) {
+                            if (value == 1f) {
+
+                            }
+                        }*/
+                        }
+                    }
+                }
+                private void translateButtons(Controller controller, int buttonIndex, boolean keyDown) {
+                    if (!hasGamepad())
+                        return; //adventure only
+                    if (!keyDown)
+                        return; //prevent keyup on forgescene
+                    //overlay shoud have priority
+                    FContainer container = FOverlay.getTopOverlay();
+                    if (container == null) {
+                        container = currentScreen;
+                    }
+                    if (container != null) {
+                        if (currentScreen instanceof MatchScreen) {
+                            if (controller.getMapping().buttonL2 == buttonIndex) {//others are axis-4
+                                container.keyDown(Keys.ENTER);
+                            }
+                            if (controller.getMapping().buttonR2 == buttonIndex) {//others are axis-5
+                                container.keyDown(Keys.ESCAPE);
+                            }
+                            if (controller.getMapping().buttonX == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_X);
+                            }
+                            if (controller.getMapping().buttonY == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_Y);
+                            }
+                            if (controller.getMapping().buttonR1 == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_R1);
+                            }
+                            if (controller.getMapping().buttonL1 == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_L1);
+                            }
+                            if (controller.getMapping().buttonDpadDown == buttonIndex) {
+                                container.keyDown(Keys.DPAD_DOWN);
+                            }
+                            if (controller.getMapping().buttonDpadLeft == buttonIndex) {
+                                container.keyDown(Keys.DPAD_LEFT);
+                            }
+                            if (controller.getMapping().buttonDpadRight == buttonIndex) {
+                                container.keyDown(Keys.DPAD_RIGHT);
+                            }
+                            if (controller.getMapping().buttonDpadUp == buttonIndex) {
+                                container.keyDown(Keys.DPAD_UP);
+                            }
+                            if (controller.getMapping().buttonA == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_A);
+                            }
+                            if (controller.getMapping().buttonB == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_B);
+                            }
+                            if (controller.getMapping().buttonBack == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_SELECT);
+                            }
+                        } else {//Others
+                        /*if (controller.getMapping().buttonL2 == buttonIndex) {//others are axis-4
+                            container.keyDown(Keys.ENTER);
+                        }
+                        if (controller.getMapping().buttonR2 == buttonIndex) {//others are axis-5
+                            container.keyDown(Keys.ESCAPE);
+                        }*/
+                            if (controller.getMapping().buttonDpadDown == buttonIndex) {
+                                container.keyDown(Keys.DPAD_DOWN);
+                            }
+                            if (controller.getMapping().buttonDpadLeft == buttonIndex) {
+                                container.keyDown(Keys.DPAD_LEFT);
+                            }
+                            if (controller.getMapping().buttonDpadRight == buttonIndex) {
+                                container.keyDown(Keys.DPAD_RIGHT);
+                            }
+                            if (controller.getMapping().buttonDpadUp == buttonIndex) {
+                                container.keyDown(Keys.DPAD_UP);
+                            }
+                            if (controller.getMapping().buttonBack == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_SELECT);
+                            }
+                            if (controller.getMapping().buttonB == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_B);
+                            }
+                            if (controller.getMapping().buttonA == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_A);
+                            }
+                            if (controller.getMapping().buttonX == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_X);
+                            }
+                            if (controller.getMapping().buttonY == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_Y);
+                            }
+                            if (controller.getMapping().buttonR1 == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_R1);
+                            }
+                            if (controller.getMapping().buttonL1 == buttonIndex) {
+                                container.keyDown(Keys.BUTTON_L1);
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        Controllers.addListener(controllerListener);
+        if (Controllers.getCurrent() != null)
+            System.out.println("Gamepad: " + Controllers.getCurrent().getName());
     }
 }

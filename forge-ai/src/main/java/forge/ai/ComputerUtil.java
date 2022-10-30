@@ -840,12 +840,13 @@ public class ComputerUtil {
 
                     String logic = source.getParamOrDefault("AILogic", "");
                     if (logic.startsWith("SacForDamage")) {
-                        if (c.getNetPower() <= 0) {
+                        final int damageAmt = logic.contains("cmc") ? c.getManaCost().getCMC() : c.getNetPower();
+                        if (damageAmt <= 0) {
                             return false;
-                        } else if (c.getNetPower() >= ai.getOpponentsSmallestLifeTotal()) {
+                        } else if (damageAmt >= ai.getOpponentsSmallestLifeTotal()) {
                             return true;
                         } else if (logic.endsWith(".GiantX2") && c.getType().hasCreatureType("Giant")
-                                && c.getNetPower() * 2 >= ai.getOpponentsSmallestLifeTotal()) {
+                                && damageAmt * 2 >= ai.getOpponentsSmallestLifeTotal()) {
                             return true; // TODO: generalize this for any type and actually make the AI prefer giants?
                         }
                     }
@@ -2309,7 +2310,9 @@ public class ComputerUtil {
         return getCardsToDiscardFromOpponent(aiChooser, p, sa, validCards, min, max);
     }
 
-    public static String chooseSomeType(Player ai, String kindOfType, String logic, Collection<String> validTypes, List<String> invalidTypes) {
+    public static String chooseSomeType(Player ai, String kindOfType, SpellAbility sa, Collection<String> validTypes, List<String> invalidTypes) {
+        final String logic = sa.getParam("AILogic");
+
         if (invalidTypes == null) {
             invalidTypes = ImmutableList.of();
         }
@@ -2336,6 +2339,23 @@ public class ComputerUtil {
                     }
                 }
             }
+            else {
+                // Are we picking a type to reduce costs for that type?
+                boolean reducingCost = false;
+                for (StaticAbility s : sa.getHostCard().getStaticAbilities()) {
+                    if ("ReduceCost".equals(s.getParam("Mode")) && "Card.ChosenType".equals(s.getParam("ValidCard"))) {
+                        reducingCost = true;
+                        break;
+                    }
+                }
+
+                if (reducingCost) {
+                    List<String> valid = Lists.newArrayList(validTypes);
+                    valid.removeAll(invalidTypes);
+                    valid.remove("Land"); // Lands don't have costs to reduce
+                    chosen = ComputerUtilCard.getMostProminentCardType(ai.getAllCards(), valid);
+                }
+            }
             if (StringUtils.isEmpty(chosen)) {
                 chosen = validTypes.isEmpty() ? "Creature" : Aggregates.random(validTypes);
             }
@@ -2351,7 +2371,7 @@ public class ComputerUtil {
                     chosen = ComputerUtilCard.getMostProminentType(ai.getCardsIn(ZoneType.Battlefield), valid);
                 }
                 else if (logic.equals("MostProminentOppControls")) {
-                    CardCollection list = CardLists.filterControlledBy(game.getCardsIn(ZoneType.Battlefield), ai.getOpponents());
+                    CardCollection list = ai.getOpponents().getCardsIn(ZoneType.Battlefield);
                     chosen = ComputerUtilCard.getMostProminentType(list, valid);
                     if (!CardType.isACreatureType(chosen) || invalidTypes.contains(chosen)) {
                         list = CardLists.filterControlledBy(game.getCardsInGame(), ai.getOpponents());
@@ -2372,7 +2392,7 @@ public class ComputerUtil {
         } else if (kindOfType.equals("Basic Land")) {
             if (logic != null) {
                 if (logic.equals("MostProminentOppControls")) {
-                    CardCollection list = CardLists.filterControlledBy(game.getCardsIn(ZoneType.Battlefield), ai.getOpponents());
+                    CardCollection list = ai.getOpponents().getCardsIn(ZoneType.Battlefield);
                     List<String> valid = Lists.newArrayList(CardType.getBasicTypes());
                     valid.removeAll(invalidTypes);
 

@@ -689,8 +689,13 @@ public class HumanCostDecision extends CostDecisionMakerBase {
         }
 
         // Cards to use this branch: Scarscale Ritual, Wandering Mage - each adds only one counter
-        final CardCollectionView typeList = CardLists.getValidCards(source.getGame().getCardsIn(ZoneType.Battlefield),
+        CardCollectionView typeList = CardLists.getValidCards(source.getGame().getCardsIn(ZoneType.Battlefield),
                 cost.getType().split(";"), player, ability.getHostCard(), ability);
+        typeList = CardLists.filter(typeList, CardPredicates.canReceiveCounters(cost.getCounter()));
+
+        if (typeList.isEmpty()) {
+            return null;
+        }
 
         final InputSelectCardsFromList inp = new InputSelectCardsFromList(controller, 1, 1, typeList, ability);
         inp.setMessage(Localizer.getInstance().getMessage("lblPutNTypeCounterOnTarget", String.valueOf(c), cost.getCounter().getName(), cost.getDescriptiveType()));
@@ -716,6 +721,10 @@ public class HumanCostDecision extends CostDecisionMakerBase {
         } else {
             final CardCollectionView validCards = CardLists.getValidCards(ability.getActivatingPlayer().getCardsIn(ZoneType.Battlefield),
                     cost.getType().split(";"), player, source, ability);
+
+            if (validCards.size() < c) {
+                return null;
+            }
 
             final InputSelectCardsFromList inp = new InputSelectCardsFromList(controller, c, c, validCards, ability);
             inp.setCancelAllowed(!mandatory);
@@ -804,7 +813,6 @@ public class HumanCostDecision extends CostDecisionMakerBase {
         int c = cost.getAbilityAmount(ability);
         final String type = cost.getType();
 
-
         CardCollectionView list = CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield), type.split(";"), player, source, ability);
         list = CardLists.filter(list, CardPredicates.hasCounters());
 
@@ -831,11 +839,11 @@ public class HumanCostDecision extends CostDecisionMakerBase {
             this.validChoices = validCards;
             counterType = cType;
             String fromWhat = costPart.getDescriptiveType();
-            if (fromWhat.equals("CARDNAME")) {
-                fromWhat = sa.getHostCard().getName();
+            if (fromWhat.equals("CARDNAME") || fromWhat.equals("NICKNAME")) {
+                fromWhat = CardTranslation.getTranslatedName(sa.getHostCard().getName());
             }
 
-            setMessage(Localizer.getInstance().getMessage("lblRemoveNTargetCounterFromCardPayCostConfirm",
+            setMessage(Localizer.getInstance().getMessage("lblRemoveNTargetCounterFromCardPayCostSelect",
                     "%d", counterType == null ? "" : " " + counterType.getName().toLowerCase(), fromWhat));
         }
 

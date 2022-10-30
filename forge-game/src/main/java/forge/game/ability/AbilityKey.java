@@ -120,8 +120,7 @@ public enum AbilityKey {
     SourceSA("SourceSA"),
     SpellAbility("SpellAbility"),
     SpellAbilityStackInstance("SpellAbilityStackInstance"),
-    SpellAbilityTarget("SpellAbilityTarget"),
-    SpellAbilityTargetingCards("SpellAbilityTargetingCards"),
+    SpellAbilityTargets("SpellAbilityTargets"),
     StackInstance("StackInstance"),
     StackSa("StackSa"),
     StackSi("StackSi"),
@@ -131,7 +130,6 @@ public enum AbilityKey {
     TgtSA("TgtSA"),
     Token("Token"),
     TokenNum("TokenNum"),
-    TriggeredParams("TriggeredParams"),
     Vehicle("Vehicle"),
     Won("Won");
 

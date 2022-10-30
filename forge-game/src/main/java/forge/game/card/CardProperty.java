@@ -395,14 +395,8 @@ public class CardProperty {
             }
 
             if (!card.getEntityAttachedTo().isValid(restriction, sourceController, source, spellAbility)) {
-                boolean found = false;
-                for (final GameObject o : AbilityUtils.getDefinedObjects(source, restriction, spellAbility)) {
-                    if (o.equals(card.getEntityAttachedTo())) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
+                // only few cases need players
+                if (!(restriction.contains("Player") ? AbilityUtils.getDefinedPlayers(source, restriction, spellAbility) : AbilityUtils.getDefinedCards(source, restriction, spellAbility)).contains(card.getEntityAttachedTo())) {
                     return false;
                 }
             }
@@ -669,7 +663,7 @@ public class CardProperty {
                         List<Mana> payingMana = castSA.getPayingMana();
                         // even if the cost was raised, we only care about mana from activation part
                         // since this can only be 1 currently with Protective Sphere, let's just assume it's the first shard spent for easy handling
-                        if (!card.getColor().hasAnyColor(payingMana.get(payingMana.size() - 1).getColor())) {
+                        if (payingMana.isEmpty() || !card.getColor().hasAnyColor(payingMana.get(payingMana.size() - 1).getColor())) {
                             return false;
                         }
                         break;
@@ -1445,7 +1439,7 @@ public class CardProperty {
                 rhs = property.substring(11);
                 y = card.getNetToughness();
             } else if (property.startsWith("baseToughness")) {
-                rhs= property.substring(15);
+                rhs = property.substring(15);
                 y = card.getCurrentToughness();
             } else if (property.startsWith("cmc")) {
                 rhs = property.substring(5);
@@ -1550,9 +1544,15 @@ public class CardProperty {
             }
         } else if (property.startsWith("notattacking")) {
             return null == combat || !combat.isAttacking(card);
-        } else if (property.equals("attackedThisCombat")) {
-            if (null == combat || !card.getDamageHistory().getCreatureAttackedThisCombat()) {
+        } else if (property.startsWith("attackedThisCombat")) {
+            if (null == combat || card.getDamageHistory().getCreatureAttackedThisCombat() == 0) {
                 return false;
+            }
+            if (property.length() > 18) {
+                int x = AbilityUtils.calculateAmount(source, property.substring(21), spellAbility);
+                if (!Expressions.compare(card.getDamageHistory().getCreatureAttackedThisCombat(), property, x)) {
+                    return false;
+                }
             }
         } else if (property.equals("blockedThisCombat")) {
             if (null == combat || !card.getDamageHistory().getCreatureBlockedThisCombat()) {
@@ -1602,6 +1602,8 @@ public class CardProperty {
         // Nex predicates refer to past combat and don't need a reference to actual combat
         else if (property.equals("blocked")) {
             return null != combat && combat.isBlocked(card);
+        } else if (property.startsWith("blockedBySourceThisTurn")) {
+            return card.getBlockedByThisTurn().contains(source);
         } else if (property.startsWith("blockedBySourceLKI")) {
             return null != combat && combat.isBlocking(game.getChangeZoneLKIInfo(source), card);
         } else if (property.startsWith("blockedBySource")) {
@@ -1642,8 +1644,6 @@ public class CardProperty {
                 }
             }
             return false;
-        } else if (property.startsWith("blockedBySourceThisTurn")) {
-            return source.getBlockedByThisTurn().contains(card);
         } else if (property.startsWith("blockedSource")) {
             return null != combat && combat.isBlocking(card, source);
         } else if (property.startsWith("isBlockedByRemembered")) {

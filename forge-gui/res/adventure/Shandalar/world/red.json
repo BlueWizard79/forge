@@ -47,7 +47,9 @@
 	"Goblin Warrior",
 	"Hellhound",
 	"Immersturm Demon",
+	"Kavu",
 	"Khan",
+	"Mindclaw Shaman",
 	"Minotaur",
 	"Minotaur Flayer",
 	"Red Beast",
@@ -58,11 +60,13 @@
 	"Troll",
 	"Vampire Lord",
 	"Viashino",
+	"Wild-Magic Sorcerer",
 	"Yeti"
 ],
 "pointsOfInterest": [
 	"Red Castle",
 	"Mountain Town",
+	"Mountain Capital",
 	"YuleTown",
 	"BarbarianCamp",
 	"BarbarianCamp1",

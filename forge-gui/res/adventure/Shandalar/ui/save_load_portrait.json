@@ -44,7 +44,8 @@
     {
       "type": "TextButton",
       "name": "return",
-      "text": "Back",
+      "text": "tr(lblBack)",
+      "binding": "Back",
       "width": 120,
       "height": 32,
       "x": 10,
@@ -53,7 +54,7 @@
     {
       "type": "TextButton",
       "name": "save",
-      "text": "saveLoad",
+      "binding": "Use",
       "width": 120,
       "height": 32,
       "x": 140,

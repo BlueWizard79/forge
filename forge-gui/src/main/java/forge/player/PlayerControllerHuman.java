@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import java.util.TreeSet;
 
 import forge.util.ImageUtil;
@@ -49,6 +50,7 @@ import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostShard;
 import forge.deck.CardPool;
 import forge.deck.Deck;
+import forge.deck.DeckRecognizer;
 import forge.deck.DeckSection;
 import forge.game.Game;
 import forge.game.GameEntity;
@@ -1107,6 +1109,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         case Stack:
             choices = getGui().order(localizer.getMessage("lblChooseOrderCopiesCast"), localizer.getMessage("lblPutFirst"), choices, null);
             break;
+        case None: //for when we want to order but don't really want to move the cards
+            choices = getGui().order(localizer.getMessage("lblChooseOrderCards"), localizer.getMessage("lblPutFirst"), choices, null);
+            break;
         default:
             System.out.println("ZoneType " + destinationZone + " - Not Ordered");
             endTempShowCards();
@@ -1709,8 +1714,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public List<String> chooseColors(final String message, final SpellAbility sa, final int min, final int max,
-            final List<String> options) {
-        return getGui().getChoices(message, min, max, options);
+             List<String> options) {
+        options = options.stream().map(DeckRecognizer::getLocalisedMagicColorName).collect(Collectors.toList());
+        List<String> choices = getGui().getChoices(message, min, max, options);
+        return choices.stream().map(DeckRecognizer::getColorNameByLocalisedName).collect(Collectors.toList());
     }
 
     @Override
@@ -1776,6 +1783,14 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     @Override
     public CounterType chooseCounterType(final List<CounterType> options, final SpellAbility sa, final String prompt,
             Map<String, Object> params) {
+        if (options.size() <= 1) {
+            return Iterables.getFirst(options, null);
+        }
+        return getGui().one(prompt, options);
+    }
+
+    @Override
+    public String chooseKeywordForPump(final List<String> options, final SpellAbility sa, final String prompt, final Card tgtCard) {
         if (options.size() <= 1) {
             return Iterables.getFirst(options, null);
         }
@@ -2755,7 +2770,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                     if (!forgeCard.getName().equals(f.getName())) {
                         forgeCard.changeToState(forgeCard.getRules().getSplitType().getChangedStateName());
                         if (forgeCard.getCurrentStateName().equals(CardStateName.Transformed) ||
-                                forgeCard.getCurrentStateName().equals(CardStateName.Modal)) {
+                                forgeCard.getCurrentStateName().equals(CardStateName.Modal) ||
+                                forgeCard.getCurrentStateName().equals(CardStateName.Converted)) {
                             forgeCard.setBackSide(true);
                         }
                     }

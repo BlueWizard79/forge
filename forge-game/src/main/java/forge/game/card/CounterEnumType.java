@@ -184,6 +184,8 @@ public enum CounterEnumType {
     INFECTION("INFCT", 0, 230, 66),
 
     INGENUITY("INGTY", 67, 186, 205),
+    
+    INTEL("INTEL", 80, 250, 180),
 
     INTERVENTION("INTRV", 205, 203, 105),
 
@@ -240,6 +242,8 @@ public enum CounterEnumType {
     MUSIC("MUSIC", 255, 138, 255),
 
     MUSTER("MUSTR", 235, 196, 0),
+    
+    NECRODERMIS("NECRO", 80, 209, 250),
 
     NET("NET", 0, 221, 251),
 

@@ -1,15 +1,16 @@
 package forge.adventure.scene;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Array;
+import com.github.tommyettinger.textra.TextraLabel;
 import forge.Forge;
 import forge.adventure.data.DifficultyData;
 import forge.adventure.data.HeroListData;
+import forge.adventure.util.AdventureModes;
 import forge.adventure.util.Config;
 import forge.adventure.util.Selector;
 import forge.adventure.util.UIActor;
@@ -30,84 +31,88 @@ import java.util.Random;
 public class NewGameScene extends UIScene {
     TextField selectedName;
     ColorSet[] colorIds;
-    private Image avatarImage;
+    private final Image avatarImage;
     private int avatarIndex = 0;
-    private Selector race;
-    private Selector colorId;
-    private Selector gender;
-    private Selector mode;
-    private Selector difficulty;
-    private Array<String> stringList, random, custom;
-    private Label colorLabel;
+    private final Selector race;
+    private final Selector colorId;
+    private final Selector gender;
+    private final Selector mode;
+    private final Selector difficulty;
+    private final Array<String> custom;
+    private final TextraLabel colorLabel;
 
-    public NewGameScene() {
+    private final Array<AdventureModes> modes=new Array<>();
+    private NewGameScene() {
+
         super(Forge.isLandscapeMode() ? "ui/new_game.json" : "ui/new_game_portrait.json");
-    }
 
-    public boolean start() {
-        if (selectedName.getText().isEmpty()) {
-            selectedName.setText(NameGenerator.getRandomName("Any", "Any", ""));
-        }
-        Runnable runnable = () -> {
-            FModel.getPreferences().setPref(ForgePreferences.FPref.UI_ENABLE_MUSIC, false);
-            WorldSave.generateNewWorld(selectedName.getText(),
-                    gender.getCurrentIndex() == 0,
-                    race.getCurrentIndex(),
-                    avatarIndex,
-                    colorIds[colorId.getCurrentIndex()],
-                    Config.instance().getConfigData().difficulties[difficulty.getCurrentIndex()],
-                    mode.getCurrentIndex() == 2, mode.getCurrentIndex() == 1, mode.getCurrentIndex() == 3, colorId.getCurrentIndex(), 0);//maybe replace with enum
-            GamePlayerUtil.getGuiPlayer().setName(selectedName.getText());
-            Forge.switchScene(SceneType.GameScene.instance);
-        };
-        Forge.setTransitionScreen(new TransitionScreen(runnable, null, false, true, "Generating World..."));
-        return true;
-    }
-
-    public boolean back() {
-        Forge.switchScene(SceneType.StartScene.instance);
-        return true;
-    }
-
-    @Override
-    public void resLoaded() {
-        super.resLoaded();
         selectedName = ui.findActor("nameField");
         selectedName.setText(NameGenerator.getRandomName("Any", "Any", ""));
         avatarImage = ui.findActor("avatarPreview");
         gender = ui.findActor("gender");
         mode = ui.findActor("mode");
         colorLabel = ui.findActor("colorIdL");
-        String colorIdLabel = colorLabel.getText().toString();
+        String colorIdLabel = colorLabel.storedText;
         custom = new Array<>();
-        for (DeckProxy deckProxy : DeckProxy.getAllCustomStarterDecks())
-            custom.add(deckProxy.getName());
-        mode.setTextList(custom.isEmpty() ? new String[]{"Standard", "Constructed", "Chaos"} : new String[]{"Standard", "Constructed", "Chaos", "Custom"});
-        gender.setTextList(new String[]{"Male", "Female"});
-        gender.addListener(event -> NewGameScene.this.updateAvatar());
-        Random rand = new Random();
         colorId = ui.findActor("colorId");
         String[] colorSet = Config.instance().colorIds();
         String[] colorIdNames = Config.instance().colorIdNames();
         colorIds = new ColorSet[colorSet.length];
         for (int i = 0; i < colorIds.length; i++)
             colorIds[i] = ColorSet.fromNames(colorSet[i].toCharArray());
-        stringList = new Array<>(colorIds.length);
+        Array<String> colorNames = new Array<>(colorIds.length);
         for (String idName : colorIdNames)
-            stringList.add(UIActor.localize(idName));
-        colorId.setTextList(stringList);
-        random = new Array<>();
-        random.add(Forge.getLocalizer().getMessage("lblRandomDeck"));
+            colorNames.add(UIActor.localize(idName));
+        colorId.setTextList(colorNames);
+
+        for (DifficultyData diff : Config.instance().getConfigData().difficulties)//check first difficulty if exists
+        {
+            if(diff.starterDecks!=null)
+            {
+                modes.add(AdventureModes.Standard);
+                AdventureModes.Standard.setSelectionName(colorIdLabel);
+                AdventureModes.Standard.setModes(colorNames);
+            }
+
+            if(diff.constructedStarterDecks!=null)
+            {
+                modes.add(AdventureModes.Constructed);
+                AdventureModes.Constructed.setSelectionName(colorIdLabel);
+                AdventureModes.Constructed.setModes(colorNames);
+            }
+            if(diff.pileDecks!=null)
+            {
+                modes.add(AdventureModes.Pile);
+                AdventureModes.Pile.setSelectionName(colorIdLabel);
+                AdventureModes.Pile.setModes(colorNames);
+            }
+            break;
+        }
+        modes.add(AdventureModes.Chaos);
+        AdventureModes.Chaos.setSelectionName("[BLACK]"+Forge.getLocalizer().getMessage("lblDeck")+":");
+        AdventureModes.Chaos.setModes(new Array<>(new String[]{Forge.getLocalizer().getMessage("lblRandomDeck")}));
+        for (DeckProxy deckProxy : DeckProxy.getAllCustomStarterDecks())
+            custom.add(deckProxy.getName());
+        if(!custom.isEmpty())
+        {
+            modes.add(AdventureModes.Custom);
+            AdventureModes.Custom.setSelectionName("[BLACK]"+Forge.getLocalizer().getMessage("lblDeck")+":");
+            AdventureModes.Custom.setModes(custom);
+        }
+        String[] modeNames=new String[modes.size];
+        for(int i=0;i<modes.size;i++)
+            modeNames[i]=modes.get(i).getName();
+        mode.setTextList(modeNames);
+
+        gender.setTextList(new String[]{"Male", "Female"});
+        gender.addListener(event -> NewGameScene.this.updateAvatar());
+
         mode.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent changeEvent, Actor actor) {
-                colorLabel.setText(mode.getCurrentIndex() < 2 ? colorIdLabel : Forge.getLocalizer().getMessage("lblDeck")+":");
-                if (mode.getCurrentIndex() == 3)
-                    colorId.setTextList(custom);
-                if (mode.getCurrentIndex() == 2)
-                    colorId.setTextList(random);
-                if (mode.getCurrentIndex() < 2)
-                    colorId.setTextList(stringList);
+                AdventureModes smode=modes.get(mode.getCurrentIndex());
+                colorLabel.setText(smode.getSelectionName());
+                colorId.setTextList(smode.getModes());
             }
         });
         race = ui.findActor("race");
@@ -126,6 +131,8 @@ public class NewGameScene extends UIScene {
         }
         difficulty.setTextList(diffList);
         difficulty.setCurrentIndex(startingDifficulty);
+
+        Random rand = new Random();
         avatarIndex = rand.nextInt();
         updateAvatar();
         gender.setCurrentIndex(rand.nextInt());
@@ -136,6 +143,41 @@ public class NewGameScene extends UIScene {
         ui.onButtonPress("leftAvatar", () -> NewGameScene.this.leftAvatar());
         ui.onButtonPress("rightAvatar", () -> NewGameScene.this.rightAvatar());
     }
+
+    private static NewGameScene object;
+
+    public static NewGameScene instance() {
+        if(object==null)
+            object=new NewGameScene();
+        return object;
+    }
+
+
+    public boolean start() {
+        if (selectedName.getText().isEmpty()) {
+            selectedName.setText(NameGenerator.getRandomName("Any", "Any", ""));
+        }
+        Runnable runnable = () -> {
+            FModel.getPreferences().setPref(ForgePreferences.FPref.UI_ENABLE_MUSIC, false);
+            WorldSave.generateNewWorld(selectedName.getText(),
+                    gender.getCurrentIndex() == 0,
+                    race.getCurrentIndex(),
+                    avatarIndex,
+                    colorIds[colorId.getCurrentIndex()],
+                    Config.instance().getConfigData().difficulties[difficulty.getCurrentIndex()],
+                    modes.get(mode.getCurrentIndex()), colorId.getCurrentIndex(), 0);//maybe replace with enum
+            GamePlayerUtil.getGuiPlayer().setName(selectedName.getText());
+            Forge.switchScene(GameScene.instance());
+        };
+        Forge.setTransitionScreen(new TransitionScreen(runnable, null, false, true, "Generating World..."));
+        return true;
+    }
+
+    public boolean back() {
+        Forge.switchScene(StartScene.instance());
+        return true;
+    }
+
 
     private void rightAvatar() {
 
@@ -153,15 +195,10 @@ public class NewGameScene extends UIScene {
         return false;
     }
 
-    @Override
-    public void create() {
-
-    }
 
     @Override
     public void enter() {
         updateAvatar();
-        Gdx.input.setInputProcessor(stage); //Start taking input from the ui
 
         if (Forge.createNewAdventureMap) {
             FModel.getPreferences().setPref(ForgePreferences.FPref.UI_ENABLE_MUSIC, false);
@@ -171,17 +208,12 @@ public class NewGameScene extends UIScene {
                     avatarIndex,
                     colorIds[colorId.getCurrentIndex()],
                     Config.instance().getConfigData().difficulties[difficulty.getCurrentIndex()],
-                    mode.getCurrentIndex() == 2, mode.getCurrentIndex() == 1, mode.getCurrentIndex() == 3, colorId.getCurrentIndex(), 0);//maybe replace with enum
+                    modes.get(mode.getCurrentIndex()), colorId.getCurrentIndex(), 0);
             GamePlayerUtil.getGuiPlayer().setName(selectedName.getText());
-            Forge.switchScene(SceneType.GameScene.instance);
+            Forge.switchScene(GameScene.instance());
         }
-    }
 
-    @Override
-    public boolean keyPressed(int keycode) {
-        if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.BACK) {
-            back();
-        }
-        return true;
+        unselectActors();
+        super.enter();
     }
 }

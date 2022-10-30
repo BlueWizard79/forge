@@ -30,12 +30,15 @@
 ],
 "enemies": [
 	"Adventurer",
+	"Aether Channeler",
 	"Archer",
+	"Beastmaster",
 	"Cat",
 	"Cathar",
 	"Cleric",
 	"Dawnhart Witch",
 	"Eldraine Knight",
+	"Frost Titan",
 	"Griffin",
 	"Horseman",
 	"Human",
@@ -51,6 +54,7 @@
 "pointsOfInterest": [
 	"White Castle",
 	"Plains Town",
+	"Plains Capital",
 	"Monastery",
 	"Monastery1",
 	"Monastery2",

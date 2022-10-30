@@ -460,12 +460,12 @@ public class CountersPutAi extends CountersAi {
             // only evaluates case where all tokens are placed on a single target
             if (sa.usesTargeting() && sa.getMinTargets() < 2) {
                 if (ComputerUtilCard.canPumpAgainstRemoval(ai, sa)) {
-                    Card c = sa.getTargets().getFirstTargetedCard();
+                    Card c = sa.getTargetCard();
                     if (sa.getTargets().size() > 1) {
                         sa.resetTargets();
                         sa.getTargets().add(c);
                     }
-                    sa.addDividedAllocation(sa.getTargetCard(), amount);
+                    sa.addDividedAllocation(c, amount);
                     return true;
                 } else {
                     return false;
@@ -680,7 +680,7 @@ public class CountersPutAi extends CountersAi {
             CardCollection list = null;
 
             if (sa.isCurse()) {
-                list = CardLists.filterControlledBy(game.getCardsIn(ZoneType.Battlefield), ai.getOpponents());
+                list = ai.getOpponents().getCardsIn(ZoneType.Battlefield);
             } else {
                 list = new CardCollection(ai.getCardsIn(ZoneType.Battlefield));
             }

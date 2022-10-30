@@ -10,12 +10,18 @@ import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.OrderedMap;
+import com.github.tommyettinger.textra.TextraButton;
+import com.github.tommyettinger.textra.TextraLabel;
 import forge.Forge;
 import forge.adventure.data.UIData;
+import forge.adventure.scene.UIScene;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +31,9 @@ import java.util.regex.Pattern;
 public class UIActor extends Group {
     UIData data;
     Actor lastActor=null;
+    public Array<UIScene.Selectable> selectActors=new Array<>();
+    private HashMap<KeyBinding,Button> keyMap=new HashMap<>();
+    public Array<KeyHintLabel> keyLabels=new Array<>();
 
     public UIActor(FileHandle handle) {
         data = (new Json()).fromJson(UIData.class, handle);
@@ -44,11 +53,11 @@ public class UIActor extends Group {
                         readSelectorProperties((Selector) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "Label":
-                        newActor = new Label("", Controls.GetSkin());
-                        readLabelProperties((Label) newActor, new OrderedMap.OrderedMapEntries<>(element));
+                        newActor = Controls.newTextraLabel("");
+                        readLabelProperties((TextraLabel) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "Table":
-                        newActor = new Table(Controls.GetSkin());
+                        newActor = new Table(Controls.getSkin());
                         readTableProperties((Table) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "Image":
@@ -56,31 +65,31 @@ public class UIActor extends Group {
                         readImageProperties((Image) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "ImageButton":
-                        newActor = new ImageButton(Controls.GetSkin());
+                        newActor = new ImageButton(Controls.getSkin());
                         readImageButtonProperties((ImageButton) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "Window":
-                        newActor = new Window("", Controls.GetSkin());
+                        newActor = new Window("", Controls.getSkin());
                         readWindowProperties((Window) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "TextButton":
-                        newActor = new TextButton("", Controls.GetSkin());
-                        readButtonProperties((TextButton) newActor, new OrderedMap.OrderedMapEntries<>(element));
+                        newActor = Controls.newTextButton("");
+                        readButtonProperties((TextraButton) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "TextField":
-                        newActor = new TextField("", Controls.GetSkin());
+                        newActor = new TextField("", Controls.getSkin());
                         readTextFieldProperties((TextField) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "Scroll":
-                        newActor = new ScrollPane(null, Controls.GetSkin());
+                        newActor = new ScrollPane(null, Controls.getSkin());
                         readScrollPaneProperties((ScrollPane) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "CheckBox":
-                        newActor = new CheckBox("", Controls.GetSkin());
+                        newActor = new CheckBox("", Controls.getSkin());
                         readCheckBoxProperties((CheckBox) newActor, new OrderedMap.OrderedMapEntries<>(element));
                         break;
                     case "SelectBox":
-                        newActor = new SelectBox<>(Controls.GetSkin());
+                        newActor =Controls.newComboBox();
                         break;
                     default:
                         throw new IllegalStateException("Unexpected value: " + type);
@@ -90,6 +99,9 @@ public class UIActor extends Group {
             float yValue = 0;
             for (ObjectMap.Entry property : new OrderedMap.OrderedMapEntries<>(element)) {
                 switch (property.key.toString()) {
+                    case "selectable":
+                        selectActors.add(new UIScene.Selectable(newActor));
+                        break;
                     case "scale":
                         newActor.setScale((Float) property.value);
                         break;
@@ -132,14 +144,27 @@ public class UIActor extends Group {
             lastActor=newActor;
             addActor(newActor);
         }
+
+    }
+
+    public Button buttonPressed(int key)
+    {
+        for(Map.Entry<KeyBinding, Button> entry:keyMap.entrySet())
+        {
+            if(entry.getKey().isPressed(key))
+            {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     private void readScrollPaneProperties(ScrollPane newActor, ObjectMap.Entries<String, String> entries) {
-        newActor.setActor(new Label("", Controls.GetSkin()));
+        newActor.setActor(Controls.newTextraLabel(""));
         for (ObjectMap.Entry property : entries) {
             switch (property.key.toString()) {
                 case "style":
-                    newActor.setStyle(Controls.GetSkin().get(property.value.toString(), ScrollPane.ScrollPaneStyle.class));
+                    newActor.setStyle(Controls.getSkin().get(property.value.toString(), ScrollPane.ScrollPaneStyle.class));
                     break;
             }
         }
@@ -149,7 +174,7 @@ public class UIActor extends Group {
         for (ObjectMap.Entry property : entries) {
             switch (property.key.toString()) {
                 case "style":
-                    newActor.setStyle(Controls.GetSkin().get(property.value.toString(), Window.WindowStyle.class));
+                    newActor.setStyle(Controls.getSkin().get(property.value.toString(), Window.WindowStyle.class));
                     break;
             }
         }
@@ -170,13 +195,13 @@ public class UIActor extends Group {
     }
 
     public static String localize(String str) {
-        Pattern regex=Pattern.compile("\\{[^\\}]*\\}");
+        Pattern regex=Pattern.compile("tr\\([^\\)]*\\)");
         for(int i=0;i<100;i++)
         {
            Matcher matcher= regex.matcher(str);
            if(!matcher.find())
                return str;
-            str=matcher.replaceAll(Forge.getLocalizer().getMessage(matcher.group().substring(1,matcher.group().length()-1)));
+            str=matcher.replaceFirst(Forge.getLocalizer().getMessage(matcher.group().substring(3,matcher.group().length()-1)));
         }
         return str;
     }
@@ -185,39 +210,37 @@ public class UIActor extends Group {
         for (ObjectMap.Entry property : entries) {
             switch (property.key.toString()) {
                 case "style":
-                    newActor.setStyle(Controls.GetSkin().get(property.value.toString(), ImageButton.ImageButtonStyle.class));
-                    break; 
+                    newActor.setStyle(Controls.getSkin().get(property.value.toString(), ImageButton.ImageButtonStyle.class));
+                    break;
+                case "binding":
+                    keyMap.put(KeyBinding.valueOf(property.value.toString()),newActor);
+                    break;
             }
         }
     }
 
-    private void readLabelProperties(Label newActor, ObjectMap.Entries<String, String> entries) {
-        Label.LabelStyle style = new Label.LabelStyle(newActor.getStyle());
+    private void readLabelProperties(TextraLabel newActor, ObjectMap.Entries<String, String> entries) {
         for (ObjectMap.Entry property : entries) {
             switch (property.key.toString()) {
                 case "text":
                     newActor.setText(localize(property.value.toString()));
                     break;
-                case "font"://legacy
-                    style.font = Controls.getBitmapFont(property.value.toString());
-                    if (property.value.toString().contains("black"))
-                        style.fontColor = Color.BLACK;
-                    if (property.value.toString().contains("big"))
-                        newActor.setFontScale(2, 2);
-                    newActor.setStyle(style);
-                    break;
-                case "fontSize":
-                    newActor.setFontScale((Float)property.value, (Float)property.value);
-                    break;
+                case "font":
                 case "fontName":
-                    style.font = Controls.getBitmapFont(property.value.toString());
-                    newActor.setStyle(style);
+                    if(!property.value.toString().equals("default"))
+                        newActor.setFont(Controls.getTextraFont(property.value.toString()));
                     break;
+                case "style":
+                    newActor.style=(Controls.getSkin().get(property.value.toString(), Label.LabelStyle.class));
+                    break;
+                case "color":
                 case "fontColor":
-                    newActor.setColor(new Color(Integer.decode(property.value.toString()) ));
+                    newActor.layout.setBaseColor(Controls.colorFromString(property.value.toString()));
                     break;
             }
         }
+        newActor.setText(newActor.storedText);//necessary if color changes after text inserted
+        newActor.layout();
     }
 
     private void readTableProperties(Table newActor, ObjectMap.Entries<String, String> entries) {
@@ -247,14 +270,24 @@ public class UIActor extends Group {
         }
     }
 
-    private void readButtonProperties(TextButton newActor, ObjectMap.Entries<String, String> entries) {
+    private void readButtonProperties(TextraButton newActor, ObjectMap.Entries<String, String> entries) {
         for (ObjectMap.Entry property : entries) {
             switch (property.key.toString()) {
                 case "text":
                     newActor.setText(localize(property.value.toString()));
                     break;
+                case "style":
+                    newActor.setStyle(Controls.getSkin().get(property.value.toString(), TextButton.TextButtonStyle.class));
+                    break;
+                case "binding":
+                    keyMap.put(KeyBinding.valueOf(property.value.toString()),newActor);
+                    KeyHintLabel label=new KeyHintLabel(KeyBinding.valueOf(property.value.toString()));
+                    keyLabels.add(label);
+                    newActor.add(label);
+                    break;
             }
         }
+        newActor.layout();
     }
 
     private void readImageProperties(Image newActor, ObjectMap.Entries<String, String> entries) {
@@ -284,5 +317,65 @@ public class UIActor extends Group {
                 func.run();
             }
         });
+    }
+
+    public void controllerDisconnected( ) {
+        for(KeyHintLabel label:keyLabels)
+        {
+            label.disconnected();
+        }
+    }
+    public void controllerConnected( ) {
+        for(KeyHintLabel label:keyLabels)
+        {
+            label.connected();
+        }
+    }
+    public void pressUp(int code) {
+        for(KeyHintLabel label:keyLabels)
+        {
+            label.buttonUp(code);
+        }
+    }
+
+    public void pressDown(int code) {
+        for(KeyHintLabel label:keyLabels)
+        {
+            label.buttonDown(code);
+        }
+    }
+
+
+    private class KeyHintLabel extends TextraLabel {
+        public KeyHintLabel(KeyBinding keyBinding) {
+            super(keyBinding.getLabelText(false),Controls.getKeysFont());
+            this.keyBinding=keyBinding;
+        }
+        KeyBinding keyBinding;
+        public void connected( ) {
+            updateText();
+        }
+
+        private void updateText() {
+            setText(keyBinding.getLabelText(false));
+            layout();
+        }
+
+        public void disconnected() {
+            updateText();
+        }
+
+        public boolean buttonDown(int i) {
+            if(keyBinding.isPressed(i))
+                setText(keyBinding.getLabelText(true));
+            layout();
+            return false;
+        }
+
+        public boolean buttonUp( int i) {
+            if(keyBinding.isPressed(i))
+                updateText();
+            return false;
+        }
     }
 }

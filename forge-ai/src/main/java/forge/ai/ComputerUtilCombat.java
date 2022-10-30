@@ -387,7 +387,7 @@ public class ComputerUtilCombat {
     public static List<Card> getLifeThreateningCommanders(final Player ai, final Combat combat) {
         List<Card> res = Lists.newArrayList();
         for (Card c : combat.getAttackers()) {
-            if (c.isCommander()) {
+            if (c.isCommander() && combat.isAttacking(c, ai)) {
                 int currentCommanderDamage = ai.getCommanderDamage(c);
                 if (damageIfUnblocked(c, ai, combat, false) + currentCommanderDamage >= 21) {
                     res.add(c);
@@ -518,7 +518,7 @@ public class ComputerUtilCombat {
             return true;
         }
 
-        return resultingPoison(ai, combat) > 9;
+        return resultingPoison(ai, combat) >= ai.getGame().getRules().getPoisonCountersToLose();
     }
 
     // This calculates the amount of damage a blockgang can deal to the attacker

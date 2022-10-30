@@ -44,6 +44,7 @@ import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.staticability.StaticAbilityAssignCombatDamageAsUnblocked;
 import forge.game.staticability.StaticAbilityCantAttackBlock;
+import forge.game.staticability.StaticAbilityMustBlock;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
@@ -133,9 +134,10 @@ public class AiBlockController {
         final CardCollection sortedAttackers = new CardCollection();
         CardCollection firstAttacker = new CardCollection();
         final FCollectionView<GameEntity> defenders = combat.getDefenders();
+        final List<Card> attackingCmd = ComputerUtilCombat.getLifeThreateningCommanders(ai, combat);
 
         // If I don't have any planeswalkers then sorting doesn't really matter
-        if (defenders.size() == 1) {
+        if (defenders.size() == 1 || !attackingCmd.isEmpty()) {
             final CardCollection attackers = combat.getAttackersOf(defenders.get(0));
             // Begin with the attackers that pose the biggest threat
             ComputerUtilCard.sortByEvaluateCreature(attackers);
@@ -146,7 +148,14 @@ public class AiBlockController {
                 public int compare(final Card o1, final Card o2) {
                     if (o1.hasSVar("MustBeBlocked") && !o2.hasSVar("MustBeBlocked")) {
                         return -1;
-                    } else if (!o1.hasSVar("MustBeBlocked") && o2.hasSVar("MustBeBlocked")) {
+                    }
+                    if (!o1.hasSVar("MustBeBlocked") && o2.hasSVar("MustBeBlocked")) {
+                        return 1;
+                    }
+                    if (attackingCmd.contains(o1) && !attackingCmd.contains(o2)) {
+                        return -1;
+                    }
+                    if (!attackingCmd.contains(o1) && attackingCmd.contains(o2)) {
                         return 1;
                     }
                     return 0;
@@ -166,14 +175,13 @@ public class AiBlockController {
                 sortedAttackers.addAll(attackers);
             } else if (defender instanceof Player && defender.equals(ai)) {
                 firstAttacker = combat.getAttackersOf(defender);
+                CardLists.sortByPowerDesc(firstAttacker);
             }
         }
 
         if (ComputerUtilCombat.lifeInDanger(ai, combat)) {
             // add creatures attacking the Player to the front of the list
-            for (final Card c : firstAttacker) {
-                sortedAttackers.add(0, c);
-            }
+            sortedAttackers.addAll(0, firstAttacker);
         } else {
             // add creatures attacking the Player to the back of the list
             sortedAttackers.addAll(firstAttacker);
@@ -951,10 +959,11 @@ public class AiBlockController {
 
     private void makeRequiredBlocks(Combat combat) {
         // assign blockers that have to block
-        final CardCollection chumpBlockers = CardLists.getKeyword(blockersLeft, "CARDNAME blocks each combat if able.");
+        final CardCollection chumpBlockers = new CardCollection();
         // if an attacker with lure attacks - all that can block
         for (final Card blocker : blockersLeft) {
-            if (CombatUtil.mustBlockAnAttacker(blocker, combat, null)) {
+            if (CombatUtil.mustBlockAnAttacker(blocker, combat, null) ||
+                    StaticAbilityMustBlock.blocksEachCombatIfAble(blocker)) {
                 chumpBlockers.add(blocker);
             }
         }
@@ -964,7 +973,7 @@ public class AiBlockController {
                 for (final Card blocker : blockers) {
                     if (CombatUtil.canBlock(attacker, blocker, combat) && blockersLeft.contains(blocker)
                             && (CombatUtil.mustBlockAnAttacker(blocker, combat, null)
-                                    || blocker.hasKeyword("CARDNAME blocks each combat if able."))) {
+                                    || StaticAbilityMustBlock.blocksEachCombatIfAble(blocker))) {
                         combat.addBlocker(attacker, blocker);
                         if (!blocker.getMustBlockCards().isEmpty()) {
                             int mustBlockAmt = blocker.getMustBlockCards().size();
@@ -1052,7 +1061,7 @@ public class AiBlockController {
 
         // remove all attackers that can't be blocked anyway
         for (final Card a : attackers) {
-            if (!CombatUtil.canBeBlocked(a, ai)) {
+            if (!CombatUtil.canBeBlocked(a, null, ai)) { // pass null to skip redundant checks for performance
                 attackersLeft.remove(a);
             }
         }

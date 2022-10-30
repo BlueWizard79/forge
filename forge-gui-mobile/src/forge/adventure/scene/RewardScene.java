@@ -1,13 +1,13 @@
 package forge.adventure.scene;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Timer;
+import com.github.tommyettinger.textra.TextraButton;
+import com.github.tommyettinger.textra.TextraLabel;
 import forge.Forge;
 import forge.adventure.character.ShopActor;
 import forge.adventure.player.AdventurePlayer;
@@ -23,8 +23,18 @@ import forge.sound.SoundSystem;
  * Displays the rewards of a fight or a treasure
  */
 public class RewardScene extends UIScene {
-    private TextButton doneButton;
-    private Label goldLabel;
+    private final TextraButton doneButton;
+    private final TextraLabel goldLabel;
+
+    private static RewardScene object;
+
+    public static RewardScene instance() {
+        if(object==null)
+            object=new RewardScene();
+        return object;
+    }
+
+    private boolean showTooltips = false;
     public enum Type {
         Shop,
         Loot
@@ -36,11 +46,47 @@ public class RewardScene extends UIScene {
     static public final float CARD_HEIGHT = 400f;
     static public final float CARD_WIDTH_TO_HEIGHT = CARD_WIDTH / CARD_HEIGHT;
 
-    public RewardScene() {
+    private RewardScene() {
+
         super(Forge.isLandscapeMode() ? "ui/items.json" : "ui/items_portrait.json");
+
+        goldLabel=ui.findActor("gold");
+        ui.onButtonPress("done", () -> RewardScene.this.done());
+        ui.onButtonPress("detail",()->RewardScene.this.toggleToolTip());
+        doneButton = ui.findActor("done");
     }
 
-    boolean doneClicked = false;
+    private void toggleToolTip() {
+
+        Selectable selectable=getSelected();
+        if(selectable==null)
+            return;
+        RewardActor actor;
+        if(selectable.actor instanceof BuyButton)
+        {
+            actor= ((BuyButton) selectable.actor).reward;
+        }
+        else if (selectable.actor instanceof RewardActor)
+        {
+            actor= (RewardActor) selectable.actor;
+        }
+        else
+        {
+            return;
+        }
+        if(actor.toolTipIsVisible())
+        {
+            actor.hideTooltip();
+        }
+        else
+        {
+            if(!actor.isFlipped())
+                actor.showTooltip();
+        }
+
+    }
+
+    boolean doneClicked = false, shown = false;
     float flipCountDown = 1.0f;
     float exitCountDown = 0.0f; //Serves as additional check for when scene is exiting, so you can't double tap too fast.
 
@@ -123,25 +169,45 @@ public class RewardScene extends UIScene {
             }
         }
     }
-
-    @Override
-    public void resLoaded() {
-        super.resLoaded();
-            goldLabel=ui.findActor("gold");
-            ui.onButtonPress("done", () -> RewardScene.this.done());
-            doneButton = ui.findActor("done");
-    }
-
-    @Override
-    public boolean keyPressed(int keycode) {
-        if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.BACK) {
-            done();
+    private void showLootOrDone() {
+        boolean exit = true;
+        for (Actor actor : new Array.ArrayIterator<>(generated)) {
+            if (!(actor instanceof RewardActor)) {
+                continue;
+            }
+            RewardActor reward = (RewardActor) actor;
+            if (!reward.isFlipped()) {
+                exit = false;
+                break;
+            }
         }
-        return true;
+        if (exit)
+            performTouch(doneButton);
+        else if (type == Type.Loot && !shown) {
+            shown = true;
+            for (Actor actor : new Array.ArrayIterator<>(generated)) {
+                if (!(actor instanceof RewardActor)) {
+                    continue;
+                }
+                RewardActor reward = (RewardActor) actor;
+                AdventurePlayer.current().addReward(reward.getReward());
+                if (!reward.isFlipped()) {
+                    Timer.schedule(new Timer.Task() {
+                        @Override
+                        public void run() {
+                            reward.flip();
+                        }
+                    }, 0.09f);
+                }
+            }
+        } else {
+            performTouch(doneButton);
+        }
     }
 
 
     public void loadRewards(Array<Reward> newRewards, Type type, ShopActor shopActor) {
+        clearSelectable();
         this.type   = type;
         doneClicked = false;
         for (Actor actor : new Array.ArrayIterator<>(generated)) {
@@ -155,7 +221,7 @@ public class RewardScene extends UIScene {
 
         Actor card = ui.findActor("cards");
         if(type==Type.Shop) {
-            goldLabel.setText("Gold:"+Current.player().getGold());
+            goldLabel.setText(Current.player().getGold()+"[+Gold]");
             Actor background = ui.findActor("market_background");
             if(background!=null)
                 background.setVisible(true);
@@ -184,7 +250,7 @@ public class RewardScene extends UIScene {
         switch (type) {
             case Shop:
                 doneButton.setText(Forge.getLocalizer().getMessage("lblLeave"));
-                goldLabel.setText("Gold:"+Current.player().getGold());
+                goldLabel.setText(Current.player().getGold()+"[+Gold]");
                 break;
             case Loot:
                 goldLabel.setText("");
@@ -272,11 +338,14 @@ public class RewardScene extends UIScene {
                 if (currentRow != ((i + 1) / numberOfColumns))
                     yOff += doneButton.getHeight();
 
-                TextButton buyCardButton = new BuyButton(shopActor.getObjectId(), i, shopActor.isUnlimited()?null:shopActor.getMapStage().getChanges(), actor, doneButton);
+                BuyButton buyCardButton = new BuyButton(shopActor.getObjectId(), i, shopActor.isUnlimited()?null:shopActor.getMapStage().getChanges(), actor, doneButton);
                 generated.add(buyCardButton);
                 if (!skipCard) {
                     stage.addActor(buyCardButton);
+                    addToSelectable(buyCardButton);
                 }
+            } else {
+                addToSelectable(actor);
             }
             generated.add(actor);
             if (!skipCard) {
@@ -287,6 +356,7 @@ public class RewardScene extends UIScene {
         updateBuyButtons();
     }
 
+
     private void updateBuyButtons() {
         for (Actor actor : new Array.ArrayIterator<>(generated)) {
             if (actor instanceof BuyButton) {
@@ -295,19 +365,19 @@ public class RewardScene extends UIScene {
         }
     }
 
-    private class BuyButton extends TextButton {
+    private class BuyButton extends TextraButton {
         private final int objectID;
         private final int index;
         private final PointOfInterestChanges changes;
-        RewardActor reward;
+        public RewardActor reward;
         int price;
 
         void update() {
             setDisabled(WorldSave.getCurrentSave().getPlayer().getGold() < price);
         }
 
-        public BuyButton(int id, int i, PointOfInterestChanges ch, RewardActor actor, TextButton style) {
-            super("", style.getStyle());
+        public BuyButton(int id, int i, PointOfInterestChanges ch, RewardActor actor, TextraButton style) {
+            super("", style.getStyle(),Controls.getTextraFont());
             this.objectID = id;
             this.index = i;
             this.changes = ch;
@@ -318,7 +388,7 @@ public class RewardScene extends UIScene {
             setY(actor.getY() - getHeight());
             price = CardUtil.getRewardPrice(actor.getReward());
             price *= Current.player().goldModifier();
-            setText("$ " + price);
+            setText(price+"[+Gold]");
             addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
@@ -332,7 +402,7 @@ public class RewardScene extends UIScene {
                     SoundSystem.instance.play(SoundEffectType.FlipCoin, false);
 
                     updateBuyButtons();
-                    goldLabel.setText("Gold: " + String.valueOf(AdventurePlayer.current().getGold()));
+                    goldLabel.setText(AdventurePlayer.current().getGold()+"[+Gold]");
                     if(changes==null)
                         return;
                     setDisabled(true);

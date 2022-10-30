@@ -40,7 +40,7 @@ public class CloneEffect extends SpellAbilityEffect {
                 cardToCopy = cloneSources.get(0);
             }
         } else if (sa.usesTargeting()) {
-            cardToCopy = sa.getTargets().getFirstTargetedCard();
+            cardToCopy = sa.getTargetCard();
         }
 
         List<Card> cloneTargets = AbilityUtils.getDefinedCards(host, sa.getParam("CloneTarget"), sa);
@@ -80,7 +80,7 @@ public class CloneEffect extends SpellAbilityEffect {
             // if a Clone enters the field as other cards it could clone,
             // the clone should not be able to clone them
             // but do that only for Replacement Effects
-            if (sa.getRootAbility().isReplacementAbility()) {
+            if (sa.isReplacementAbility()) {
                 if (choiceZone.equals(ZoneType.Battlefield)) {
                     choices.retainAll(sa.getLastStateBattlefield());
                 } else if (choiceZone.equals(ZoneType.Graveyard)) {
@@ -98,7 +98,7 @@ public class CloneEffect extends SpellAbilityEffect {
                 cardToCopy = cloneSources.get(0);
             }
         } else if (sa.usesTargeting()) {
-            cardToCopy = sa.getTargets().getFirstTargetedCard();
+            cardToCopy = sa.getTargetCard();
         } else if (sa.hasParam("CopyFromChosenName")) {
             String name = host.getChosenName();
             cardToCopy = Card.fromPaperCard(StaticData.instance().getCommonCards().getUniqueByName(name), activator);
@@ -122,7 +122,7 @@ public class CloneEffect extends SpellAbilityEffect {
                 return;
             }
         } else if (sa.hasParam("Choices") && sa.usesTargeting()) {
-            tgtCard = sa.getTargets().getFirstTargetedCard();
+            tgtCard = sa.getTargetCard();
             game.getTriggerHandler().clearActiveTriggers(tgtCard, null);
         }
 
