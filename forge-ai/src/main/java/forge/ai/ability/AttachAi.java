@@ -121,7 +121,7 @@ public class AttachAi extends SpellAbilityAi {
 
         if (ComputerUtilAbility.getAbilitySourceName(sa).equals("Chained to the Rocks")) {
             final SpellAbility effectExile = AbilityFactory.getAbility(source.getSVar("TrigExile"), source);
-            effectExile.setActivatingPlayer(ai);
+            effectExile.setActivatingPlayer(ai, true);
             final TargetRestrictions exile_tgt = effectExile.getTargetRestrictions();
             final List<Card> targets = CardUtil.getValidCardsToTarget(exile_tgt, effectExile);
             return !targets.isEmpty();
@@ -1309,15 +1309,19 @@ public class AttachAi extends SpellAbilityAi {
      * @return the card
      */
     private static Card attachToCardAIPreferences(final Player aiPlayer, final SpellAbility sa, final boolean mandatory) {
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
-        final Card attachSource = sa.getHostCard();
         // TODO AttachSource is currently set for the Source of the Spell, but
         // at some point can support attaching a different card
+        Card attachSource = sa.getHostCard();
+        if (sa.hasParam("Object")) {
+            attachSource = AbilityUtils.getDefinedCards(attachSource, sa.getParam("Object"), sa).get(0);
+        }
 
         // Don't equip if DontEquip SVar is set
         if (attachSource.hasSVar("DontEquip")) {
             return null;
         }
+
+        final TargetRestrictions tgt = sa.getTargetRestrictions();
 
         // Is a SA that moves target attachment
         if ("MoveTgtAura".equals(sa.getParam("AILogic"))) {

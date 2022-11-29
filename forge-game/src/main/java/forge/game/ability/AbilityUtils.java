@@ -2,6 +2,7 @@ package forge.game.ability;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -280,12 +281,12 @@ public class AbilityUtils {
             }
         } else if (defined.equals("FirstRemembered")) {
             Object o = hostCard.getFirstRemembered();
-            if (o != null && o instanceof Card) {
+            if (o instanceof Card) {
                 cards.add(game.getCardState((Card) o));
             }
         } else if (defined.equals("LastRemembered")) {
             Object o = Iterables.getLast(hostCard.getRemembered(), null);
-            if (o != null && o instanceof Card) {
+            if (o instanceof Card) {
                 cards.add(game.getCardState((Card) o));
             }
         } else if (defined.equals("ImprintedLKI")) {
@@ -2087,6 +2088,23 @@ public class AbilityUtils {
             return doXMath(castSA == null ? 0 : castSA.getPayingColors().countColors(), expr, c, ctb);
         }
 
+        if (sq[0].startsWith("EachSpentToCast")) {
+            SpellAbility castSA = c.getCastSA();
+            if (castSA == null) {
+                return 0;
+            }
+            final List<Mana> paidMana = castSA.getPayingMana();
+            final String type = sq[1];
+            int count = 0;
+            for (Mana m : paidMana) {
+                if (m.toString().equals(type)) {
+                    count++;
+
+                }
+            }
+            return doXMath(count, expr, c, ctb);
+        }
+
         // Count$wasCastFrom<Zone>.<true>.<false>
         if (sq[0].startsWith("wasCastFrom")) {
             boolean your = sq[0].contains("Your");
@@ -2364,7 +2382,14 @@ public class AbilityUtils {
             if (sq[0].contains("CombatDamage")) {
                 isCombat = true;
             }
-            return doXMath(game.getDamageDoneThisTurn(isCombat, false, props[1], props[2], c, player, ctb).size(), expr, c, ctb);
+            int num;
+            List<Integer> dmgInstances = game.getDamageDoneThisTurn(isCombat, false, props[1], props[2], c, player, ctb);
+            if (sq[0].contains("Max")) {
+                num = Collections.max(dmgInstances);
+            } else {
+                num = dmgInstances.size();
+            }
+            return doXMath(num, expr, c, ctb);
         }
 
         if (sq[0].equals("YourTurns")) {
@@ -2599,12 +2624,11 @@ public class AbilityUtils {
 
         // Count$Chroma.<color name>
         if (sq[0].startsWith("Chroma")) {
-            ZoneType sourceZone = sq[0].contains("ChromaInGrave") ?  ZoneType.Graveyard : ZoneType.Battlefield;
             final CardCollectionView cards;
             if (sq[0].contains("ChromaSource")) { // Runs Chroma for passed in Source card
                 cards = new CardCollection(c);
-            }
-            else {
+            } else {
+                ZoneType sourceZone = sq[0].contains("ChromaInGrave") ?  ZoneType.Graveyard : ZoneType.Battlefield;
                 cards = player.getCardsIn(sourceZone);
             }
 

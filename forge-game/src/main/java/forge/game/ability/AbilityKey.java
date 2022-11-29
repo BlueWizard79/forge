@@ -90,7 +90,6 @@ public enum AbilityKey {
     NewCounterAmount("NewCounterAmount"),
     NoPreventDamage("NoPreventDamage"),
     Num("Num"), // TODO confirm that this and NumThisTurn can be merged
-    NumBlockers("NumBlockers"),
     NumThisTurn("NumThisTurn"),
     Number("Number"),
     Object("Object"),
@@ -113,6 +112,7 @@ public enum AbilityKey {
     Result("Result"),
     RoomName("RoomName"),
     Scheme("Scheme"),
+    ScryBottom("ScryBottom"),
     ScryNum("ScryNum"),
     Sides("Sides"),
     Source("Source"),

@@ -631,7 +631,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     }
 
     @Override
-    public <T extends GameEntity> List<T> chooseEntitiesForEffect(final FCollectionView<T> optionList, final int  min, final int max,
+    public <T extends GameEntity> List<T> chooseEntitiesForEffect(final FCollectionView<T> optionList, final int min, final int max,
             final DelayedReveal delayedReveal, final SpellAbility sa, final String title, final Player targetedPlayer, Map<String, Object> params) {
         // useful details for debugging problems with the mass select logic
         Sentry.setExtra("Card", sa.getCardView().toString());
@@ -743,13 +743,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             switch (sa.getParam("ShowCardInPrompt")) {
                 case "FirstRemembered":
                     o = sa.getHostCard().getFirstRemembered();
-                    if (o != null && o instanceof Card) {
+                    if (o instanceof Card) {
                         show = (Card)o;
                     }
                     break;
                 case "LastRemembered":
                     o = sa.getHostCard().getFirstRemembered();
-                    if (o != null && o instanceof Card) {
+                    if (o instanceof Card) {
                         show = (Card)o;
                     }
                     break;
@@ -943,10 +943,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         }
         if (toTop.size() < cards.size()) { // the top isn't everything
             for (int i = result.size()-1; i>=0 && manipulable.contains(result.get(i)); i-- ) {
-            toBottom.add(result.get(i));
+                toBottom.add(result.get(i));
             }
         }
-        return ImmutablePair.of(toTop,toBottom);
+        return ImmutablePair.of(toTop, toBottom);
     }
 
     @Override
@@ -1362,6 +1362,18 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 types.add(0, type);
             }
         }
+    }
+
+    @Override
+    public String chooseSector(Card assignee, String ai, List<String> sectors) {
+        String prompt;
+        if (assignee != null) {
+            String creature = CardTranslation.getTranslatedName(assignee.getName()) + " (" + assignee.getId() + ")";
+            prompt = Localizer.getInstance().getMessage("lblAssignSectorCreature", creature);
+        } else {
+            prompt = Localizer.getInstance().getMessage("lblChooseSectorEffect");
+        }
+        return getGui().one(prompt, sectors);
     }
 
     @Override

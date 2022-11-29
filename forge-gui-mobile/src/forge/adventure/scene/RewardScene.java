@@ -23,7 +23,7 @@ import forge.sound.SoundSystem;
  * Displays the rewards of a fight or a treasure
  */
 public class RewardScene extends UIScene {
-    private final TextraButton doneButton;
+    private final TextraButton doneButton, detailButton;
     private final TextraLabel goldLabel;
 
     private static RewardScene object;
@@ -53,6 +53,9 @@ public class RewardScene extends UIScene {
         goldLabel=ui.findActor("gold");
         ui.onButtonPress("done", () -> RewardScene.this.done());
         ui.onButtonPress("detail",()->RewardScene.this.toggleToolTip());
+        detailButton = ui.findActor("detail");
+        if (Forge.getDeviceAdapter().getGamepads().isEmpty())
+            detailButton.setVisible(false);
         doneButton = ui.findActor("done");
     }
 
@@ -103,42 +106,27 @@ public class RewardScene extends UIScene {
         ImageCache.unloadCardTextures(true);
         Forge.switchToLast();
     }
-
     public boolean done() {
+        return done(false);
+    }
+    boolean done(boolean skipShowLoot) {
         GameHUD.getInstance().getTouchpad().setVisible(false);
-        if (doneClicked) {
-            if(exitCountDown > 0.2f) {
-                clearGenerated();
-                quitScene();
-            }
+        if (!skipShowLoot) {
+            doneButton.setText(Forge.getLocalizer().getMessage("lblLeave"));
+            showLootOrDone();
             return true;
         }
-
-        if (type == Type.Loot) {
-            boolean wait = false;
-            for (Actor actor : new Array.ArrayIterator<>(generated)) {
-                if (!(actor instanceof RewardActor)) {
-                    continue;
-                }
-                RewardActor reward = (RewardActor) actor;
-                AdventurePlayer.current().addReward(reward.getReward());
-                if (!reward.isFlipped()) {
-                    wait = true;
-                    reward.flip();
-                }
-            }
-            if (wait) {
-                flipCountDown = Math.min(1.0f + (generated.size * 0.3f), 5.0f);
-                exitCountDown = 0.0f;
-                doneClicked = true;
-            } else {
-                clearGenerated();
-                quitScene();
-            }
-        } else {
-            clearGenerated();
-            quitScene();
+        switch (type) {
+            case Shop:
+                doneButton.setText(Forge.getLocalizer().getMessage("lblLeave"));
+                break;
+            case Loot:
+                doneButton.setText(Forge.getLocalizer().getMessage("lblDone"));
+                break;
         }
+        shown = false;
+        clearGenerated();
+        quitScene();
         return true;
     }
     void clearGenerated() {
@@ -147,6 +135,8 @@ public class RewardScene extends UIScene {
                 continue;
             }
             RewardActor reward = (RewardActor) actor;
+            if (type == Type.Loot)
+                AdventurePlayer.current().addReward(reward.getReward());
             reward.clearHoldToolTip();
             try {
                 stage.getActors().removeValue(reward, true);
@@ -182,7 +172,7 @@ public class RewardScene extends UIScene {
             }
         }
         if (exit)
-            performTouch(doneButton);
+            done(true);
         else if (type == Type.Loot && !shown) {
             shown = true;
             for (Actor actor : new Array.ArrayIterator<>(generated)) {
@@ -190,7 +180,6 @@ public class RewardScene extends UIScene {
                     continue;
                 }
                 RewardActor reward = (RewardActor) actor;
-                AdventurePlayer.current().addReward(reward.getReward());
                 if (!reward.isFlipped()) {
                     Timer.schedule(new Timer.Task() {
                         @Override
@@ -201,7 +190,7 @@ public class RewardScene extends UIScene {
                 }
             }
         } else {
-            performTouch(doneButton);
+            done(true);
         }
     }
 

@@ -827,6 +827,9 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean canReceiveCounters(final CounterType type) {
+        if (!isInGame()) {
+            return false;
+        }
         if (StaticAbilityCantPutCounter.anyCantPutCounter(this, type)) {
             return false;
         }
@@ -1302,10 +1305,6 @@ public class Player extends GameEntity implements Comparable<Player> {
 
         PlayerZone zone = getZone(zoneType);
         return zone == null ? CardCollection.EMPTY : zone.getCards(filterOutPhasedOut);
-    }
-
-    public final CardCollectionView getCardsIncludePhasingIn(final ZoneType zone) {
-        return getCardsIn(zone, false);
     }
 
     /**
@@ -2098,15 +2097,6 @@ public class Player extends GameEntity implements Comparable<Player> {
             if (!equals(sourceController)) {
                 return false;
             }
-        } else if (incR[0].equals("EnchantedController")) {
-            final GameEntity enchanted = source.getEntityAttachedTo();
-            if (enchanted == null || !(enchanted instanceof Card)) {
-                return false;
-            }
-            final Card enchantedCard = (Card) enchanted;
-            if (!equals(enchantedCard.getController())) {
-                return false;
-            }
         } else {
             if (!incR[0].equals("Player")) {
                 return false;
@@ -2363,9 +2353,8 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public CardCollectionView getColoredCardsInPlay(final String color) {
-        return CardLists.getColor(getCardsIn(ZoneType.Battlefield), MagicColor.fromName(color));
+        return getColoredCardsInPlay(MagicColor.fromName(color));
     }
-
     public CardCollectionView getColoredCardsInPlay(final byte color) {
         return CardLists.getColor(getCardsIn(ZoneType.Battlefield), color);
     }
@@ -2637,11 +2626,11 @@ public class Player extends GameEntity implements Comparable<Player> {
 
     public final void resetCombatantsThisCombat() {
         // resets the status of attacked/blocked this phase
-        CardCollectionView list = getCardsIn(ZoneType.Battlefield);
+        CardCollectionView list = getCardsIn(ZoneType.Battlefield, false);
 
         for (Card c : list) {
             if (c.getDamageHistory().getCreatureAttackedThisCombat() > 0) {
-                c.getDamageHistory().setCreatureAttackedThisCombat(null, 0);
+                c.getDamageHistory().setCreatureAttackedThisCombat(null, -1);
             }
             if (c.getDamageHistory().getCreatureBlockedThisCombat()) {
                 c.getDamageHistory().setCreatureBlockedThisCombat(false);

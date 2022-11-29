@@ -139,6 +139,7 @@ public class Game {
     private Direction turnOrder = Direction.getDefaultDirection();
 
     private Boolean daytime = null;
+    private Boolean previous = null;
 
     private long timestamp = 0;
     public final GameAction action;
@@ -162,7 +163,6 @@ public class Game {
     public Player getStartingPlayer() {
         return startingPlayer;
     }
-
     public void setStartingPlayer(final Player p) {
         startingPlayer = p;
     }
@@ -170,7 +170,6 @@ public class Game {
     public Player getMonarch() {
         return monarch;
     }
-
     public void setMonarch(final Player p) {
         monarch = p;
     }
@@ -178,7 +177,6 @@ public class Game {
     public Player getMonarchBeginTurn() {
         return monarchBeginTurn;
     }
-
     public void setMonarchBeginTurn(Player monarchBeginTurn) {
         this.monarchBeginTurn = monarchBeginTurn;
     }
@@ -561,7 +559,7 @@ public class Game {
 
         CardCollection cards = new CardCollection();
         for (final Player p : getPlayers()) {
-            cards.addAll(p.getCardsIncludePhasingIn(zone));
+            cards.addAll(p.getCardsIn(zone, false));
         }
         return cards;
     }
@@ -1230,12 +1228,21 @@ public class Game {
     public boolean isNeitherDayNorNight() {
         return this.daytime == null;
     }
+    public boolean previousTimeIsDay() {
+        return this.previous != null && this.previous == false;
+    }
+    public boolean previousTimeIsNight() {
+        return this.previous != null && this.previous == true;
+    }
+    public boolean previousTimeisNeitherDayNorNight() {
+        return this.previous == null;
+    }
 
     public Boolean getDayTime() {
         return this.daytime;
     }
     public void setDayTime(Boolean value) {
-        Boolean previous = this.daytime;
+        previous = this.daytime;
         this.daytime = value;
 
         if (previous != null && value != null && previous != value) {
