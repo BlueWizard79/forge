@@ -70,7 +70,7 @@ public class Untap extends Phase {
      */
     @Override
     public void executeAt() {
-        this.execute(this.at);
+        super.executeAt();
 
         doPhasing(game.getPhaseHandler().getPlayerTurn());
         doDayTime(game.getPhaseHandler().getPreviousPlayerTurn());
@@ -234,7 +234,7 @@ public class Untap extends Phase {
         if (c.hasKeyword("You may choose not to untap CARDNAME during your untap step.") && c.isTapped()) {
             StringBuilder prompt = new StringBuilder("Untap " + c.toString() + "?");
             boolean defaultChoice = true;
-            if (c.getGainControlTargets().size() > 0) {
+            if (c.hasGainControlTarget()) {
                 final Iterable<Card> targets = c.getGainControlTargets();
                 prompt.append("\r\n").append(c).append(" is controlling: ");
                 for (final Card target : targets) {
@@ -269,7 +269,7 @@ public class Untap extends Phase {
             if (c.isPhasedOut()) {
                 c.phase(true);
             } else if (c.hasKeyword(Keyword.PHASING)) {
-                // 702.23g If an object would simultaneously phase out directly
+                // CR 702.26h If an object would simultaneously phase out directly
                 // and indirectly, it just phases out indirectly.
                 if (c.isAttachment()) {
                     final Card ent = c.getAttachedTo();
