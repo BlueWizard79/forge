@@ -133,10 +133,10 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 if (sa.hasParam("ExileFaceDown")) {
                     sb.append(" face down");
                 }
+                sb.append(".");
             } else if (destination.equals("Ante")) {
-                sb.append("Add the top card of your library to the ante");
+                sb.append("Add the top card of your library to the ante.");
             }
-            sb.append(".");
         } else if (origin.equals("Library")) {
             final boolean originAlt = sa.hasParam("OriginAlternative");
             sb.append(chooserNames).append(" search").append(choosers.size() > 1 ? " " : "es ");
@@ -549,7 +549,6 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             final Zone originZone = game.getZoneOf(gameCard);
 
             // if Target isn't in the expected Zone, continue
-
             if (originZone == null || (!origin.isEmpty() && !origin.contains(originZone.getZoneType()))) {
                 continue;
             }
@@ -559,10 +558,10 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             if (destination.equals(ZoneType.Library)) {
                 // library position is zero indexed
                 int libraryPosition = 0;
-                if (!altDest) {
-                    libraryPosition = sa.hasParam("LibraryPosition") ? AbilityUtils.calculateAmount(hostCard, sa.getParam("LibraryPosition"), sa) : 0;
-                } else {
+                if (altDest) {
                     libraryPosition = sa.hasParam("LibraryPositionAlternative") ? Integer.parseInt(sa.getParam("LibraryPositionAlternative")) : 0;
+                } else {
+                    libraryPosition = sa.hasParam("LibraryPosition") ? AbilityUtils.calculateAmount(hostCard, sa.getParam("LibraryPosition"), sa) : 0;
                 }
 
                 // If a card is moved to library from the stack, remove its spells from the stack
@@ -576,6 +575,17 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 movedCard = game.getAction().moveToLibrary(gameCard, libraryPosition, sa);
             } else {
                 if (destination.equals(ZoneType.Battlefield)) {
+                    Map<AbilityKey, Object> moveParams = AbilityKey.newMap();
+                    moveParams.put(AbilityKey.LastStateBattlefield, lastStateBattlefield);
+                    moveParams.put(AbilityKey.LastStateGraveyard, lastStateGraveyard);
+                    if (sa.isReplacementAbility()) {
+                        ReplacementEffect re = sa.getReplacementEffect();
+                        moveParams.put(AbilityKey.ReplacementEffect, re);
+                        if (ReplacementType.Moved.equals(re.getMode()) && sa.getReplacingObject(AbilityKey.CardLKI) != null) {
+                            moveParams.put(AbilityKey.CardLKI, sa.getReplacingObject(AbilityKey.CardLKI));
+                        }
+                    }
+ 
                     if (sa.hasParam("Tapped") || sa.isNinjutsu()) {
                         gameCard.setTapped(true);
                     }
@@ -584,6 +594,10 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
                     if (sa.hasParam("Transformed")) {
                         if (gameCard.isDoubleFaced()) {
+                            // need LKI before Animate does apply
+                            if (!moveParams.containsKey(AbilityKey.CardLKI)) {
+                                moveParams.put(AbilityKey.CardLKI, CardUtil.getLKICopy(gameCard));
+                            }
                             gameCard.changeCardState("Transform", null, sa);
                         } else {
                             // If it can't Transform, don't change zones.
@@ -606,7 +620,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     if (sa.hasParam("GainControl")) {
                         final String g = sa.getParam("GainControl");
                         Player newController = g.equals("True") ? player :
-                                AbilityUtils.getDefinedPlayers(sa.getHostCard(), g, sa).get(0);
+                                AbilityUtils.getDefinedPlayers(hostCard, g, sa).get(0);
                         if (newController != null) {
                             if (newController != gameCard.getController()) {
                                 gameCard.runChangeControllerCommands();
@@ -651,26 +665,17 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         }
                     }
 
-                    Map<AbilityKey, Object> moveParams = AbilityKey.newMap();
-                    moveParams.put(AbilityKey.LastStateBattlefield, lastStateBattlefield);
-                    moveParams.put(AbilityKey.LastStateGraveyard, lastStateGraveyard);
-                    if (sa.isReplacementAbility()) {
-                        ReplacementEffect re = sa.getReplacementEffect();
-                        moveParams.put(AbilityKey.ReplacementEffect, re);
-                        if (ReplacementType.Moved.equals(re.getMode()) && sa.getReplacingObject(AbilityKey.CardLKI) != null) {
-                            moveParams.put(AbilityKey.CardLKI, sa.getReplacingObject(AbilityKey.CardLKI));
-                        }
-                    }
-
                     if (sa.hasAdditionalAbility("AnimateSubAbility")) {
                         // need LKI before Animate does apply
                         if (!moveParams.containsKey(AbilityKey.CardLKI)) {
                             moveParams.put(AbilityKey.CardLKI, CardUtil.getLKICopy(gameCard));
                         }
 
+                        final SpellAbility animate = sa.getAdditionalAbility("AnimateSubAbility");
                         hostCard.addRemembered(gameCard);
-                        AbilityUtils.resolve(sa.getAdditionalAbility("AnimateSubAbility"));
+                        AbilityUtils.resolve(animate);
                         hostCard.removeRemembered(gameCard);
+                        animate.setSVar("unanimateTimestamp", String.valueOf(game.getTimestamp()));
                     }
 
                     // need to be facedown before it hits the battlefield in case of Replacement Effects or Trigger
@@ -705,7 +710,14 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         game.getCombat().getBandOfAttacker(movedCard).setBlocked(false);
                         combatChanged = true;
                     }
+
                     movedCard.setTimestamp(ts);
+                    if (movedCard.isInPlay()) {
+                        // need to also update LKI
+                        List<Card> lki = movedCard.getZone().getCardsAddedThisTurn(null);
+                        lki.get(lki.lastIndexOf(movedCard)).setTimestamp(ts);
+                    }
+
                     if (sa.hasParam("AttachAfter") && movedCard.isAttachment()) {
                         CardCollection list = AbilityUtils.getDefinedCards(hostCard, sa.getParam("AttachAfter"), sa);
                         if (list.isEmpty()) {
@@ -777,7 +789,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
 
                     if (sa.hasParam("TrackDiscarded")) {
-                        movedCard.setMadnessWithoutCast(true);
+                        movedCard.setDiscarded(true);
                     }
                 }
             }
@@ -1110,7 +1122,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 fetchList = (CardCollection)AbilityUtils.filterListByType(fetchList, sa.getParam("ChangeType"), sa);
             }
 
-            if (sa.hasParam("NoShuffle")) {
+            if (sa.hasParam("NoShuffle") || "False".equals(sa.getParam("Shuffle"))) {
                 shuffleMandatory = false;
             }
 
@@ -1250,7 +1262,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                 CardLists.shuffle(chosenCards);
             }
             // do not shuffle the library once we have placed a fetched card on top.
-            if (origin.contains(ZoneType.Library) && (destination == ZoneType.Library) && !"False".equals(sa.getParam("Shuffle"))) {
+            if (origin.contains(ZoneType.Library) && (destination == ZoneType.Library) && shuffleMandatory) {
                 player.shuffle(sa);
             }
 
@@ -1311,14 +1323,16 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                         // need LKI before Animate does apply
                         moveParams.put(AbilityKey.CardLKI, CardUtil.getLKICopy(c));
 
+                        final SpellAbility animate = sa.getAdditionalAbility("AnimateSubAbility");
                         source.addRemembered(c);
-                        AbilityUtils.resolve(sa.getAdditionalAbility("AnimateSubAbility"));
+                        AbilityUtils.resolve(animate);
                         source.removeRemembered(c);
+                        animate.setSVar("unanimateTimestamp", String.valueOf(game.getTimestamp()));
                     }
                     if (sa.hasParam("GainControl")) {
                         final String g = sa.getParam("GainControl");
                         Player newController = g.equals("True") ? sa.getActivatingPlayer() :
-                                AbilityUtils.getDefinedPlayers(sa.getHostCard(), g, sa).get(0);
+                                AbilityUtils.getDefinedPlayers(source, g, sa).get(0);
                         if (newController != c.getController()) {
                             c.runChangeControllerCommands();
                         }
@@ -1332,6 +1346,10 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     }
                     if (sa.hasParam("Transformed")) {
                         if (c.isDoubleFaced()) {
+                            // need LKI before Animate does apply
+                            if (!moveParams.containsKey(AbilityKey.CardLKI)) {
+                                moveParams.put(AbilityKey.CardLKI, CardUtil.getLKICopy(c));
+                            }
                             c.changeCardState("Transform", null, sa);
                         } else {
                             // If it can't Transform, don't change zones.
@@ -1390,8 +1408,13 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
                     movedCard = game.getAction().moveToPlay(c, c.getController(), sa, moveParams);
 
                     movedCard.setTimestamp(ts);
+                    if (movedCard.isInPlay()) {
+                        // need to also update LKI
+                        List<Card> lki = movedCard.getZone().getCardsAddedThisTurn(null);
+                        lki.get(lki.lastIndexOf(movedCard)).setTimestamp(ts);
+                    }
 
-                    if (sa.hasParam("AttachAfter") && movedCard.isAttachment()) {
+                    if (sa.hasParam("AttachAfter") && movedCard.isAttachment() && movedCard.isInPlay()) {
                         CardCollection list = AbilityUtils.getDefinedCards(source, sa.getParam("AttachAfter"), sa);
                         if (list.isEmpty()) {
                             list = CardLists.getValidCards(game.getCardsIn(ZoneType.Battlefield), sa.getParam("AttachAfter"), c.getController(), c, sa);

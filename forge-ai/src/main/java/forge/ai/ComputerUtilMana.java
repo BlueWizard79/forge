@@ -93,6 +93,7 @@ public class ComputerUtilMana {
             ability.setActivatingPlayer(card.getController(), true);
             if (ability.isManaAbility()) {
                 score += ability.calculateScoreForManaAbility();
+                // TODO check TriggersWhenSpent
             }
             else if (!ability.isTrigger() && ability.isPossible()) {
                 score += 13; //add 13 for any non-mana activated abilities
@@ -315,10 +316,6 @@ public class ComputerUtilMana {
                 continue;
             }
 
-            if (!ComputerUtilCost.checkForManaSacrificeCost(ai, ma.getPayCosts(), ma.getHostCard(), ma, ma.isTrigger())) {
-                continue;
-            }
-
             if (sa.getApi() == ApiType.Animate) {
                 // For abilities like Genju of the Cedars, make sure that we're not activating the aura ability by tapping the enchanted card for mana
                 if (saHost.isAura() && "Enchanted".equals(sa.getParam("Defined"))
@@ -380,9 +377,15 @@ public class ComputerUtilMana {
                 continue;
             }
 
-            if (canPayShardWithSpellAbility(toPay, ai, paymentChoice, sa, checkCosts, cost.getXManaCostPaidByColor())) {
-                return paymentChoice;
+            if (!canPayShardWithSpellAbility(toPay, ai, paymentChoice, sa, checkCosts, cost.getXManaCostPaidByColor())) {
+                continue;
             }
+
+            if (!ComputerUtilCost.checkForManaSacrificeCost(ai, ma.getPayCosts(), ma, ma.isTrigger())) {
+                continue;
+            }
+
+            return paymentChoice;
         }
         return null;
     }
@@ -393,9 +396,9 @@ public class ComputerUtilMana {
         String manaProduced = toPay.isSnow() && hostCard.isSnow() ? "S" : GameActionUtil.generatedTotalMana(saPayment);
         //String originalProduced = manaProduced;
 
-        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromPlayer(ai);
+        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(hostCard);
         repParams.put(AbilityKey.Mana, manaProduced);
-        repParams.put(AbilityKey.Affected, hostCard);
+        repParams.put(AbilityKey.Activator, ai);
         repParams.put(AbilityKey.AbilityMana, saPayment); // RootAbility
 
         // TODO Damping Sphere might replace later?
@@ -1614,9 +1617,9 @@ public class ComputerUtilMana {
 
                         // setup produce mana replacement effects
                         String origin = mp.getOrigProduced();
-                        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromPlayer(ai);
+                        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(sourceCard);
                         repParams.put(AbilityKey.Mana, origin);
-                        repParams.put(AbilityKey.Affected, sourceCard);
+                        repParams.put(AbilityKey.Activator, ai);
                         repParams.put(AbilityKey.AbilityMana, m); // RootAbility
 
                         List<ReplacementEffect> reList = game.getReplacementHandler().getReplacementList(ReplacementType.ProduceMana, repParams, ReplacementLayer.Other);

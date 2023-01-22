@@ -95,11 +95,8 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Game game = initAndCreateGame();
         Player p = game.getPlayers().get(1);
 
-        addCard("Island", p);
-        addCard("Island", p);
-        addCard("Forest", p);
-        addCard("Forest", p);
-        addCard("Forest", p);
+        addCards("Island", 2, p);
+        addCards("Forest", 3, p);
 
         Card tatyova = addCardToZone("Tatyova, Benthic Druid", p, ZoneType.Hand);
         addCardToZone("Forest", p, ZoneType.Hand);
@@ -169,10 +166,7 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Game game = initAndCreateGame();
         Player p = game.getPlayers().get(1);
 
-        addCard("Mountain", p);
-        addCard("Mountain", p);
-        addCard("Mountain", p);
-        addCard("Mountain", p);
+        addCards("Mountain", 4, p);
         Card spell = addCardToZone("Fiery Confluence", p, ZoneType.Hand);
 
         Player opponent = game.getPlayers().get(0);
@@ -198,10 +192,7 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Game game = initAndCreateGame();
         Player p = game.getPlayers().get(1);
 
-        addCard("Mountain", p);
-        addCard("Mountain", p);
-        addCard("Mountain", p);
-        addCard("Mountain", p);
+        addCards("Mountain", 4, p);
         Card spell = addCardToZone("Fiery Confluence", p, ZoneType.Hand);
 
         Player opponent = game.getPlayers().get(0);
@@ -226,8 +217,7 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Game game = initAndCreateGame();
         Player p = game.getPlayers().get(1);
 
-        addCard("Mountain", p);
-        addCard("Mountain", p);
+        addCards("Mountain", 2, p);
         Card spell = addCardToZone("Arc Trail", p, ZoneType.Hand);
 
         Player opponent = game.getPlayers().get(0);
@@ -289,8 +279,7 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Game game = initAndCreateGame();
         Player p = game.getPlayers().get(1);
 
-        addCard("Mountain", p);
-        addCard("Mountain", p);
+        addCards("Mountain", 2, p);
         Card abbot = addCardToZone("Abbot of Keral Keep", p, ZoneType.Hand);
         addCardToZone("Lightning Bolt", p, ZoneType.Hand);
         // Note: This assumes the top of library is revealed. If the AI is made
@@ -321,9 +310,7 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Game game = initAndCreateGame();
         Player p = game.getPlayers().get(1);
 
-        addCard("Mountain", p);
-        addCard("Mountain", p);
-        addCard("Mountain", p);
+        addCards("Mountain", 3, p);
         Card abbot = addCardToZone("Abbot of Keral Keep", p, ZoneType.Hand);
         // Note: This assumes the top of library is revealed. If the AI is made
         // smarter to not assume that, then this test can be updated to have
@@ -426,8 +413,7 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         Card blocker = addCard("Fugitive Wizard", opponent);
         Card attacker1 = addCard("Dwarven Trader", p);
         attacker1.setSickness(false);
-        addCard("Swamp", p);
-        addCard("Swamp", p);
+        addCards("Swamp", 2, p);
         addCardToZone("Doom Blade", p, ZoneType.Hand);
 
         game.getPhaseHandler().devModeSet(PhaseType.MAIN1, p);
@@ -438,5 +424,238 @@ public class SpellAbilityPickerSimulationTest extends SimulationTest {
         AssertJUnit.assertNotNull(sa);
         AssertJUnit.assertEquals("Destroy target nonblack creature.", sa.toString());
         AssertJUnit.assertEquals(blocker, sa.getTargetCard());
+    }
+
+    // Run the test 100 times to ensure there's no flakiness.
+    @Test(invocationCount = 100)
+    public void testChoicesResultingFromRandomEffects() {
+        // Sometimes, the effect of a spell can be random, and as a result of that, new choices
+        // could be selected during simulation. This test verifies that this doesn't cause problems.
+        //
+        // Note: The current implementation works around the issue by setting a consistent random
+        // seed during choice evaluation, although in the future, it may make sense to handle it
+        // some other way.
+
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+        Player opponent = game.getPlayers().get(0);
+
+        addCardToZone("Chaos Warp", p, ZoneType.Hand);
+        addCards("Mountain", 3, p);
+
+        addCard("Plains", opponent);
+        addCard("Mountain", opponent);
+        addCard("Forest", opponent);
+        // Use a card that is worthwhile to target even if the shuffle ends up choosing it
+        // again. In this case, life loss on ETB and leaving.
+        Card expectedTarget = addCard("Raving Oni-Slave", opponent);
+
+        addCardToZone("Chaos Warp", opponent, ZoneType.Library);
+        addCardToZone("Island", opponent, ZoneType.Library);
+        addCardToZone("Swamp", opponent, ZoneType.Library);
+        // The presence of Pilgrim's Eye in the library is important for this test, as this
+        // will result in sub-choices (which land to pick) if this card ends up being the top
+        // of the library during simulation.
+        addCardToZone("Pilgrim's Eye", opponent, ZoneType.Library);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNotNull(sa);
+        AssertJUnit.assertEquals("Chaos Warp", sa.getHostCard().getName());
+        AssertJUnit.assertEquals(expectedTarget, sa.getTargetCard());
+    }
+
+    @Test
+    public void testNoSimulationsWhenNoTargets() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+
+        addCards("Forest", 2, p);
+        addCardToZone("Counterspell", p, ZoneType.Hand);
+        addCardToZone("Unsummon", p, ZoneType.Hand);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNull(sa);
+        AssertJUnit.assertEquals(0, picker.getNumSimulations());
+    }
+
+    @Test
+    public void testLandDropPruning() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+
+        addCardToZone("Island", p, ZoneType.Hand);
+        addCardToZone("Island", p, ZoneType.Hand);
+        addCardToZone("Island", p, ZoneType.Hand);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNotNull(sa);
+        // Only one land drop should be simulated, since the cards are identical.
+        AssertJUnit.assertEquals(1, picker.getNumSimulations());
+    }
+
+    @Test
+    public void testSpellCantTargetSelf() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+        Player opponent = game.getPlayers().get(0);
+
+        addCardToZone("Unsubstantiate", p, ZoneType.Hand);
+        addCard("Forest", p);
+        addCard("Island", p);
+        Card expectedTarget = addCard("Flying Men", opponent);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNotNull(sa);
+        AssertJUnit.assertEquals(expectedTarget, sa.getTargetCard());
+        // Only a single simulation expected (no target self).
+        AssertJUnit.assertEquals(1, picker.getNumSimulations());
+    }
+
+    @Test
+    public void testModalSpellCantTargetSelf() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+        Player opponent = game.getPlayers().get(0);
+
+        addCardToZone("Decisive Denial", p, ZoneType.Hand);
+        addCard("Forest", p);
+        addCard("Island", p);
+        addCard("Runeclaw Bear", p);
+        addCard("Flying Men", opponent);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNotNull(sa);
+        // Expected: Runeclaw Bear fights Flying Men
+        // Only a single simulation expected (no target self).
+        AssertJUnit.assertEquals(1, picker.getNumSimulations());
+    }
+
+    @Test
+    public void testModalSpellNoTargetsForModeWithSubAbility() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+
+        addCardToZone("Temur Charm", p, ZoneType.Hand);
+        addCard("Forest", p);
+        addCard("Island", p);
+        addCard("Mountain", p);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+         picker.chooseSpellAbilityToPlay(null);
+        // Only mode "Creatures with power 3 or less can’t block this turn" should be simulated.
+        AssertJUnit.assertEquals(1, picker.getNumSimulations());
+    }
+
+    @Test
+    public void testModalSpellNoTargetsForAnyModes() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+
+        addCardToZone("Drown in the Loch", p, ZoneType.Hand);
+        addCard("Swamp", p);
+        addCard("Island", p);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        picker.chooseSpellAbilityToPlay(null);
+        // TODO: Ideally, this would be 0 simulations, but we currently only determine there are no
+        // valid modes in SpellAbilityChoicesIterator, which runs already when we're simulating.
+        // Still, this test case exercises the code path and ensures we don't crash in this case.
+        AssertJUnit.assertEquals(1, picker.getNumSimulations());
+    }
+
+    @Test
+    public void threeDistinctTargetSpell() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+        Player opponent = game.getPlayers().get(0);
+
+        addCardToZone("Incremental Growth", p, ZoneType.Hand);
+        addCards("Forest", 5, p);
+        addCard("Forest Bear", p);
+        addCard("Flying Men", opponent);
+        addCard("Runeclaw Bear", p);
+        addCard("Water Elemental", opponent);
+        addCard("Grizzly Bears", p);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNotNull(sa);
+        MultiTargetSelector.Targets targets = picker.getPlan().getSelectedDecision().targets;
+        AssertJUnit.assertEquals(3, targets.size());
+        AssertJUnit.assertTrue(targets.toString().contains("Forest Bear"));
+        AssertJUnit.assertTrue(targets.toString().contains("Runeclaw Bear"));
+        AssertJUnit.assertTrue(targets.toString().contains("Grizzly Bear"));
+        // Expected 5*4*3=60 iterations (5 choices for first target, 4 for next, 3 for last.)
+        AssertJUnit.assertEquals(60, picker.getNumSimulations());
+    }
+
+    @Test
+    public void threeDistinctTargetSpellCantBeCast() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+        Player opponent = game.getPlayers().get(0);
+
+        addCardToZone("Incremental Growth", p, ZoneType.Hand);
+        addCards("Forest", 5, p);
+        addCard("Forest Bear", p);
+        addCard("Flying Men", opponent);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNull(sa);
+    }
+
+    @Test
+    public void correctTargetChoicesWithTwoTargetSpell() {
+        Game game = initAndCreateGame();
+        Player p = game.getPlayers().get(1);
+        Player opponent = game.getPlayers().get(0);
+
+        addCardToZone("Rites of Reaping", p, ZoneType.Hand);
+        addCard("Swamp", p);
+        addCards("Forest", 5, p);
+        addCard("Flying Men", opponent);
+        addCard("Forest Bear", p);
+        addCard("Water Elemental", opponent);
+
+        game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
+        game.getAction().checkStateEffects(true);
+        SpellAbilityPicker picker = new SpellAbilityPicker(game, p);
+        SpellAbility sa = picker.chooseSpellAbilityToPlay(null);
+        AssertJUnit.assertNotNull(sa);
+        MultiTargetSelector.Targets targets = picker.getPlan().getSelectedDecision().targets;
+        AssertJUnit.assertEquals(2, targets.size());
+        AssertJUnit.assertTrue(targets.toString().contains("Forest Bear"));
+        AssertJUnit.assertTrue(targets.toString().contains("Flying Men"));
     }
 }

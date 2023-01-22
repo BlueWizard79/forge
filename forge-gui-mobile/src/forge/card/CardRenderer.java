@@ -594,7 +594,7 @@ public class CardRenderer {
             }
         } else {
             //if card has invalid or no texture due to sudden changes in ImageCache, draw CardImageRenderer instead and wait for it to refresh automatically
-            CardImageRenderer.drawCardImage(g, CardView.getCardForUi(pc), false, x, y, w, h, pos, Forge.enableUIMask.equals("Art"), true);
+            CardImageRenderer.drawCardImage(g, CardView.getCardForUi(pc), false, x, y, w, h, pos, true, true);
         }
     }
 
@@ -662,7 +662,7 @@ public class CardRenderer {
             drawFoilEffect(g, card, x, y, w, h, false);
         } else {
             //if card has invalid or no texture due to sudden changes in ImageCache, draw CardImageRenderer instead and wait for it to refresh automatically
-            CardImageRenderer.drawCardImage(g, card, showAltState, x, y, w, h, pos, Forge.enableUIMask.equals("Art"), false, isChoiceList, !showCardIdOverlay(card));
+            CardImageRenderer.drawCardImage(g, card, showAltState, x, y, w, h, pos, true, false, isChoiceList, !showCardIdOverlay(card));
         }
         g.setAlphaComposite(oldAlpha);
     }
@@ -774,9 +774,7 @@ public class CardRenderer {
         }
         //Darken unselectable cards
         if (unselectable) {
-            g.setAlphaComposite(0.6f);
-            g.fillRect(Color.BLACK, cx, cy, cw, ch);
-            g.setAlphaComposite(oldAlpha);
+            g.fillRect(FSkinColor.getStandardColor(Color.BLACK).alphaColor(0.6f), cx, cy, cw, ch);
         }
         //Magenta outline when card is chosen
         if (MatchController.instance.isUsedToPay(card)) {

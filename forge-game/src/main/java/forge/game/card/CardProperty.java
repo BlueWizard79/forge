@@ -984,8 +984,7 @@ public class CardProperty {
                 return false;
             }
 
-            List<Card> cards = CardUtil.getThisTurnEntered(ZoneType.Graveyard, ZoneType.Hand, "Card", source, spellAbility);
-            if (!cards.contains(card) && !card.getMadnessWithoutCast()) {
+            if (!card.wasDiscarded()) {
                 return false;
             }
         } else if (property.startsWith("ControlledByPlayerInTheDirection")) {
@@ -1896,9 +1895,12 @@ public class CardProperty {
             }
         } else if (property.startsWith("set")) {
             final String setCode = property.substring(3, 6);
+            if (card.getName().isEmpty()) {
+                return false;
+            }
             final PaperCard setCard = StaticData.instance().getCommonCards().getCardFromEditions(card.getName(),
-                                                                                     CardDb.CardArtPreference.ORIGINAL_ART_ALL_EDITIONS);
-            if (!setCard.getEdition().equals(setCode)) {
+                    CardDb.CardArtPreference.ORIGINAL_ART_ALL_EDITIONS);
+            if (setCard != null && !setCard.getEdition().equals(setCode)) {
                 return false;
             }
         } else if (property.startsWith("inZone")) {

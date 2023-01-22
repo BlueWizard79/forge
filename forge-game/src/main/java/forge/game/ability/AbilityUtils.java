@@ -153,8 +153,17 @@ public class AbilityUtils {
         }
         else if (defined.endsWith("OfLibrary")) {
             final CardCollectionView lib = hostCard.getController().getCardsIn(ZoneType.Library);
-            if (lib.size() > 0) { // TopOfLibrary or BottomOfLibrary
-                c = lib.get(defined.startsWith("Top") ? 0 : lib.size() - 1);
+            int libSize = lib.size();
+            if (libSize > 0) { // TopOfLibrary or BottomOfLibrary
+                if (defined.startsWith("TopThird")) {
+                    int third = defined.contains("RoundedDown") ? (int) Math.floor(libSize / 3.0)
+                            : (int) Math.ceil(libSize / 3.0);
+                    for (int i=0; i<third; i++) {
+                        cards.add(lib.get(i));
+                    }
+                } else {
+                    c = lib.get(defined.startsWith("Top") ? 0 : libSize - 1);
+                }
             } else {
                 // we don't want this to fall through and return the "Self"
                 return cards;
@@ -502,12 +511,8 @@ public class AbilityUtils {
             } else if (hType.equals("Other")) {
                 players.addAll(player.getAllOtherPlayers());
                 val = playerXCount(players, calcX[1], card, ability);
-            } else if (hType.equals("Remembered")) {
-                for (final Object o : card.getRemembered()) {
-                    if (o instanceof Player) {
-                        players.add((Player) o);
-                    }
-                }
+            } else if (hType.startsWith("Remembered")) {
+                addPlayer(card.getRemembered(), hType, players);
                 val = playerXCount(players, calcX[1], card, ability);
             } else if (hType.equals("NonActive")) {
                 players.addAll(game.getPlayers());
@@ -679,8 +684,8 @@ public class AbilityUtils {
                 val = o instanceof Player ? playerXProperty((Player) o, calcX[1], card, ability) : 0;
             }
             else if (calcX[0].equals("TriggeredSpellAbility") || calcX[0].equals("TriggeredStackInstance") || calcX[0].equals("SpellTargeted")) {
-                final SpellAbility sat = getDefinedSpellAbilities(card, calcX[0], sa).get(0);
-                val = xCount(sat.getHostCard(), calcX[1], sat);
+                final SpellAbility sat = Iterables.getFirst(getDefinedSpellAbilities(card, calcX[0], sa), null);
+                val = sat == null ? 0 : xCount(sat.getHostCard(), calcX[1], sat);
             }
             else if (calcX[0].startsWith("TriggerCount")) {
                 // TriggerCount is similar to a regular Count, but just
@@ -1797,11 +1802,6 @@ public class AbilityUtils {
                     final SpellAbility root = (SpellAbility) sa.getRootAbility().getTriggeringObject(AbilityKey.SpellAbility);
                     return root == null ? 0 : root.getTotalManaSpent();
                 }
-                // Count$TriggeredLifeSpent
-                if (sq[0].equals("TriggeredLifeSpent")) {
-                    final SpellAbility root = (SpellAbility) sa.getRootAbility().getTriggeringObject(AbilityKey.SpellAbility);
-                    return root == null ? 0 : root.getAmountLifePaid();
-                }
 
                 // Count$ManaColorsPaid
                 if (sq[0].equals("ManaColorsPaid")) {
@@ -2086,6 +2086,14 @@ public class AbilityUtils {
         if (sq[0].contains("Converge")) {
             SpellAbility castSA = c.getCastSA();
             return doXMath(castSA == null ? 0 : castSA.getPayingColors().countColors(), expr, c, ctb);
+        }
+
+        if (sq[0].startsWith("EachPhyrexianPaidWithLife")) {
+            SpellAbility castSA = c.getCastSA();
+            if (castSA == null) {
+                return 0;
+            }
+            return doXMath(castSA.getSpendPhyrexianMana(), expr, c, ctb);
         }
 
         if (sq[0].startsWith("EachSpentToCast")) {
@@ -2830,11 +2838,7 @@ public class AbilityUtils {
         if (sq[0].startsWith("ColorsCtrl")) {
             final String restriction = l[0].substring(11);
             final CardCollection list = CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield), restriction, player, c, ctb);
-            byte n = 0;
-            for (final Card card : list) {
-                n |= card.getColor().getColor();
-            }
-            return doXMath(ColorSet.fromMask(n).countColors(), expr, c, ctb);
+            return doXMath(CardUtil.getColorsFromCards(list).countColors(), expr, c, ctb);
         }
 
         // TODO move below to handlePaid

@@ -931,8 +931,7 @@ public class CardFactoryUtil {
             ab.append(" | Champion$ True | Hidden$ True | Optional$ True | ChangeType$ ").append(changeType);
 
             StringBuilder subAb = new StringBuilder();
-            subAb.append("DB$ Sacrifice | Defined$ Card.Self");
-            subAb.append(" | ConditionDefined$ Remembered | ConditionPresent$ Card | ConditionCompare$ EQ0");
+            subAb.append("DB$ Sacrifice | ConditionDefined$ Remembered | ConditionPresent$ Card | ConditionCompare$ EQ0");
 
             String returnChampion = "DB$ ChangeZone | Defined$ Remembered | Origin$ Exile | Destination$ Battlefield";
             final Trigger parsedTrigger = TriggerHandler.parseTrigger(trig.toString(), card, intrinsic);
@@ -1212,6 +1211,31 @@ public class CardFactoryUtil {
             trigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
 
             inst.addTrigger(trigger);
+            
+        } else if (keyword.equals("For Mirrodin")) {
+            final StringBuilder sbTrig = new StringBuilder();
+            sbTrig.append("Mode$ ChangesZone | Destination$ Battlefield | ");
+            sbTrig.append("ValidCard$ Card.Self | TriggerDescription$ ");
+            sbTrig.append("For Mirrodin! (").append(inst.getReminderText()).append(")");
+
+            final String sbRebel = "DB$ Token | TokenScript$ r_2_2_rebel | TokenOwner$ You | RememberTokens$ True";
+            final SpellAbility saRebel= AbilityFactory.getAbility(sbRebel, card);
+
+            final String sbAttach = "DB$ Attach | Defined$ Remembered";
+            final AbilitySub saAttach = (AbilitySub) AbilityFactory.getAbility(sbAttach, card);
+            saRebel.setSubAbility(saAttach);
+
+            final String sbClear = "DB$ Cleanup | ClearRemembered$ True";
+            final AbilitySub saClear = (AbilitySub) AbilityFactory.getAbility(sbClear, card);
+            saAttach.setSubAbility(saClear);
+
+            final Trigger etbTrigger = TriggerHandler.parseTrigger(sbTrig.toString(), card, intrinsic);
+
+            etbTrigger.setOverridingAbility(saRebel);
+
+            saRebel.setIntrinsic(intrinsic);
+            inst.addTrigger(etbTrigger);
+            
         } else if (keyword.startsWith("Graft")) {
             final StringBuilder sb = new StringBuilder();
             sb.append("DB$ MoveCounter | Source$ Self | Defined$ TriggeredCardLKICopy");
@@ -2173,8 +2197,10 @@ public class CardFactoryUtil {
 
             inst.addReplacement(re);
         } else if (keyword.equals("Compleated")) {
-            String sb = "etbCounter:LOYALTY:-2:ValidCard$ Card.CastSa Spell.paidPhyrexianMana:If life was paid, this planeswalker enters with two fewer loyalty counters";
+            String sb = "etbCounter:LOYALTY:PhySpent:CheckSVar$ PhySpent | SVarCompare$ LT0:This planeswalker" +
+                    " enters with two fewer loyalty counters for each Phyrexian mana symbol life was paid for";
             final ReplacementEffect re = makeEtbCounter(sb, card, intrinsic);
+            card.setSVar("PhySpent", "Count$EachPhyrexianPaidWithLife/Negative");
 
             inst.addReplacement(re);
         } else if (keyword.startsWith("Dredge")) {
@@ -3654,10 +3680,8 @@ public class CardFactoryUtil {
             String effect = "Mode$ CantTransform | ValidCard$ Creature.Self | ExceptCause$ SpellAbility.Daybound | Secondary$ True | Description$ This permanent can't be transformed except by its daybound ability.";
             inst.addStaticAbility(StaticAbility.create(effect, state.getCard(), state, intrinsic));
         } else if (keyword.equals("Decayed")) {
-            String effect = "Mode$ Continuous | Affected$ Card.Self | AddHiddenKeyword$ CARDNAME can't block. | " +
-                    "Secondary$ True";
+            String effect = "Mode$ CantBlockBy | ValidBlocker$ Creature.Self | Secondary$ True | Description$ CARDNAME can't block.";
             StaticAbility st = StaticAbility.create(effect, state.getCard(), state, intrinsic);
-            st.setSVar("SacrificeEndCombat", "True");
             inst.addStaticAbility(st);
         } else if (keyword.equals("Defender")) {
             String effect = "Mode$ CantAttack | ValidCard$ Card.Self | DefenderKeyword$ True | Secondary$ True";
@@ -3776,7 +3800,7 @@ public class CardFactoryUtil {
                     " | Description$ Strive - " + inst.getReminderText();
             inst.addStaticAbility(StaticAbility.create(effect, state.getCard(), state, intrinsic));
         } else if (keyword.equals("Unleash")) {
-            String effect = "Mode$ Continuous | Affected$ Card.Self+counters_GE1_P1P1 | AddHiddenKeyword$ CARDNAME can't block.";
+            String effect = "Mode$ CantBlockBy | ValidBlocker$ Creature.Self+counters_GE1_P1P1 | Secondary$ True | Description$ CARDNAME can't block.";
             inst.addStaticAbility(StaticAbility.create(effect, state.getCard(), state, intrinsic));
         } else if (keyword.equals("Undaunted")) {
             String effect = "Mode$ ReduceCost | ValidCard$ Card.Self | Type$ Spell | Secondary$ True"
@@ -3854,7 +3878,7 @@ public class CardFactoryUtil {
 
         SpellAbility saExile = AbilityFactory.getAbility(abExile, card);
 
-        String abEffect = "DB$ Effect | RememberObjects$ Self | StaticAbilities$ Play | ExileOnMoved$ Exile | Duration$ Permanent | ConditionDefined$ Self | ConditionPresent$ Card.nonCopiedSpell";
+        String abEffect = "DB$ Effect | RememberObjects$ Self | StaticAbilities$ Play | ExileOnCast$ Exile | Duration$ Permanent | ConditionDefined$ Self | ConditionPresent$ Card.nonCopiedSpell";
         AbilitySub saEffect = (AbilitySub)AbilityFactory.getAbility(abEffect, card);
 
         StringBuilder sbPlay = new StringBuilder();

@@ -1,13 +1,15 @@
 package forge.ai.simulation;
 
+import forge.util.MyRandom;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import forge.ai.AiPlayDecision;
 import forge.ai.ComputerUtil;
 import forge.ai.ComputerUtilAbility;
+import forge.ai.ComputerUtilCard;
 import forge.ai.ComputerUtilCost;
 import forge.ai.ability.ChangeZoneAi;
 import forge.ai.ability.ExploreAi;
@@ -37,6 +39,7 @@ public class SpellAbilityPicker {
     private SpellAbilityChoicesIterator interceptor;
 
     private Plan plan;
+    private int numSimulations;
 
     public SpellAbilityPicker(Game game, Player player) {
         this.game = game;
@@ -63,24 +66,11 @@ public class SpellAbilityPicker {
 
     private List<SpellAbility> getCandidateSpellsAndAbilities() {
         CardCollection cards = ComputerUtilAbility.getAvailableCards(game, player);
+        cards = ComputerUtilCard.dedupeCards(cards);
         List<SpellAbility> all = ComputerUtilAbility.getSpellAbilities(cards, player);
-        CardCollection landsToPlay = ComputerUtilAbility.getAvailableLandsToPlay(game, player);
-        if (landsToPlay != null) {
-            HashMap<String, Card> landsDeDupe = new HashMap<>();
-            for (Card land : landsToPlay) {
-                Card previousLand = landsDeDupe.get(land.getName());
-                // Skip identical lands.
-                if (previousLand != null && previousLand.getZone() == land.getZone() && previousLand.getOwner() == land.getOwner()) {
-                    continue;
-                }
-                landsDeDupe.put(land.getName(), land);
-                all.add(new LandAbility(land));
-            }
-        }
         List<SpellAbility> candidateSAs = ComputerUtilAbility.getOriginalAndAltCostAbilities(all, player);
         int writeIndex = 0;
-        for (int i = 0; i < candidateSAs.size(); i++) {
-            SpellAbility sa = candidateSAs.get(i);
+        for (SpellAbility sa : candidateSAs) {
             if (sa.isManaAbility()) {
                 continue;
             }
@@ -93,7 +83,7 @@ public class SpellAbilityPicker {
 
             if (opinion != AiPlayDecision.WillPlay)
                 continue;
-            candidateSAs.set(writeIndex,  sa);
+            candidateSAs.set(writeIndex, sa);
             writeIndex++;
         }
         candidateSAs.subList(writeIndex, candidateSAs.size()).clear();
@@ -351,7 +341,9 @@ public class SpellAbilityPicker {
         if (!ComputerUtilCost.canPayCost(sa, player, sa.isTrigger())) {
             return AiPlayDecision.CantAfford;
         }
-
+        if (!ComputerUtilAbility.isFullyTargetable(sa)) {
+            return AiPlayDecision.TargetingFailed;
+        }
         if (shouldWaitForLater(sa)) {
             return AiPlayDecision.AnotherTime;
         }
@@ -363,18 +355,29 @@ public class SpellAbilityPicker {
         controller.evaluateSpellAbility(saList, saIndex);
         SpellAbility sa = saList.get(saIndex);
 
+        // Use a deterministic random seed when evaluating different choices of a spell ability.
+        // This is needed as otherwise random effects may result in a different number of choices
+        // each iteration, which will break the logic in SpellAbilityChoicesIterator.
+        Random origRandom = MyRandom.getRandom();
+        long randomSeedToUse = origRandom.nextLong();
+
         Score bestScore = new Score(Integer.MIN_VALUE);
         final SpellAbilityChoicesIterator choicesIterator = new SpellAbilityChoicesIterator(controller);
-        Score lastScore = null;
+        Score lastScore;
         do {
+            // TODO: MyRandom should be an instance on the game object, so that we could do
+            // simulations in parallel without messing up global state.
+            MyRandom.setRandom(new Random(randomSeedToUse));
             GameSimulator simulator = new GameSimulator(controller, game, player, phase);
             simulator.setInterceptor(choicesIterator);
             lastScore = simulator.simulateSpellAbility(sa);
+            numSimulations++;
             if (lastScore.value > bestScore.value) {
                 bestScore = lastScore;
             }
         } while (choicesIterator.advance(lastScore));
         controller.doneEvaluating(bestScore);
+        MyRandom.setRandom(origRandom);
         return bestScore;
     }
 
@@ -451,5 +454,9 @@ public class SpellAbilityPicker {
             }
         }
         return ComputerUtil.chooseSacrificeType(player, type, ability, ability.getTargetCard(), effect, amount, exclude);
+    }
+
+    public int getNumSimulations() {
+        return numSimulations;
     }
 }

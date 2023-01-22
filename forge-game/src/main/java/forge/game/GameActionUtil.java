@@ -544,6 +544,9 @@ public final class GameActionUtil {
         if (sa.hasParam("ReduceCost")) {
             result.putParam("ReduceCost", sa.getParam("ReduceCost"));
         }
+        if (sa.hasParam("RaiseCost")) {
+            result.putParam("RaiseCost", sa.getParam("RaiseCost"));
+        }
         for (OptionalCostValue v : list) {
             result.getPayCosts().add(v.getCost());
             result.addOptionalCost(v.getType());
@@ -765,7 +768,7 @@ public final class GameActionUtil {
         final Game game = sourceCard.getGame();
         final Card eff = new Card(game.nextCardId(), game);
         eff.setTimestamp(game.getNextTimestamp());
-        eff.setName(sourceCard.getName() + "'s Effect");
+        eff.setName(sourceCard + "'s Effect");
         eff.setOwner(controller);
 
         eff.setImageKey(sourceCard.getImageKey());
@@ -892,7 +895,7 @@ public final class GameActionUtil {
         }
         CardCollection completeList = new CardCollection();
         PlayerCollection players = new PlayerCollection(game.getPlayers());
-        // CR 613.7k use APNAP
+        // CR 613.7m use APNAP
         int indexAP = players.indexOf(game.getPhaseHandler().getPlayerTurn());
         if (indexAP != -1) {
             Collections.rotate(players, - indexAP);
@@ -958,6 +961,10 @@ public final class GameActionUtil {
             oldCard.setBackSide(false);
             oldCard.setState(oldCard.getFaceupCardStateName(), true);
             oldCard.unanimateBestow();
+
+            if (ability.hasParam("Prototype")) {
+                oldCard.removeCloneState(oldCard.getPrototypeTimestamp());
+            }
         }
 
         ability.clearTargets();

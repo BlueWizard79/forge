@@ -200,6 +200,7 @@ public class AbilityManaPart implements java.io.Serializable {
 
         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(getSourceCard());
         runParams.put(AbilityKey.Produced, mana);
+        runParams.put(AbilityKey.AbilityMana, root);
         runParams.put(AbilityKey.Activator, root.getActivatingPlayer());
 
         getSourceCard().getGame().getTriggerHandler().runTrigger(TriggerType.TapsForMana, runParams, false);
@@ -285,7 +286,7 @@ public class AbilityManaPart implements java.io.Serializable {
             return;
 
         TriggerHandler handler = card.getGame().getTriggerHandler();
-        Trigger trig = TriggerHandler.parseTrigger(sVarHolder.getSVar(this.triggersWhenSpent), sourceCard, false);
+        Trigger trig = TriggerHandler.parseTrigger(sVarHolder.getSVar(this.triggersWhenSpent), sourceCard, false, sVarHolder);
         handler.registerOneTrigger(trig);
     }
 
@@ -663,9 +664,9 @@ public class AbilityManaPart implements java.io.Serializable {
         // check for produce mana replacement effects - they mess this up, so just use the mana ability
         final Card source = am.getHostCard();
         final Player activator = am.getActivatingPlayer();
-        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromPlayer(activator);
+        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(source);
         repParams.put(AbilityKey.Mana, getOrigProduced());
-        repParams.put(AbilityKey.Affected, source);
+        repParams.put(AbilityKey.Activator, activator);
         repParams.put(AbilityKey.AbilityMana, am.getRootAbility());
 
         if (!source.getGame().getReplacementHandler().getReplacementList(ReplacementType.ProduceMana, repParams, ReplacementLayer.Other).isEmpty()) {

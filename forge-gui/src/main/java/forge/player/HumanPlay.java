@@ -114,9 +114,11 @@ public class HumanPlay {
 
         final HumanPlaySpellAbility req = new HumanPlaySpellAbility(controller, sa);
         if (!req.playAbility(true, false, false)) {
-            if (flippedToCast && !castFaceDown) {
+            Card rollback = p.getGame().getCardState(sa.getHostCard());
+            if (castFaceDown) {
+                rollback.setFaceDown(false);
+            } else if (flippedToCast) {
                 // need to get the changed card if able
-                Card rollback = p.getGame().getCardState(sa.getHostCard());
                 rollback.turnFaceDown(true);
                 //need to set correct imagekey when forcing facedown
                 rollback.setImageKey(ImageKeys.getTokenKey(isforetold ? ImageKeys.FORETELL_IMAGE : ImageKeys.HIDDEN_CARD));
@@ -320,7 +322,7 @@ public class HumanPlay {
                 } else {
                     from = costExile.getFrom();
                     CardCollection list = CardLists.getValidCards(p.getCardsIn(from), part.getType().split(";"), p, source, sourceAbility);
-                    final int nNeeded = getAmountFromPart(costPart, source, sourceAbility);
+                    final int nNeeded = getAmountFromPart(part, source, sourceAbility);
                     if (list.size() < nNeeded) {
                         return false;
                     }
@@ -450,7 +452,6 @@ public class HumanPlay {
                         return false;
                     }
                 }
-                return true;
             }
             else if (part instanceof CostGainControl) {
                 int amount = Integer.parseInt(part.getAmount());

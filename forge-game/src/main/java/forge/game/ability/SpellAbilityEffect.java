@@ -118,12 +118,10 @@ public abstract class SpellAbilityEffect {
             int amount = AbilityUtils.calculateAmount(sa.getHostCard(), svar, sa);
             sb.append(" ");
             sb.append(TextUtil.enclosedParen(TextUtil.concatNoSpace(svar,"=",String.valueOf(amount))));
-        } else {
-            if (sa.costHasManaX()) {
-                int amount = sa.getXManaCostPaid() == null ? 0 : sa.getXManaCostPaid();
-                sb.append(" ");
-                sb.append(TextUtil.enclosedParen(TextUtil.concatNoSpace("X","=",String.valueOf(amount))));
-            }
+        } else if (sa.costHasManaX()) {
+            int amount = sa.getXManaCostPaid() == null ? 0 : sa.getXManaCostPaid();
+            sb.append(" ");
+            sb.append(TextUtil.enclosedParen(TextUtil.concatNoSpace("X","=",String.valueOf(amount))));
         }
 
         String currentName = CardTranslation.getTranslatedName(sa.getHostCard().getName());
@@ -400,6 +398,23 @@ public abstract class SpellAbilityEffect {
         addedTrigger.setIntrinsic(true);
     }
 
+    protected static void addExileOnCastOrMoveTrigger(final Card card, final String zone) {
+        String trig = "Mode$ SpellCast | ValidCard$ Card.IsRemembered | TriggerZones$ Command | Static$ True";
+        String effect = "DB$ ChangeZone | Defined$ Self | Origin$ Command | Destination$ Exile";
+        final Trigger parsedTrigger = TriggerHandler.parseTrigger(trig, card, true);
+        parsedTrigger.setOverridingAbility(AbilityFactory.getAbility(effect, card));
+        final Trigger addedTrigger = card.addTrigger(parsedTrigger);
+        addedTrigger.setIntrinsic(true);
+        //Any on Destination will cause the effect to remove itself when cancelling to play the card
+        String trig2 = "Mode$ ChangesZone | ValidCard$ Card.IsRemembered | Origin$ " + zone + " | Destination$ Hand,Library,Graveyard,Battlefield,Command,Sideboard | TriggerZones$ Command | Static$ True";
+        String effect2 = "DB$ ChangeZone | Defined$ Self | Origin$ Command | Destination$ Exile";
+        final Trigger parsedTrigger2 = TriggerHandler.parseTrigger(trig2, card, true);
+        parsedTrigger2.setOverridingAbility(AbilityFactory.getAbility(effect2, card));
+        final Trigger addedTrigger2 = card.addTrigger(parsedTrigger2);
+        addedTrigger2.setIntrinsic(true);
+
+    }
+
     protected static void addExileOnCounteredTrigger(final Card card) {
         String trig = "Mode$ Countered | ValidCard$ Card.IsRemembered | TriggerZones$ Command | Static$ True";
         String effect = "DB$ ChangeZone | Defined$ Self | Origin$ Command | Destination$ Exile";
@@ -434,7 +449,7 @@ public abstract class SpellAbilityEffect {
     protected static void addLeaveBattlefieldReplacement(final Card card, final SpellAbility sa, final String zone) {
         final Card host = sa.getHostCard();
         final Game game = card.getGame();
-        final Card eff = createEffect(sa, sa.getActivatingPlayer(), host.getName() + "'s Effect", host.getImageKey());
+        final Card eff = createEffect(sa, sa.getActivatingPlayer(), host + "'s Effect", host.getImageKey());
 
         addLeaveBattlefieldReplacement(eff, zone);
 
@@ -475,8 +490,31 @@ public abstract class SpellAbilityEffect {
         final Card hostCard = sa.getHostCard();
         final Game game = hostCard.getGame();
         final Card eff = new Card(game.nextCardId(), game);
+        String finalname = name.replaceAll("\\([^()]*\\)", "");
+        if (finalname.contains(" 's Effect")) {
+            finalname = finalname.replace( " 's Effect", "");
+            finalname = CardTranslation.getTranslatedName(finalname) + " " + Localizer.getInstance().getMessage("lblEffect");
+        } else if (finalname.contains("'s Effect")) {
+            finalname = finalname.replace( "'s Effect", "");
+            finalname = CardTranslation.getTranslatedName(finalname) +" " + Localizer.getInstance().getMessage("lblEffect");
+        } else if (finalname.contains(" 's Boon")) {
+            finalname = finalname.replace( " 's Boon", "");
+            finalname = CardTranslation.getTranslatedName(finalname) + " " + Localizer.getInstance().getMessage("lblBoon");
+        } else if (finalname.contains("'s Boon")) {
+            finalname = finalname.replace( "'s Boon", "");
+            finalname = CardTranslation.getTranslatedName(finalname) +" " + Localizer.getInstance().getMessage("lblBoon");
+        } else if (finalname.startsWith("Emblem")) {
+            String []s = finalname.split(" - ");
+            try {
+                String translatedName = s[1].endsWith(" ") ? s[1].substring(0, s[1].lastIndexOf(" ")) : s[1];
+                translatedName = CardTranslation.getTranslatedName(s[1]);
+                finalname = translatedName + " " + Localizer.getInstance().getMessage("lblEmblem");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         eff.setTimestamp(game.getNextTimestamp());
-        eff.setName(name);
+        eff.setName(finalname);
         eff.setColor(hostCard.getColor().getColor());
         // if name includes emblem then it should be one
         if (name.startsWith("Emblem")) {

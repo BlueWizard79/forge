@@ -671,8 +671,9 @@ public class Player extends GameEntity implements Comparable<Player> {
         boolean infect = source.hasKeyword(Keyword.INFECT)
                 || hasKeyword("All damage is dealt to you as though its source had infect.");
 
+        int poisonCounters = 0;
         if (infect) {
-            addPoisonCounters(amount, source.getController(), counterTable);
+            poisonCounters += amount;
         }
         else if (!hasKeyword("Damage doesn't cause you to lose life.")) {
             // rule 118.2. Damage dealt to a player normally causes that player to lose that much life.
@@ -684,6 +685,14 @@ public class Player extends GameEntity implements Comparable<Player> {
             }
         }
 
+        if (isCombat) {
+            poisonCounters += source.getKeywordMagnitude(Keyword.TOXIC);
+        }
+
+        if (poisonCounters > 0) {
+            addPoisonCounters(poisonCounters, source.getController(), counterTable);
+        }
+
         //Oathbreaker, Tiny Leaders, and Brawl ignore commander damage rule
         if (source.isCommander() && isCombat
                 && !this.getGame().getRules().hasAppliedVariant(GameType.Oathbreaker)
@@ -691,8 +700,7 @@ public class Player extends GameEntity implements Comparable<Player> {
                 && !this.getGame().getRules().hasAppliedVariant(GameType.Brawl)) {
             // In case that commander is merged permanent, get the real commander card
             final Card realCommander = source.getRealCommander();
-            int damage = getCommanderDamage(realCommander) + amount;
-            commanderDamage.put(realCommander, damage);
+            addCommanderDamage(realCommander, amount);
             view.updateCommanderDamage(this);
             if (realCommander != source) {
                 view.updateMergedCommanderDamage(source, realCommander);
@@ -1445,6 +1453,9 @@ public class Player extends GameEntity implements Comparable<Player> {
             newCard = game.getAction().moveToGraveyard(c, sa, params);
             // Play the Discard sound
         }
+
+        newCard.setDiscarded(true);
+
         if (table != null) {
             table.put(origin, newCard.getZone().getZoneType(), newCard);
         }
@@ -1922,7 +1933,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean cantLoseForZeroOrLessLife() {
-        return hasKeyword("You don't lose the game for having 0 or less life.");
+        return cantLose() || hasKeyword("You don't lose the game for having 0 or less life.");
     }
 
     public final boolean cantWin() {
@@ -2674,6 +2685,9 @@ public class Player extends GameEntity implements Comparable<Player> {
     public int getCommanderDamage(Card commander) {
         Integer damage = commanderDamage.get(commander);
         return damage == null ? 0 : damage.intValue();
+    }
+    public void addCommanderDamage(Card commander, int damage) {
+        commanderDamage.merge(commander, damage, Integer::sum);
     }
 
     public ColorSet getCommanderColorID() {

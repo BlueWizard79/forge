@@ -64,8 +64,10 @@ public class HumanPlaySpellAbility {
         final Player human = ability.getActivatingPlayer();
         final Game game = human.getGame();
 
-        // CR 401.5: freeze top library cards until cast so player can't cheat and see the next
-        game.setTopLibsCast();
+        // CR 401.5: freeze top library cards until cast/activated so player can't cheat and see the next
+        if (!skipStack) {
+            game.setTopLibsCast();
+        }
 
         // used to rollback
         Zone fromZone = null;
@@ -92,6 +94,7 @@ public class HumanPlaySpellAbility {
 
         if (!ability.isCopied()) {
             ability.resetPaidHash();
+            ability.setPaidLife(0);
         }
 
         ability = GameActionUtil.addExtraKeywordCost(ability);
@@ -163,13 +166,15 @@ public class HumanPlaySpellAbility {
                 && ability.isLegalAfterStack()
                 && (isFree || payment.payCost(new HumanCostDecision(controller, human, ability, false, ability.getHostCard())));
 
+        game.clearTopLibsCast(ability);
+
         if (!prerequisitesMet) {
             if (!ability.isTrigger()) {
                 GameActionUtil.rollbackAbility(ability, fromZone, zonePosition, payment, c);
                 if (ability.getHostCard().isMadness()) {
                     // if a player failed to play madness cost, move the card to graveyard
                     Card newCard = game.getAction().moveToGraveyard(c, null);
-                    newCard.setMadnessWithoutCast(true);
+                    newCard.setDiscarded(true);
                 }
             } else {
                 payment.refundPayment();
@@ -182,7 +187,6 @@ public class HumanPlaySpellAbility {
                 manapool.restoreColorReplacements();
                 human.decNumManaConversion();
             }
-            game.clearTopLibsCast(ability);
             return false;
         }
 
@@ -208,7 +212,6 @@ public class HumanPlaySpellAbility {
                 manapool.restoreColorReplacements();
             }
         }
-        game.clearTopLibsCast(ability);
         return true;
     }
 

@@ -28,7 +28,6 @@ import com.google.common.collect.Multimaps;
 import forge.game.CardTraitBase;
 import forge.game.CardTraitPredicates;
 import forge.game.Game;
-import forge.game.GlobalRuleChange;
 import forge.game.IHasSVars;
 import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityKey;
@@ -37,6 +36,7 @@ import forge.game.card.*;
 import forge.game.player.Player;
 import forge.game.spellability.AbilitySub;
 import forge.game.spellability.SpellAbility;
+import forge.game.staticability.StaticAbilityDisableTriggers;
 import forge.game.staticability.StaticAbilityPanharmonicon;
 import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
@@ -443,32 +443,9 @@ public class TriggerHandler {
             }
         }
 
-        // Torpor Orb check
-        if (game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noCreatureETBTriggers)
-                && !regtrig.isStatic() && mode.equals(TriggerType.ChangesZone)) {
-            if (runParams.get(AbilityKey.Destination) instanceof String) {
-                final String dest = (String) runParams.get(AbilityKey.Destination);
-                if (dest.equals("Battlefield") && runParams.get(AbilityKey.Card) instanceof Card) {
-                    final Card card = (Card) runParams.get(AbilityKey.Card);
-                    if (card.isCreature()) {
-                        return false;
-                    }
-                }
-            }
-        } // Torpor Orb check
-
-        if (game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.noCreatureDyingTriggers)
-                && !regtrig.isStatic() && mode.equals(TriggerType.ChangesZone)) {
-            if (runParams.get(AbilityKey.Destination) instanceof String && runParams.get(AbilityKey.Origin) instanceof String) {
-                final String dest = (String) runParams.get(AbilityKey.Destination);
-                final String origin = (String) runParams.get(AbilityKey.Origin);
-                if (dest.equals("Graveyard") && origin.equals("Battlefield") && runParams.get(AbilityKey.Card) instanceof Card) {
-                    final Card card = (Card) runParams.get(AbilityKey.Card);
-                    if (card.isCreature()) {
-                        return false;
-                    }
-                }
-            }
+        // check if any static abilities are disabling the trigger (Torpor Orb and the like)
+        if (!regtrig.isStatic() && StaticAbilityDisableTriggers.disabled(game, regtrig, runParams)) {
+            return false;
         }
         return true;
     }

@@ -64,16 +64,13 @@ public class SacrificeEffect extends SpellAbilityEffect {
 
             table.replaceCounterEffect(game, sa, true);
 
-            Cost cumCost = new Cost(sa.getParam("CumulativeUpkeep"), true);
             Cost payCost = new Cost(ManaCost.ZERO, true);
             int n = card.getCounters(CounterEnumType.AGE);
-
-            // multiply cost
-            for (int i = 0; i < n; ++i) {
-                payCost.add(cumCost);
+            if (n > 0) {
+                Cost cumCost = new Cost(sa.getParam("CumulativeUpkeep"), true);
+                payCost.mergeTo(cumCost, n);
             }
 
-            sa.setCumulativeupkeep(true);
             game.updateLastStateForCard(card);
 
             StringBuilder sb = new StringBuilder();
@@ -92,7 +89,6 @@ public class SacrificeEffect extends SpellAbilityEffect {
         // Expand Sacrifice keyword here depending on what we need out of it.
         final String num = sa.getParamOrDefault("Amount", "1");
         final int amount = AbilityUtils.calculateAmount(card, num, sa);
-        final List<Player> tgts = getTargetPlayers(sa);
         final boolean devour = sa.hasParam("Devour");
         final boolean exploit = sa.hasParam("Exploit");
         final boolean sacEachValid = sa.hasParam("SacEachValid");
@@ -120,7 +116,7 @@ public class SacrificeEffect extends SpellAbilityEffect {
             }
         } else {
             CardCollectionView choosenToSacrifice = null;
-            for (final Player p : tgts) {
+            for (final Player p : getTargetPlayers(sa)) {
                 CardCollectionView battlefield = p.getCardsIn(ZoneType.Battlefield);
                 if (sacEachValid) { // Sacrifice maximum permanents in any combination of types specified by SacValid
                     String [] validArray = valid.split(" & ");
