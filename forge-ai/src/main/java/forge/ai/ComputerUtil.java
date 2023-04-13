@@ -66,6 +66,7 @@ import forge.game.combat.Combat;
 import forge.game.combat.CombatUtil;
 import forge.game.cost.Cost;
 import forge.game.cost.CostDiscard;
+import forge.game.cost.CostExile;
 import forge.game.cost.CostPart;
 import forge.game.cost.CostPayment;
 import forge.game.cost.CostPutCounter;
@@ -337,27 +338,30 @@ public class ComputerUtil {
         return true;
     }
 
-    public static final void playNoStack(final Player ai, SpellAbility sa, final Game game, final boolean effect) {
+    public static final boolean playNoStack(final Player ai, SpellAbility sa, final Game game, final boolean effect) {
         sa.setActivatingPlayer(ai, true);
         // TODO: We should really restrict what doesn't use the Stack
-        if (ComputerUtilCost.canPayCost(sa, ai, effect)) {
-            final Card source = sa.getHostCard();
-            if (sa.isSpell() && !source.isCopiedSpell()) {
-                sa.setHostCard(game.getAction().moveToStack(source, sa));
-            }
-
-            sa = GameActionUtil.addExtraKeywordCost(sa);
-
-            final Cost cost = sa.getPayCosts();
-            if (cost == null) {
-                ComputerUtilMana.payManaCost(ai, sa, effect);
-            } else {
-                final CostPayment pay = new CostPayment(cost, sa);
-                pay.payComputerCosts(new AiCostDecision(ai, sa, effect));
-            }
-
-            AbilityUtils.resolve(sa);
+        if (!ComputerUtilCost.canPayCost(sa, ai, effect)) {
+            return false;
         }
+
+        final Card source = sa.getHostCard();
+        if (sa.isSpell() && !source.isCopiedSpell()) {
+            sa.setHostCard(game.getAction().moveToStack(source, sa));
+        }
+
+        sa = GameActionUtil.addExtraKeywordCost(sa);
+
+        final Cost cost = sa.getPayCosts();
+        if (cost == null) {
+            ComputerUtilMana.payManaCost(ai, sa, effect);
+        } else {
+            final CostPayment pay = new CostPayment(cost, sa);
+            pay.payComputerCosts(new AiCostDecision(ai, sa, effect));
+        }
+
+        AbilityUtils.resolve(sa);
+        return true;
     }
 
     public static Card getCardPreference(final Player ai, final Card activate, final String pref, final CardCollection typeList) {
@@ -638,9 +642,14 @@ public class ComputerUtil {
         return sacList;
     }
 
-    public static CardCollection chooseExileFrom(final Player ai, final ZoneType zone, final String type, final Card activate,
-            final Card target, final int amount, SpellAbility sa) {
-        CardCollection typeList = CardLists.getValidCards(ai.getCardsIn(zone), type.split(";"), activate.getController(), activate, sa);
+    public static CardCollection chooseExileFrom(final Player ai, CostExile cost, final Card activate, final int amount, SpellAbility sa) {
+        CardCollection typeList;
+        if (cost.zoneRestriction != 1) {
+            typeList = new CardCollection(ai.getGame().getCardsIn(cost.from));
+        } else {
+            typeList = new CardCollection(ai.getCardsIn(cost.from));
+        }
+        typeList = CardLists.getValidCards(typeList, cost.getType().split(";"), activate.getController(), activate, sa);
 
         // don't exile the card we're pumping
         typeList = ComputerUtilCost.paymentChoicesWithoutTargets(typeList, sa, ai);
@@ -1065,6 +1074,15 @@ public class ComputerUtil {
             }
         }
 
+        // cast Backup creatures in main 1 to pump attackers
+        if (cardState.hasKeyword(Keyword.BACKUP)) {
+            for (Card potentialAtkr: ai.getCreaturesInPlay()) {
+                if (ComputerUtilCard.doesCreatureAttackAI(ai, potentialAtkr)) {
+                    return true;
+                }
+            }
+        }
+
         // try not to cast Raid creatures in main 1 if an attack is likely
         if ("Count$AttackersDeclared".equals(card.getSVar("RaidTest")) && !cardState.hasKeyword(Keyword.HASTE)) {
             for (Card potentialAtkr: ai.getCreaturesInPlay()) {
@@ -1193,7 +1211,7 @@ public class ComputerUtil {
                     creatures2.add(creatures.get(i));
                 }
             }
-            if (((creatures2.size() + CardUtil.getThisTurnCast("Creature.YouCtrl", vengevines.get(0), null).size()) > 1)
+            if (((creatures2.size() + CardUtil.getThisTurnCast("Creature.YouCtrl", vengevines.get(0), null, ai).size()) > 1)
                     && card.isCreature() && card.getManaCost().getCMC() <= 3) {
                 return true;
             }
@@ -1738,6 +1756,10 @@ public class ComputerUtil {
                         continue;
                     }
 
+                    if (c.getCounters(CounterEnumType.SHIELD) > 0) {
+                        continue;
+                    }
+
                     // already regenerated
                     if (c.getShieldCount() > 0) {
                         continue;
@@ -1796,8 +1818,7 @@ public class ComputerUtil {
                 && (saviourApi == ApiType.ChangeZone || saviourApi == ApiType.Pump || saviourApi == ApiType.PumpAll
                 || saviourApi == ApiType.Protection || saviourApi == ApiType.PutCounter || saviourApi == ApiType.PutCounterAll
                 || saviourApi == null)) {
-            final int dmg = -AbilityUtils.calculateAmount(source,
-                    topStack.getParam("NumDef"), topStack);
+            final int dmg = -AbilityUtils.calculateAmount(source, topStack.getParam("NumDef"), topStack);
             for (final Object o : objects) {
                 if (o instanceof Card) {
                     final Card c = (Card) o;
@@ -1850,6 +1871,10 @@ public class ComputerUtil {
                     final Card c = (Card) o;
                     // indestructible
                     if (c.hasKeyword(Keyword.INDESTRUCTIBLE)) {
+                        continue;
+                    }
+
+                    if (c.getCounters(CounterEnumType.SHIELD) > 0) {
                         continue;
                     }
 
@@ -2322,7 +2347,7 @@ public class ComputerUtil {
 
         CardLists.sortByCmcDesc(goodChoices);
 
-        return new CardCollection(Aggregates.random(goodChoices, max));
+        return goodChoices.subList(0, max);
     }
 
     public static CardCollection getCardsToDiscardFromFriend(Player aiChooser, Player p, SpellAbility sa, CardCollection validCards, int min, int max) {
@@ -3158,4 +3183,14 @@ public class ComputerUtil {
         return remainingLife;
     }
 
+    public static boolean isETBprevented(Card c) {
+        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(c);
+        // don't need to bother with real LKI since this is a passive check and the card isn't going anywhere
+        repParams.put(AbilityKey.CardLKI, c);
+        repParams.put(AbilityKey.Origin, c.getLastKnownZone().getZoneType());
+        repParams.put(AbilityKey.Destination, ZoneType.Battlefield);
+        List<ReplacementEffect> list = c.getGame().getReplacementHandler().getReplacementList(ReplacementType.Moved, repParams, ReplacementLayer.CantHappen);
+        return !list.isEmpty();
+    }
+    
 }

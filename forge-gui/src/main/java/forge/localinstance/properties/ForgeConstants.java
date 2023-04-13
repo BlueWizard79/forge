@@ -32,6 +32,7 @@ public final class ForgeConstants {
 
     public static final String RES_DIR = ASSETS_DIR + "res" + PATH_SEPARATOR;
     public static final String ADVENTURE_DIR = RES_DIR + "adventure" + PATH_SEPARATOR;
+    public static final String ADVENTURE_DEFAULT_PLANE_DIR = ADVENTURE_DIR + "Shandalar" + PATH_SEPARATOR;
     public static final String LISTS_DIR = RES_DIR + "lists" + PATH_SEPARATOR;
     public static final String SETLOOKUP_DIR = RES_DIR + "setlookup" + PATH_SEPARATOR;
     public static final String KEYWORD_LIST_FILE                     = LISTS_DIR + "NonStackingKWList.txt";
@@ -84,6 +85,7 @@ public final class ForgeConstants {
     public static final String AI_PROFILE_DIR      = RES_DIR + "ai" + PATH_SEPARATOR;
     public static final String SOUND_DIR           = RES_DIR + "sound" + PATH_SEPARATOR;
     public static final String MUSIC_DIR           = RES_DIR + "music" + PATH_SEPARATOR;
+    public static final String ADVENTURE_MUSIC_DIR = ADVENTURE_DEFAULT_PLANE_DIR + "music" + PATH_SEPARATOR;
     public static final String LANG_DIR            = RES_DIR + "languages" + PATH_SEPARATOR;
     public static final String EFFECTS_DIR         = RES_DIR + "effects" + PATH_SEPARATOR;
     public static final String PUZZLE_DIR          = RES_DIR + "puzzle" + PATH_SEPARATOR;
@@ -127,6 +129,7 @@ public final class ForgeConstants {
     public static final String SPRITE_SLEEVES2_FILE   = "sprite_sleeves2.png";
     public static final String SPRITE_FAVICONS_FILE   = "sprite_favicons.png";
     public static final String SPRITE_PLANAR_CONQUEST_FILE = "sprite_planar_conquest.png";
+    public static final String SPRITE_ADVENTURE_FILE = "sprite_adventure.png";
     public static final String SPRITE_SETLOGO_FILE    = "sprite_setlogo.png";
     public static final String SPRITE_WATERMARK_FILE  = "sprite_watermark.png";
     public static final String SPRITE_DRAFTRANKS_FILE  = "sprite_draftranks.png";
@@ -242,6 +245,31 @@ public final class ForgeConstants {
     public static final String BG_84                  = "Morphic_Tide.jpg";
     public static final String BG_85                  = "Mutual_Epiphany.jpg";
     public static final String BG_86                  = "Time_Distortion.jpg";
+    public static final String BG_87                  = "Enigma_Ridges.jpg";
+    public static final String BG_88                  = "Esper.jpg";
+    public static final String BG_89                  = "Ghirapur.jpg";
+    public static final String BG_90                  = "Inys_Haen.jpg";
+    public static final String BG_91                  = "Ketria.jpg";
+    public static final String BG_92                  = "Littiara.jpg";
+    public static final String BG_93                  = "Megaflora_Jungle.jpg";
+    public static final String BG_94                  = "Naktamun.jpg";
+    public static final String BG_95                  = "New_Argive.jpg";
+    public static final String BG_96                  = "Norn's_Seedcore.jpg";
+    public static final String BG_97                  = "Nyx.jpg";
+    public static final String BG_98                  = "Paliano.jpg";
+    public static final String BG_99                  = "Riptide_Island.jpg";
+    public static final String BG_100                 = "Strixhaven.jpg";
+    public static final String BG_101                 = "Ten_Wizards_Mountain.jpg";
+    public static final String BG_102                 = "The_Caldaia.jpg";
+    public static final String BG_103                 = "The_Fertile_Lands_of_Saulvinia.jpg";
+    public static final String BG_104                 = "The_Golden_City_of_Orazca.jpg";
+    public static final String BG_105                 = "The_Great_Aerie.jpg";
+    public static final String BG_106                 = "The_Pit.jpg";
+    public static final String BG_107                 = "The_Western_Cloud.jpg";
+    public static final String BG_108                 = "The_Wilds.jpg";
+    public static final String BG_109                 = "Towashi.jpg";
+    public static final String BG_110                 = "Unyaro.jpg";
+    public static final String BG_111                 = "Valor's_Reach.jpg";
     //CARD BG
     public static final String IMG_CARDBG_A           = "IMG_CARDBG_A.png";
     public static final String IMG_CARDBG_B           = "IMG_CARDBG_B.png";

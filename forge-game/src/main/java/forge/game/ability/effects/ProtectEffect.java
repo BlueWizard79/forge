@@ -10,6 +10,7 @@ import com.google.common.collect.Lists;
 import forge.GameCommand;
 import forge.card.MagicColor;
 import forge.game.Game;
+import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
@@ -50,7 +51,7 @@ public class ProtectEffect extends SpellAbilityEffect {
                 }
             }
 
-            if (sa.hasParam("Radiance") && (sa.usesTargeting())) {
+            if (sa.hasParam("Radiance") && sa.usesTargeting()) {
                 sb.append(" and each other ").append(sa.getParam("ValidTgts"))
                         .append(" that shares a color with ");
                 if (tgtCards.size() > 1) {
@@ -101,7 +102,7 @@ public class ProtectEffect extends SpellAbilityEffect {
         final List<String> choices = getProtectionList(sa);
         final List<String> gains = new ArrayList<>();
         final List<Card> tgtCards = getTargetCards(sa);
-        
+
         if (isChoice && !choices.isEmpty())  {
             Player choser = sa.getActivatingPlayer();
             if (sa.hasParam("Choser") && sa.getParam("Choser").equals("Controller") && !tgtCards.isEmpty()) {
@@ -117,6 +118,11 @@ public class ProtectEffect extends SpellAbilityEffect {
                 for (final String color : host.getChosenColors()) {
                     gains.add(color.toLowerCase());
                 }
+            } else if (sa.getParam("Gains").startsWith("Defined")) {
+                CardCollection def = AbilityUtils.getDefinedCards(host, sa.getParam("Gains").substring(8), sa);
+                for (final Byte color : def.get(0).getColor()) {
+                    gains.add(MagicColor.toLongString(color));
+                }
             } else {
                 gains.addAll(choices);
             }
@@ -127,7 +133,7 @@ public class ProtectEffect extends SpellAbilityEffect {
             gainsKWList.add(TextUtil.concatWithSpace("Protection from", color));
         }
 
-        final CardCollection untargetedCards = CardUtil.getRadiance(sa);
+        tgtCards.addAll(CardUtil.getRadiance(sa));
 
         final long timestamp = game.getNextTimestamp();
 
@@ -157,32 +163,8 @@ public class ProtectEffect extends SpellAbilityEffect {
                 addUntilCommand(sa, untilEOT);
             }
         }
-
-        for (final Card unTgtC : untargetedCards) {
-            // only pump things in play
-            if (!unTgtC.isInPlay()) {
-                continue;
-            }
-
-            unTgtC.addChangedCardKeywords(gainsKWList, null, false, timestamp, 0, true);
-
-            if (!"Permanent".equals(sa.getParam("Duration"))) {
-                // If not Permanent, remove protection at EOT
-                final GameCommand untilEOT = new GameCommand() {
-                    private static final long serialVersionUID = 7682700789217703789L;
-
-                    @Override
-                    public void run() {
-                        if (unTgtC.isInPlay()) {
-                            unTgtC.removeChangedCardKeywords(timestamp, 0, true);
-                        }
-                    }
-                };
-                addUntilCommand(sa, untilEOT);
-            }
-        }
     }
-    
+
     public static List<String> getProtectionList(final SpellAbility sa) {
         final List<String> gains = new ArrayList<>();
 

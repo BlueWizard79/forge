@@ -72,7 +72,7 @@ public class TwoPilesEffect extends SpellAbilityEffect {
             if (!p.isInGame()) {
                 continue;
             }
- 
+
             CardCollectionView pool0;
             if (sa.hasParam("DefinedCards")) {
                 pool0 = AbilityUtils.getDefinedCards(card, sa.getParam("DefinedCards"), sa);
@@ -183,7 +183,8 @@ public class TwoPilesEffect extends SpellAbilityEffect {
                 card.addRemembered(tempRemembered);
             }
         }
-        if (!sa.hasParam("KeepRemembered")) {
+
+        if (!sa.hasParam("KeepRemembered") && !sa.hasParam("RememberChosen")) {
             // prior to addition of "DefinedPiles" param, TwoPilesEffect cleared remembered objects in the
             // Chosen/Unchosen subability resolutions, so this preserves that
             card.clearRemembered();

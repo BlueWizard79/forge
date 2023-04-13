@@ -136,7 +136,7 @@ public class ChangeZoneAllEffect extends SpellAbilityEffect {
 
         if (!random && !((destination == ZoneType.Library || destination == ZoneType.PlanarDeck) && sa.hasParam("Shuffle"))) {
             if ((destination == ZoneType.Library || destination == ZoneType.PlanarDeck) && cards.size() >= 2) {
-                Player p = AbilityUtils.getDefinedPlayers(source, sa.getParamOrDefault("DefinedPlayer", "You"), sa).get(0);
+                Player p = AbilityUtils.getDefinedPlayers(source, sa.getParam("DefinedPlayer"), sa).get(0);
                 cards = (CardCollection) p.getController().orderMoveToZoneList(cards, destination, sa);
                 //the last card in this list will be the closest to the top, but we want the first card to be closest.
                 //so reverse it here before moving them to the library.
@@ -187,13 +187,7 @@ public class ChangeZoneAllEffect extends SpellAbilityEffect {
             } else {
                 movedCard = game.getAction().moveTo(destination, c, libraryPos, sa, moveParams);
                 if (destination == ZoneType.Exile && !c.isToken()) {
-                    Card host = sa.getOriginalHost();
-                    if (host == null) {
-                        host = sa.getHostCard();
-                    }
-                    host.addExiledCard(movedCard);
-                    movedCard.setExiledWith(host);
-                    movedCard.setExiledBy(host.getController());
+                    handleExiledWith(movedCard, sa);
                 }
                 if (sa.hasParam("ExileFaceDown")) {
                     movedCard.turnFaceDown(true);

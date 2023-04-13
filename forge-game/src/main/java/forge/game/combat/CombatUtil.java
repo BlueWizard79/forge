@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
@@ -42,6 +43,7 @@ import forge.game.card.CardLists;
 import forge.game.card.CardPredicates;
 import forge.game.card.CardUtil;
 import forge.game.cost.Cost;
+import forge.game.cost.CostPart;
 import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
 import forge.game.phase.PhaseType;
@@ -69,12 +71,20 @@ import forge.util.maps.MapToAmount;
 public class CombatUtil {
 
     public static FCollectionView<GameEntity> getAllPossibleDefenders(final Player playerWhoAttacks) {
+        // Opponents, opposing planeswalkers, and any battle you don't protect
         final FCollection<GameEntity> defenders = new FCollection<>();
         for (final Player defender : playerWhoAttacks.getOpponents()) {
             defenders.add(defender);
             final CardCollection planeswalkers = defender.getPlaneswalkersInPlay();
             defenders.addAll(planeswalkers);
+            for (Card battle : defender.getBattlesInPlay()) {
+                if (!playerWhoAttacks.equals(battle.getProtectingPlayer()) && battle.getType().hasSubtype("Siege")) {
+                    defenders.add(battle);
+                }
+            }
         }
+        defenders.addAll(playerWhoAttacks.getBattlesInPlay());
+
         return defenders;
     }
 
@@ -253,38 +263,16 @@ public class CombatUtil {
             }
         }
 
-        // Keywords
-        // replace with Static Ability if able
-        if (attacker.hasKeyword("CARDNAME can't attack.") || attacker.hasKeyword("CARDNAME can't attack or block.")) {
-            return false;
-        }
-
         // CantAttack static abilities
-        for (final Card ca : game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CantAttack", attacker, defender)) {
-                    return false;
-                }
-            }
+        if (StaticAbilityCantAttackBlock.cantAttack(attacker, defender)) {
+            return false;
         }
 
         return true;
     }
 
     public static boolean isAttackerSick(final Card attacker, final GameEntity defender) {
-        final Game game = attacker.getGame();
-        if (!attacker.isSick()) {
-            return false;
-        }
-
-        for (final Card ca : game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CanAttackIfHaste", attacker, defender)) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return !StaticAbilityCantAttackBlock.canAttackHaste(attacker, defender);
     }
 
     /**
@@ -295,8 +283,8 @@ public class CombatUtil {
      * @param attacker
      *            a {@link forge.game.card.Card} object.
      */
-    public static boolean checkPropagandaEffects(final Game game, final Card attacker, final Combat combat) {
-        final Cost attackCost = getAttackCost(game, attacker,  combat.getDefenderByAttacker(attacker));
+    public static boolean checkPropagandaEffects(final Game game, final Card attacker, final Combat combat, final List<Card> attackersWithOptionalCost) {
+        final Cost attackCost = getAttackCost(game, attacker,  combat.getDefenderByAttacker(attacker), attackersWithOptionalCost);
         if (attackCost == null) {
             return true;
         }
@@ -309,6 +297,9 @@ public class CombatUtil {
                 "Pay additional cost to declare " + attacker + " an attacker", ManaPaymentPurpose.DeclareAttacker);
     }
 
+    public static Cost getAttackCost(final Game game, final Card attacker, final GameEntity defender) {
+        return getAttackCost(game, attacker, defender, ImmutableList.of());
+    }
     /**
      * Get the cost that has to be paid for a creature to attack a certain
      * defender.
@@ -322,13 +313,13 @@ public class CombatUtil {
      * @return the {@link Cost} of attacking, or {@code null} if there is no
      *         cost.
      */
-    public static Cost getAttackCost(final Game game, final Card attacker, final GameEntity defender) {
+    public static Cost getAttackCost(final Game game, final Card attacker, final GameEntity defender, final List<Card> attackersWithOptionalCost) {
         final Cost attackCost = new Cost(ManaCost.ZERO, true);
         boolean hasCost = false;
         // Sort abilities to apply them in proper order
         for (final Card card : game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
             for (final StaticAbility stAb : card.getStaticAbilities()) {
-                final Cost additionalCost = stAb.getAttackCost(attacker, defender);
+                final Cost additionalCost = stAb.getAttackCost(attacker, defender, attackersWithOptionalCost);
                 if (null != additionalCost) {
                     attackCost.add(additionalCost);
                     hasCost = true;
@@ -340,6 +331,19 @@ public class CombatUtil {
             return null;
         }
         return attackCost;
+    }
+
+    public static CardCollection getOptionalAttackCostCreatures(final CardCollection attackers, Class<? extends CostPart> costType) {
+        final CardCollection attackersWithCost = new CardCollection();
+        for (final Card card : attackers) {
+            for (final StaticAbility stAb : card.getStaticAbilities()) {
+                if (stAb.hasAttackCost(card, costType)) {
+                    attackersWithCost.add(card);
+                }
+            }
+        }
+
+        return attackersWithCost;
     }
 
     public static boolean payRequiredBlockCosts(Game game, Card blocker, Card attacker) {
@@ -557,12 +561,8 @@ public class CombatUtil {
         }
 
         // Unblockable check
-        for (final Card ca : attacker.getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CantBlockBy", attacker, null)) {
-                    return false;
-                }
-            }
+        if (StaticAbilityCantAttackBlock.cantBlockBy(attacker, null)) {
+            return false;
         }
 
         return canBeBlocked(attacker, defendingPlayer);
@@ -1128,7 +1128,6 @@ public class CombatUtil {
             return false;
         }
 
-        final Game game = attacker.getGame();
         if (!canBlock(blocker, nextTurn)) {
             return false;
         }
@@ -1154,12 +1153,8 @@ public class CombatUtil {
         }
 
         // CantBlockBy static abilities
-        for (final Card ca : game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
-            for (final StaticAbility stAb : ca.getStaticAbilities()) {
-                if (stAb.applyAbility("CantBlockBy", attacker, blocker)) {
-                    return false;
-                }
-            }
+        if (StaticAbilityCantAttackBlock.cantBlockBy(attacker, blocker)) {
+            return false;
         }
 
         return true;

@@ -15,13 +15,11 @@ import com.google.common.collect.Table;
 import forge.GameCommand;
 import forge.game.Game;
 import forge.game.GameEntity;
-import forge.game.GameObject;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
-import forge.game.card.CardCollectionView;
 import forge.game.card.CardFactory;
 import forge.game.card.CardUtil;
 import forge.game.card.CardZoneTable;
@@ -80,7 +78,7 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
 
         // support PlayerCollection for affected
         Set<Player> toRemove = Sets.newHashSet();
-        for (Player p : tokenTable.rowKeySet()) {
+        for (Player p : Sets.newHashSet(tokenTable.rowKeySet())) {
             final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(p);
             repParams.put(AbilityKey.Token, tokenTable);
             repParams.put(AbilityKey.EffectOnly, true); // currently only effects can create tokens?
@@ -104,12 +102,9 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
         }
         List<Card> allTokens = Lists.newArrayList();
 
-        CardCollectionView lastStateBattlefield = game.copyLastStateBattlefield();
-        CardCollectionView lastStateGraveyard = game.copyLastStateGraveyard();
-
         Map<AbilityKey, Object> moveParams = AbilityKey.newMap();
-        moveParams.put(AbilityKey.LastStateBattlefield, lastStateBattlefield);
-        moveParams.put(AbilityKey.LastStateGraveyard, lastStateGraveyard);
+        moveParams.put(AbilityKey.LastStateBattlefield, game.copyLastStateBattlefield());
+        moveParams.put(AbilityKey.LastStateGraveyard, game.copyLastStateGraveyard());
 
         for (final Table.Cell<Player, Card, Integer> c : tokenTable.cellSet()) {
             Card prototype = c.getColumnKey();
@@ -156,6 +151,9 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
                     tok.setCopiedPermanent(prototype);
                 }
 
+                Card lki = CardUtil.getLKICopy(tok);
+                moveParams.put(AbilityKey.CardLKI, lki);
+
                 // Should this be catching the Card that's returned?
                 Card moved = game.getAction().moveToPlay(tok, sa, moveParams);
                 if (moved == null || moved.getZone() == null) {
@@ -165,7 +163,8 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
                 }
                 triggerList.put(ZoneType.None, moved.getZone().getZoneType(), moved);
 
-                creator.addTokensCreatedThisTurn(tok);
+                triggerList.addToken(lki, creator.getNumTokenCreatedThisTurn() == 0);
+                creator.addTokensCreatedThisTurn(lki);
 
                 if (clone) {
                     moved.setCloneOrigin(host);
@@ -220,11 +219,10 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
         final Card host = sa.getHostCard();
         final Game game = host.getGame();
 
-        GameObject aTo = Iterables.getFirst(
-                AbilityUtils.getDefinedObjects(host, sa.getParam("AttachedTo"), sa), null);
+        GameEntity aTo = Iterables.getFirst(
+                AbilityUtils.getDefinedEntities(host, sa.getParam("AttachedTo"), sa), null);
 
-        if (aTo instanceof GameEntity) {
-            GameEntity ge = (GameEntity)aTo;
+        if (aTo != null) {
             // check what the token would be on the battlefield
             Card lki = CardUtil.getLKICopy(tok);
 
@@ -237,7 +235,7 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
 
             boolean canAttach = lki.isAttachment();
 
-            if (canAttach && !ge.canBeAttached(lki, sa)) {
+            if (canAttach && !aTo.canBeAttached(lki, sa)) {
                 canAttach = false;
             }
 
@@ -253,7 +251,7 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
                 return false;
             }
 
-            tok.attachToEntity(ge, sa);
+            tok.attachToEntity(aTo, sa);
             return true;
         }
         // not a GameEntity, cant be attach

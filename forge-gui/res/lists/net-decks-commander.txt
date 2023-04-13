@@ -1,4 +1,5 @@
 99 Problems | https://downloads.cardforge.org/decks/99problems.zip
+Brewer's Kitchen | https://downloads.cardforge.org/decks/brewerskitchen-commander.zip
 Budget Commander | https://downloads.cardforge.org/decks/budgetcommander.zip
 Card Preview | https://downloads.cardforge.org/decks/cardpreview-commander.zip
 Command Tower | https://downloads.cardforge.org/decks/commandtower.zip
@@ -26,6 +27,7 @@ ReConstructed | https://downloads.cardforge.org/decks/recon-commander.zip
 Rhystic Study | https://downloads.cardforge.org/decks/rhysticstudy.zip
 Serious Fun | https://downloads.cardforge.org/decks/seriousfun-commander.zip
 The Command Center | https://downloads.cardforge.org/decks/commandcenter.zip
+The Command Zone | https://downloads.cardforge.org/decks/commandzone.zip
 The Fish Tank | https://downloads.cardforge.org/decks/fishtank-commander.zip
 The Week That Was | https://downloads.cardforge.org/decks/theweekthatwas-commander.zip
 Top Decks | https://downloads.cardforge.org/decks/topdecks-commander.zip

@@ -554,6 +554,11 @@ public final class CMatchUI
     }
 
     @Override
+    public void updateShards(Iterable<PlayerView> shardsUpdate) {
+        //mobile adventure only..
+    }
+
+    @Override
     public void updateCards(final Iterable<CardView> cards) {
         for (final CardView c : cards) {
             final ZoneType zone = c.getZone();
@@ -1343,10 +1348,10 @@ public final class CMatchUI
                         enchantedEntityView = enchantedEntity.getView();
                         numSmallImages++;
                     } else if ((sa.getRootAbility() != null)
-                            && (sa.getRootAbility().getPaidList("Sacrificed") != null)
-                            && !sa.getRootAbility().getPaidList("Sacrificed").isEmpty()) {
+                            && (sa.getRootAbility().getPaidList("Sacrificed", true) != null)
+                            && !sa.getRootAbility().getPaidList("Sacrificed", true).isEmpty()) {
                         // If the player activated its ability by sacrificing the enchantment, the enchantment has not anything attached anymore and the ex-enchanted card has to be searched in other ways.. for example, the green enchantment "Carapace"
-                        enchantedEntity = sa.getRootAbility().getPaidList("Sacrificed").get(0).getEnchantingCard();
+                        enchantedEntity = sa.getRootAbility().getPaidList("Sacrificed", true).get(0).getEnchantingCard();
                         if (enchantedEntity != null) {
                             enchantedEntityView = enchantedEntity.getView();
                             numSmallImages++;

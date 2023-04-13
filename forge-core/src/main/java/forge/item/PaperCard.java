@@ -403,7 +403,7 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
     public boolean hasBackFace(){
         CardSplitType cst = this.rules.getSplitType();
         return cst == CardSplitType.Transform || cst == CardSplitType.Flip || cst == CardSplitType.Meld
-                || cst == CardSplitType.Modal || cst == CardSplitType.Convert;
+                || cst == CardSplitType.Modal;
     }
 
     // Return true if card is one of the five basic lands that can be added for free
@@ -417,5 +417,11 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
 
     public String getSortableName() {
         return sortableName;
+    }
+    public boolean isUnRebalanced() {
+        return StaticData.instance().isRebalanced("A-" + name);
+    }
+    public boolean isRebalanced() {
+        return StaticData.instance().isRebalanced(name);
     }
 }

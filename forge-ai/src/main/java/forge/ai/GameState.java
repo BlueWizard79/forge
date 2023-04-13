@@ -305,8 +305,6 @@ public abstract class GameState {
                 newText.append("|Meld");
             } else if (c.getCurrentStateName().equals(CardStateName.Modal)) {
                 newText.append("|Modal");
-            } else if (c.getCurrentStateName().equals(CardStateName.Converted)) {
-                newText.append("|Converted");
             }
 
             if (c.getPlayerAttachedTo() != null) {
@@ -1255,7 +1253,7 @@ public abstract class GameState {
                     c.setBackSide(true);
                 }
                 else if (info.startsWith("OnAdventure")) {
-                    String abAdventure = "DB$ Effect | RememberObjects$ Self | StaticAbilities$ Play | ExileOnMoved$ Exile | Duration$ Permanent | ConditionDefined$ Self | ConditionPresent$ Card.nonCopiedSpell";
+                    String abAdventure = "DB$ Effect | RememberObjects$ Self | StaticAbilities$ Play | ForgetOnMoved$ Exile | Duration$ Permanent | ConditionDefined$ Self | ConditionPresent$ Card.nonCopiedSpell";
                     SpellAbility saAdventure = AbilityFactory.getAbility(abAdventure, c);
                     StringBuilder sbPlay = new StringBuilder();
                     sbPlay.append("Mode$ Continuous | MayPlay$ True | EffectZone$ Command | Affected$ Card.IsRemembered+nonAdventure");

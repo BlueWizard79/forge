@@ -20,12 +20,12 @@ import forge.util.CardTranslation;
 import forge.util.Lang;
 import forge.util.Localizer;
 
-/** 
+/**
  * PeekAndReveal is a simplified way of handling something that could be done with Dig and NoMove$.
  * Kinship cards use this, and many other cards could have simpler scripts by just using PeekAndReveal.
  */
 public class PeekAndRevealEffect extends SpellAbilityEffect {
-    
+
     @Override
     protected String getStackDescription(SpellAbility sa) {
         final Player peeker = sa.getActivatingPlayer();
@@ -64,10 +64,10 @@ public class PeekAndRevealEffect extends SpellAbilityEffect {
         String revealValid = sa.getParamOrDefault("RevealValid", "Card");
         String peekAmount = sa.getParamOrDefault("PeekAmount", "1");
         int numPeek = AbilityUtils.calculateAmount(source, peekAmount, sa);
-        
+
         List<Player> libraryPlayers = getDefinedPlayersOrTargeted(sa);
-        Player peekingPlayer = sa.getActivatingPlayer();
-        
+        final Player peekingPlayer = sa.getActivatingPlayer();
+
         for (Player libraryToPeek : libraryPlayers) {
             final PlayerZone library = libraryToPeek.getZone(ZoneType.Library);
             numPeek = Math.min(numPeek, library.size());
@@ -77,18 +77,17 @@ public class PeekAndRevealEffect extends SpellAbilityEffect {
                 peekCards.add(library.get(i));
             }
 
-            CardCollectionView revealableCards = CardLists.getValidCards(peekCards, revealValid,
-                    sa.getActivatingPlayer(), source, sa);
+            CardCollectionView revealableCards = CardLists.getValidCards(peekCards, revealValid, peekingPlayer, source, sa);
             boolean doReveal = !sa.hasParam("NoReveal") && !revealableCards.isEmpty();
             if (!noPeek) {
                 peekingPlayer.getController().reveal(peekCards, ZoneType.Library, libraryToPeek,
                         CardTranslation.getTranslatedName(source.getName()) + " - " +
                                 Localizer.getInstance().getMessage("lblLookingCardFrom"));
             }
-            
+
             if (doReveal && sa.hasParam("RevealOptional"))
                 doReveal = peekingPlayer.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblRevealCardToOtherPlayers"), null);
-            
+
             if (doReveal) {
                 peekingPlayer.getGame().getAction().reveal(revealableCards, ZoneType.Library, libraryToPeek, !noPeek,
                         CardTranslation.getTranslatedName(source.getName()) + " - " +

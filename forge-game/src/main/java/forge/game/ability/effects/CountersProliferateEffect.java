@@ -1,19 +1,19 @@
 package forge.game.ability.effects;
 
 import java.util.List;
+import java.util.Map;
 
 import forge.game.Game;
 import forge.game.GameEntity;
 import forge.game.GameEntityCounterTable;
 import forge.game.ability.AbilityKey;
+import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
-import forge.game.card.Card;
-import forge.game.card.CardLists;
-import forge.game.card.CardPredicates;
-import forge.game.card.CounterType;
+import forge.game.card.*;
 import forge.game.player.Player;
 import forge.game.player.PlayerController;
 import forge.game.player.PlayerPredicates;
+import forge.game.replacement.ReplacementType;
 import forge.game.spellability.SpellAbility;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
@@ -36,25 +36,41 @@ public class CountersProliferateEffect extends SpellAbilityEffect {
         final Player p = sa.getActivatingPlayer();
         final Card host = sa.getHostCard();
         final Game game = host.getGame();
+        int num = sa.hasParam("Amount") ? AbilityUtils.calculateAmount(host, sa.getParam("Amount"), sa) : 1;
+
+        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(p);
+        repParams.put(AbilityKey.Source, sa);
+        repParams.put(AbilityKey.Num, num);
+
+        switch (game.getReplacementHandler().run(ReplacementType.Proliferate, repParams)) {
+            case NotReplaced:
+                break;
+            case Updated: {
+                num = (int) repParams.get(AbilityKey.Num);
+                break;
+            }
+        }
 
         PlayerController pc = p.getController();
 
-        FCollection<GameEntity> list = new FCollection<>();
+        for (int i = 0; i < num; i++) {
+            FCollection<GameEntity> list = new FCollection<>();
 
-        list.addAll(game.getPlayers().filter(PlayerPredicates.hasCounters()));
-        list.addAll(CardLists.filter(game.getCardsIn(ZoneType.Battlefield), CardPredicates.hasCounters()));
+            list.addAll(game.getPlayers().filter(PlayerPredicates.hasCounters()));
+            list.addAll(CardLists.filter(game.getCardsIn(ZoneType.Battlefield), CardPredicates.hasCounters()));
 
-        List<GameEntity> result = pc.chooseEntitiesForEffect(list, 0, list.size(), null, sa,
-                Localizer.getInstance().getMessage("lblChooseProliferateTarget"), p, null);
+            List<GameEntity> result = pc.chooseEntitiesForEffect(list, 0, list.size(), null, sa,
+                    Localizer.getInstance().getMessage("lblChooseProliferateTarget"), p, null);
 
-        GameEntityCounterTable table = new GameEntityCounterTable();
-        for (final GameEntity ge : result) {
-            for (final CounterType ct : ge.getCounters().keySet()) {
-                ge.addCounter(ct, 1, p, table);
+            GameEntityCounterTable table = new GameEntityCounterTable();
+            for (final GameEntity ge : result) {
+                for (final CounterType ct : ge.getCounters().keySet()) {
+                    ge.addCounter(ct, 1, p, table);
+                }
             }
-        }
-        table.replaceCounterEffect(game, sa, true);
+            table.replaceCounterEffect(game, sa, true);
 
-        game.getTriggerHandler().runTrigger(TriggerType.Proliferate, AbilityKey.mapFromPlayer(p), false);
+            game.getTriggerHandler().runTrigger(TriggerType.Proliferate, AbilityKey.mapFromPlayer(p), false);
+        }
     }
 }

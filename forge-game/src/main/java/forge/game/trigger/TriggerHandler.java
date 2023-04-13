@@ -207,7 +207,6 @@ public class TriggerHandler {
     public final void resetActiveTriggers() {
         resetActiveTriggers(true);
     }
-
     public final void resetActiveTriggers(boolean collect) {
         if (collect) {
             collectTriggerForWaiting();
@@ -281,11 +280,11 @@ public class TriggerHandler {
     }
 
     public final boolean runWaitingTriggers() {
-        final List<TriggerWaiting> waiting = new ArrayList<>(waitingTriggers);
-        waitingTriggers.clear();
-        if (waiting.isEmpty()) {
+        if (waitingTriggers.isEmpty()) {
             return false;
         }
+        final List<TriggerWaiting> waiting = new ArrayList<>(waitingTriggers);
+        waitingTriggers.clear();
 
         boolean haveWaiting = false;
         for (final TriggerWaiting wt : waiting) {
@@ -367,8 +366,8 @@ public class TriggerHandler {
         for (final Trigger deltrig : delayedTriggersWorkingCopy) {
             if (deltrig.getHostCard().getController().equals(player)) {
                 if (isTriggerActive(deltrig) && canRunTrigger(deltrig, mode, runParams)) {
-                    runSingleTrigger(deltrig, runParams);
                     delayedTriggers.remove(deltrig);
+                    runSingleTrigger(deltrig, runParams);
                 }
             }
         }
@@ -394,7 +393,8 @@ public class TriggerHandler {
             return false; // Trigger removed by effect
         }
 
-        if (!regtrig.zonesCheck(game.getZoneOf(regtrig.getHostCard()))) {
+        // do not check delayed
+        if (regtrig.getSpawningAbility() == null && !regtrig.zonesCheck(game.getZoneOf(regtrig.getHostCard()))) {
             return false; // Host card isn't where it needs to be.
         }
 

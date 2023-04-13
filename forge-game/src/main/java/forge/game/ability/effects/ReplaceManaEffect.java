@@ -28,35 +28,39 @@ public class ReplaceManaEffect extends SpellAbilityEffect {
 
         @SuppressWarnings("unchecked")
         Map<AbilityKey, Object> params = (Map<AbilityKey, Object>) sa.getReplacingObject(AbilityKey.OriginalParams);
-        
+
         String replaced = (String)sa.getReplacingObject(AbilityKey.Mana);
         if (sa.hasParam("ReplaceMana")) {
             // replace type and amount
             replaced = sa.getParam("ReplaceMana");
             if ("Any".equals(replaced)) {
-                byte rs = MagicColor.GREEN;
-                rs = player.getController().chooseColor("Choose a color", sa, ColorSet.ALL_COLORS);
+                byte rs = player.getController().chooseColor("Choose a color", sa, ColorSet.ALL_COLORS);
                 replaced = MagicColor.toShortString(rs);
             }
         } else if (sa.hasParam("ReplaceType")) {
             // replace color and colorless
             String color = sa.getParam("ReplaceType");
             if ("Any".equals(color)) {
-                byte rs = MagicColor.GREEN;
-                rs = player.getController().chooseColor("Choose a color", sa, ColorSet.ALL_COLORS);
+                byte rs = player.getController().chooseColor("Choose a color", sa, ColorSet.ALL_COLORS);
                 color = MagicColor.toShortString(rs);
+            } else {
+                // convert in case Color Word used
+                color = MagicColor.toShortString(color);
             }
             for (byte c : MagicColor.WUBRGC) {
                 String s = MagicColor.toShortString(c);
                 replaced = replaced.replace(s, color);
-            }            
+            }
         } else if (sa.hasParam("ReplaceColor")) {
             // replace color
             String color = sa.getParam("ReplaceColor");
             if ("Chosen".equals(color)) {
                 if (card.hasChosenColor()) {
                     color = MagicColor.toShortString(card.getChosenColor());
-                } 
+                }
+            } else {
+                // convert in case Color Word used
+                color = MagicColor.toShortString(color);
             }
             if (sa.hasParam("ReplaceOnly")) {
                 replaced = replaced.replace(sa.getParam("ReplaceOnly"), color);

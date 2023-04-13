@@ -203,6 +203,13 @@ public class CardRenderer {
     }
 
     public static FImageComplex getCardArt(IPaperCard pc, boolean backFace) {
+        //missing papercard due to configchanges default to forgeart
+        if (pc == null)
+            return CardImageRenderer.forgeArt;
+        //token?
+        if (pc.getRules() == null)
+            return getCardArt(pc.getImageKey(backFace), false, false, false, false, false, false, false, false, true);
+
         CardType type = pc.getRules().getType();
         return getCardArt(pc.getImageKey(backFace), pc.getRules().getSplitType() == CardSplitType.Split,
                 type.isPlane() || type.isPhenomenon(), pc.getRules().getOracleText().contains("Aftermath"),
@@ -828,7 +835,10 @@ public class CardRenderer {
                             else
                                 drawManaCost(g, card.getLeftSplitState().getManaCost(), x - padding, y, w + 2 * padding, h, manaSymbolSize);
                         } else {
-                            drawManaCost(g, card.getCurrentState().getManaCost(), x - padding, y, w + 2 * padding, h, manaSymbolSize);
+                            ManaCost leftManaCost = card.getLeftSplitState().getManaCost();
+                            ManaCost rightManaCost = card.getRightSplitState().getManaCost();
+                            drawManaCost(g, leftManaCost, x - padding, y-(manaSymbolSize/1.5f), w + 2 * padding, h, manaSymbolSize);
+                            drawManaCost(g, rightManaCost, x - padding, y+(manaSymbolSize/1.5f), w + 2 * padding, h, manaSymbolSize);
                         }
                     }
                 } else {
@@ -877,6 +887,15 @@ public class CardRenderer {
                 abiX = cx + ((cw * 2) / 1.92f);
             }
             CardFaceSymbols.drawSymbol("deathtouch", g, abiX, abiY, abiScale, abiScale);
+            abiY += abiSpace;
+            abiCount += 1;
+        }
+        if (card.getCurrentState().hasToxic()) {
+            if (abiCount > 5) {
+                abiY = cy + (abiSpace * (abiCount - 6));
+                abiX = cx + ((cw * 2) / 1.92f);
+            }
+            CardFaceSymbols.drawSymbol("toxic", g, abiX, abiY, abiScale, abiScale);
             abiY += abiSpace;
             abiCount += 1;
         }

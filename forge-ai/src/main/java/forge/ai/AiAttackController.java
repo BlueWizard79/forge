@@ -18,8 +18,11 @@
 package forge.ai;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
+import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityAssignCombatDamageAsUnblocked;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -254,7 +257,7 @@ public class AiAttackController {
                         continue;
                     }
 
-                    if (sa.getApi() == ApiType.EachDamage && "TriggeredAttacker".equals(sa.getParam("DefinedPlayers"))) {
+                    if (sa.getApi() == ApiType.EachDamage && "TriggeredAttacker".equals(sa.getParam("Defined"))) {
                         List<Card> valid = CardLists.getValidCards(c.getController().getCreaturesInPlay(), sa.getParam("ValidCards"), c.getController(), c, sa);
                         // TODO: this assumes that 1 damage is dealt per creature. Improve this to check the parameter/X to determine
                         // how much damage is dealt by each of the creatures in the valid list.
@@ -814,13 +817,37 @@ public class AiAttackController {
                 } else {
                     if (combat.getAttackConstraints().getRequirements().get(attacker) == null) continue;
                     // check defenders in order of maximum requirements
-                    for (Pair<GameEntity, Integer> e : combat.getAttackConstraints().getRequirements().get(attacker).getSortedRequirements()) {
+                    List<Pair<GameEntity, Integer>> reqs = combat.getAttackConstraints().getRequirements().get(attacker).getSortedRequirements();
+                    final GameEntity def = defender;
+                    Collections.sort(reqs, new Comparator<Pair<GameEntity, Integer>>() {
+                        @Override
+                        public int compare(Pair<GameEntity, Integer> r1, Pair<GameEntity, Integer> r2) {
+                            if (r1.getValue() == r2.getValue()) {
+                                // try to attack the designated defender
+                                if (r1.getKey().equals(def) && !r2.getKey().equals(def)) {
+                                    return -1;
+                                }
+                                if (r2.getKey().equals(def) && !r1.getKey().equals(def)) {
+                                    return 1;    
+                                }
+                                // otherwise PW
+                                if (r1.getKey() instanceof Card && r2.getKey() instanceof Player) {
+                                    return -1;
+                                }
+                                if (r2.getKey() instanceof Card && r1.getKey() instanceof Player) {
+                                    return 1;
+                                }
+                                // or weakest player
+                                if (r1.getKey() instanceof Player && r2.getKey() instanceof Player) {
+                                    return ((Player) r1.getKey()).getLife() - ((Player) r2.getKey()).getLife();
+                                }
+                            }
+                            return r2.getValue() - r1.getValue();
+                        }
+                    });
+                    for (Pair<GameEntity, Integer> e : reqs) {
                         if (e.getRight() == 0) continue;
                         GameEntity mustAttackDefMaybe = e.getLeft();
-                        // Gideon Jura returns LKI
-                        if (mustAttackDefMaybe instanceof Card) {
-                            mustAttackDefMaybe = ai.getGame().getCardState((Card) mustAttackDefMaybe);
-                        }
                         if (canAttackWrapper(attacker, mustAttackDefMaybe) && CombatUtil.getAttackCost(ai.getGame(), attacker, mustAttackDefMaybe) == null) {
                             mustAttackDef = mustAttackDefMaybe;
                             break;
@@ -1432,13 +1459,27 @@ public class AiAttackController {
             // if card has a Exert Trigger which would target,
             // but there are no creatures it can target, no need to exert with it
             boolean missTarget = false;
-            for (Trigger t : c.getTriggers()) {
-                if (!TriggerType.Exerted.equals(t.getMode())) {
+            for (StaticAbility st : c.getStaticAbilities()) {
+                if (!"OptionalAttackCost".equals(st.getParam("Mode"))) {
                     continue;
                 }
-                SpellAbility sa = t.ensureAbility();
+                SpellAbility sa = st.getPayingTrigSA();
                 if (sa == null) {
-                    continue;
+                    // not the delayed variant
+                    for (Trigger t : c.getTriggers()) {
+                        if (!TriggerType.Exerted.equals(t.getMode())) {
+                            continue;
+                        }
+                        sa = t.ensureAbility();
+                        if (c.getController().isAI()) {
+                            PlayerControllerAi aic = ((PlayerControllerAi) c.getController().getController());
+                            if (!aic.getAi().doTrigger(sa, false)) {
+                                missTarget = true;
+                                break;
+                            }
+                        }
+                    }
+                    break;
                 }
                 if (sa.usesTargeting()) {
                     sa.setActivatingPlayer(c.getController(), true);

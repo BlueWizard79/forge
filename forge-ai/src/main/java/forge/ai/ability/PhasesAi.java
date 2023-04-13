@@ -1,13 +1,11 @@
 package forge.ai.ability;
 
-import java.util.List;
-
 import com.google.common.base.Predicates;
-
 import forge.ai.ComputerUtil;
 import forge.ai.ComputerUtilCard;
 import forge.ai.SpellAbilityAi;
 import forge.game.Game;
+import forge.game.GameEntity;
 import forge.game.ability.AbilityUtils;
 import forge.game.card.Card;
 import forge.game.card.CardCollectionView;
@@ -18,6 +16,10 @@ import forge.game.spellability.SpellAbility;
 import forge.game.spellability.TargetRestrictions;
 import forge.game.zone.ZoneType;
 import forge.util.MyRandom;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 public class PhasesAi extends SpellAbilityAi {
     @Override
@@ -109,10 +111,8 @@ public class PhasesAi extends SpellAbilityAi {
 
     private boolean phasesUnpreferredTargeting(final Game game, final SpellAbility sa, final boolean mandatory) {
         final Card source = sa.getHostCard();
-        final TargetRestrictions tgt = sa.getTargetRestrictions();
 
-        CardCollectionView list = game.getCardsIn(ZoneType.Battlefield);
-        list = CardLists.getTargetableCards(CardLists.getValidCards(list, tgt.getValidTgts(), source.getController(), source, sa), sa);
+        CardCollectionView list = CardLists.getTargetableCards(game.getCardsIn(ZoneType.Battlefield), sa);
 
         // in general, if it's our own creature, choose the weakest one, if it's the opponent's creature,
         // choose the strongest one
@@ -126,4 +126,14 @@ public class PhasesAi extends SpellAbilityAi {
         return false;
     }
 
+    @Override
+    public <T extends GameEntity> T chooseSingleEntity(Player ai, SpellAbility sa, Collection<T> options, boolean isOptional, Player targetedPlayer, Map<String, Object> params) {
+        // TODO: improve the selection logic, e.g. for cards like Change of Plans. Currently will
+        //  confirm everything unless AILogic is "DontPhaseOut", in which case it'll confirm nothing.
+        if ("DontPhaseOut".equals(sa.getParam("AILogic"))) {
+            return null;
+        }
+
+        return super.chooseSingleEntity(ai, sa, options, isOptional, targetedPlayer, params);
+    }
 }

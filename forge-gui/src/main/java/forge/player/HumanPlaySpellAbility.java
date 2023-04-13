@@ -90,6 +90,7 @@ public class HumanPlaySpellAbility {
                 zonePosition = fromZone.getCards().indexOf(c);
             }
             ability.setHostCard(game.getAction().moveToStack(c, ability));
+            ability.changeText();
         }
 
         if (!ability.isCopied()) {
@@ -164,20 +165,15 @@ public class HumanPlaySpellAbility {
                 && ability.canCastTiming(human)
                 && ability.checkRestrictions(human)
                 && ability.isLegalAfterStack()
-                && (isFree || payment.payCost(new HumanCostDecision(controller, human, ability, false, ability.getHostCard())));
+                && (isFree || payment.payCost(new HumanCostDecision(controller, human, ability, false)));
 
         game.clearTopLibsCast(ability);
 
         if (!prerequisitesMet) {
-            if (!ability.isTrigger()) {
-                GameActionUtil.rollbackAbility(ability, fromZone, zonePosition, payment, c);
-                if (ability.getHostCard().isMadness()) {
-                    // if a player failed to play madness cost, move the card to graveyard
-                    Card newCard = game.getAction().moveToGraveyard(c, null);
-                    newCard.setDiscarded(true);
-                }
-            } else {
+            if (ability.isTrigger()) {
                 payment.refundPayment();
+            } else {
+                GameActionUtil.rollbackAbility(ability, fromZone, zonePosition, payment, c);
             }
 
             if (manaTypeConversion || manaColorConversion || keywordColor) {
@@ -192,7 +188,7 @@ public class HumanPlaySpellAbility {
 
         if (isFree || payment.isFullyPaid()) {
             //track when planeswalker ultimates are activated
-            ability.getActivatingPlayer().getAchievementTracker().onSpellAbilityPlayed(ability);
+            human.getAchievementTracker().onSpellAbilityPlayed(ability);
 
             if (skipStack) {
                 AbilityUtils.resolve(ability);

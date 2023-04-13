@@ -88,7 +88,7 @@ public class TargetSelection {
         final int maxTargets = numTargets != null ? numTargets.intValue() : ability.getMaxTargets();
         //final int maxTotalCMC = tgt.getMaxTotalCMC(ability.getHostCard(), ability);
         final int numTargeted = ability.getTargets().size();
-        final boolean isSingleZone = getTgt().isSingleZone();
+        final boolean isSingleZone = tgt.isSingleZone();
 
         final boolean hasEnoughTargets = minTargets == 0 || numTargeted >= minTargets;
         final boolean hasAllTargets = numTargeted == maxTargets && maxTargets > 0;
@@ -118,7 +118,7 @@ public class TargetSelection {
             // Cancel ability if there aren't any valid Candidates
             return false;
         }
-        if (isMandatory() && candidates.size() == 0 && hasEnoughTargets) {
+        if (isMandatory() && candidates.isEmpty() && hasEnoughTargets) {
             // Mandatory target selection, that has no candidates but enough targets (Min == 0, but no choices)
             return true;
         }

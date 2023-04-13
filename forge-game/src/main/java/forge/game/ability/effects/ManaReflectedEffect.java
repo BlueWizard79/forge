@@ -33,7 +33,7 @@ public class ManaReflectedEffect extends SpellAbilityEffect {
             producedMana.append(ma.produceMana(generated, player, sa));
         }
 
-        ma.tapsForMana(sa, producedMana.toString());
+        ma.tapsForMana(sa.getRootAbility(), producedMana.toString());
     }
 
     // *************** Utility Functions **********************
@@ -42,7 +42,7 @@ public class ManaReflectedEffect extends SpellAbilityEffect {
      * <p>
      * generatedReflectedMana.
      * </p>
-     * 
+     *
      * @param sa
      *            a {@link forge.game.spellability.SpellAbility} object.
      * @param colors

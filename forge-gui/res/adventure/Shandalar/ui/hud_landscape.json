@@ -61,17 +61,17 @@
       "font": "default",
       "width": 64,
       "height": 16,
-      "x": 442,
+      "x": 425,
       "y": 56
     },
     {
       "type": "Label",
-      "name": "mana",
+      "name": "shards",
       "font": "default",
       "width": 64,
       "height": 16,
-      "x": 442,
-      "y": 73
+      "x": 425,
+      "y": 70
     },
     {
       "type": "Label",
@@ -79,14 +79,14 @@
       "font": "default",
       "width": 64,
       "height": 16,
-      "x": 442,
-      "y": 90
+      "x": 425,
+      "y": 84
     },
     {
       "type": "TextButton",
       "name": "deck",
 	  "style":"menu",
-      "text": "{Scale=200%}[+Deck]",
+      "text": "[%120][+Deck]",
       "binding": "Deck",
       "width": 64,
       "height": 36,
@@ -97,20 +97,18 @@
       "type": "TextButton",
       "name": "inventory",
 	  "style":"menu",
-      "text": "{Scale=200%}[+Item]",
+      "text": "[%120][+Item]",
       "binding": "Inventory",
       "width": 64,
       "height": 36,
       "x": 416,
       "y": 146
     },
-
     {
       "type": "TextButton",
-      "name": "statistic",
+      "name": "logbook",
 	  "style":"menu",
-      "text": "{Scale=200%}[+Status]",
-      "binding": "Status",
+      "text": "[%120][+Logbook]",
       "width": 64,
       "height": 36,
       "x": 416,
@@ -120,7 +118,7 @@
       "type": "TextButton",
       "name": "menu",
 	  "style":"menu",
-      "text": "{Scale=200%}[+Menu]",
+      "text": "[%120][+Menu]",
       "binding": "Menu",
       "width": 64,
       "height": 36,
@@ -130,10 +128,10 @@
     {
       "type": "TextButton",
       "name": "openmap",
-      "text": "{Scale=80%}tr(lblZoom)",
+      "text": "[%80]tr(lblZoom)",
       "binding": "Map",
       "width": 80,
-      "height": 18,
+      "height": 20,
       "x": 0,
       "y": 80
     },
@@ -141,7 +139,7 @@
       "type": "TextButton",
       "name": "exittoworldmap", 
 	  "style":"menu",
-      "text": "{Scale=200%}[+ExitToWorldMap]",
+      "text": "[%120][+ExitToWorldMap]",
 	  "binding": "ExitToWorldMap",
       "width": 64,
       "height": 32,

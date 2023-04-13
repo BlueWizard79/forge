@@ -12,9 +12,8 @@ import forge.adventure.world.WorldSave;
 import forge.item.PaperCard;
 import forge.model.FModel;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * Data class that will be used to read Json configuration files
@@ -23,7 +22,7 @@ import java.util.List;
  * that can be a random card, gold or items.
  * Also used for deck generation and shops
  */
-public class RewardData {
+public class RewardData implements Serializable {
     public String type;
     public float probability;
     public int count;
@@ -42,10 +41,17 @@ public class RewardData {
     public String colorType;
     public String cardText;
     public boolean matchAllSubTypes;
+    public boolean matchAllColors;
+    public RewardData[] cardUnion;
+    public String[] deckNeeds;
+    public RewardData[] rotation;
 
     public RewardData() { }
 
     public RewardData(RewardData rewardData) {
+        if (rewardData == null)
+            return;
+
         type        =rewardData.type;
         probability =rewardData.probability;
         count       =rewardData.count;
@@ -64,6 +70,10 @@ public class RewardData {
         colorType   =rewardData.colorType;
         cardText    =rewardData.cardText;
         matchAllSubTypes    =rewardData.matchAllSubTypes;
+        matchAllColors =rewardData.matchAllColors;
+        cardUnion         =rewardData.cardUnion==null?null:rewardData.cardUnion.clone();
+        rotation          =rewardData.rotation==null?null:rewardData.rotation.clone();
+        deckNeeds         =rewardData.deckNeeds==null?null:rewardData.deckNeeds.clone();
     }
 
     private static Iterable<PaperCard> allCards;
@@ -106,19 +116,39 @@ public class RewardData {
         return allCards;
     }
 
-    public Array<Reward> generate(boolean isForEnemy) {
-        return generate(isForEnemy, null);
+    public Array<Reward> generate(boolean isForEnemy, boolean useSeedlessRandom) {
+        return generate(isForEnemy, null, useSeedlessRandom);
     }
-    public Array<Reward> generate(boolean isForEnemy, Iterable<PaperCard> cards) {
+
+    public Array<Reward> generate(boolean isForEnemy, Iterable<PaperCard> cards, boolean useSeedlessRandom) {
+
+        Random rewardRandom = useSeedlessRandom?new Random():WorldSave.getCurrentSave().getWorld().getRandom();
+        //Keep using same generation method for shop rewards, but fully randomize loot drops by not using the instance pre-seeded by the map
+
         if(allCards==null) initializeAllCards();
         Array<Reward> ret=new Array<>();
-        if(probability == 0 || WorldSave.getCurrentSave().getWorld().getRandom().nextFloat() <= probability) {
+
+
+        if(probability == 0 || rewardRandom.nextFloat() <= probability) {
             if(type==null || type.isEmpty())
                 type="randomCard";
             int maxCount=Math.round(addMaxCount*Current.player().getDifficulty().rewardMaxFactor);
-            int addedCount = (maxCount > 0 ? WorldSave.getCurrentSave().getWorld().getRandom().nextInt(maxCount) : 0);
+            int addedCount = (maxCount > 0 ? rewardRandom.nextInt(maxCount) : 0);
 
             switch(type) {
+                case "Union":
+                    HashSet<PaperCard> pool = new HashSet<>();
+                    for (RewardData r : cardUnion) {
+                        pool.addAll(CardUtil.getPredicateResult(allCards, r));
+                    }
+                    ArrayList<PaperCard> finalPool = new ArrayList(pool);
+
+                    if (finalPool.size() > 0){
+                        for (int i = 0; i < count; i++) {
+                            ret.add(new Reward(finalPool.get(rewardRandom.nextInt(finalPool.size()))));
+                        }
+                    }
+                    break;
                 case "card":
                 case "randomCard":
                     if( cardName != null && !cardName.isEmpty() ) {
@@ -126,7 +156,7 @@ public class RewardData {
                             ret.add(new Reward(StaticData.instance().getCommonCards().getCard(cardName)));
                         }
                     } else {
-                        for(PaperCard card:CardUtil.generateCards(isForEnemy ? allEnemyCards:allCards,this, count+addedCount)) {
+                        for(PaperCard card:CardUtil.generateCards(isForEnemy ? allEnemyCards:allCards,this, count+addedCount, rewardRandom)) {
                             ret.add(new Reward(card));
                         }
                     }
@@ -146,7 +176,7 @@ public class RewardData {
                     break;
                 case "deckCard":
                     if(cards == null) return ret;
-                    for(PaperCard card: CardUtil.generateCards(cards,this, count + addedCount + Current.player().bonusDeckCards() )) {
+                    for(PaperCard card: CardUtil.generateCards(cards,this, count + addedCount + Current.player().bonusDeckCards() ,rewardRandom)) {
                         ret.add(new Reward(card));
                     }
                     break;
@@ -156,8 +186,9 @@ public class RewardData {
                 case "life":
                     ret.add(new Reward(Reward.Type.Life, count + addedCount));
                     break;
-                case "mana":
-                    ret.add(new Reward(Reward.Type.Mana, count + addedCount));
+                case "mana": //backwards compatibility for reward data
+                case "shards":
+                    ret.add(new Reward(Reward.Type.Shards, count + addedCount));
                     break;
             }
         }
@@ -170,7 +201,7 @@ public class RewardData {
     static public Iterable<Reward> generateAll(Iterable<RewardData> dataList, boolean isForEnemy) {
         Array<Reward> ret=new Array<Reward>();
         for (RewardData data:dataList)
-            ret.addAll(data.generate(isForEnemy));
+            ret.addAll(data.generate(isForEnemy, false));
         return ret;
     }
     static public List<PaperCard> rewardsToCards(Iterable<Reward> dataList) {
