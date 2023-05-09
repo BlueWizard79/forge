@@ -28,7 +28,6 @@
       "type": "TextButton",
       "name": "detail",
       "text": "Detail",
-      "binding": "Equip",
       "width": 128,
       "height": 32,
       "x": 140,
@@ -37,8 +36,7 @@
     {
       "type": "TextButton",
       "name": "done",
-      "text": "tr(lblLeave)",
-      "binding": "Back",
+      "text": "[+OK]",
       "width": 128,
       "height": 32,
       "x": 140,

@@ -581,8 +581,14 @@ public class MapStage extends GameStage {
                             {
                                 mob.fleeRange = Float.parseFloat(prop.get("fleeRange").toString());
                             }
-                            mob.hidden = hidden; //Evil.
-
+                            if (prop.containsKey("hidden"))
+                            {
+                                mob.hidden = Boolean.parseBoolean(prop.get("hidden").toString());
+                            }
+                            if (hidden){
+                                mob.hidden = hidden; //Evil.
+                                mob.setAnimation(CharacterSprite.AnimationTypes.Hidden);
+                            }
                             dialogObject = prop.get("waypoints");
                             if (dialogObject != null && !dialogObject.toString().isEmpty()) {
                                 mob.parseWaypoints(dialogObject.toString());
@@ -887,6 +893,14 @@ public class MapStage extends GameStage {
         return null;
     }
 
+    public Actor getByID(int id) { //Search actor by ID.
+        for (MapActor A : new Array.ArrayIterator<>(actors)) {
+            if (A.getId() == id)
+                return A;
+        }
+        return null;
+    }
+
     protected void getReward() {
         isLoadingMatch = false;
         RewardScene.instance().loadRewards(currentMob.getRewards(), RewardScene.Type.Loot, null);
@@ -948,7 +962,7 @@ public class MapStage extends GameStage {
                     }
                 }
                 currentVector.setLength(Math.min(mob.speed() * delta, mob.targetVector.len()));
-                mob.moveBy(currentVector.x, currentVector.y);
+                mob.moveBy(currentVector.x, currentVector.y,delta);
             }
         }
 

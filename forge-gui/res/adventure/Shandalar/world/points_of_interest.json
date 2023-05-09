@@ -261,9 +261,7 @@
 	"radiusFactor": 0.8,
 	"questTags": [
 		"Cave",
-		"Hostile",
-		"BiomeBlack",
-		"Sidequest"
+		"BiomeBlack"
 	]
 },
 {
@@ -395,10 +393,8 @@
 	"map": "maps/map/cave_2.tmx",
 	"radiusFactor": 0.8,
 	"questTags": [
-		"Hostile",
 		"Cave",
-		"BiomeColorless",
-		"Sidequest"
+		"BiomeColorless"
 	]
 },
 {
@@ -591,9 +587,7 @@
 	"radiusFactor": 0.8,
 	"questTags": [
 		"Cave",
-		"Hostile",
-		"BiomeGreen",
-		"Sidequest"
+		"BiomeGreen"
 	]
 },
 {
@@ -710,10 +704,8 @@
 	"map": "maps/map/cave_2.tmx",
 	"radiusFactor": 0.8,
 	"questTags": [
-		"Hostile",
 		"Cave",
-		"BiomeBlue",
-		"Sidequest"
+		"BiomeBlue"
 	]
 },
 {
@@ -800,10 +792,8 @@
 	"map": "maps/map/cave_2.tmx",
 	"radiusFactor": 0.8,
 	"questTags": [
-		"Hostile",
 		"Cave",
-		"BiomeRed",
-		"Sidequest"
+		"BiomeRed"
 	]
 },
 {
@@ -1040,10 +1030,8 @@
 	"map": "maps/map/cave_2.tmx",
 	"radiusFactor": 0.8,
 	"questTags": [
-		"Hostile",
 		"Cave",
-		"BiomeWhite",
-		"Sidequest"
+		"BiomeWhite"
 	]
 },
 {
@@ -1206,6 +1194,21 @@
 		"DungeonEffect",
 		"Dungeon",
 		"Hostile"
+	]
+},
+{
+	"name": "DrossOutpost",
+	"type": "dungeon",
+	"count": 2,
+	"radiusFactor": 0.8,
+	"spriteAtlas": "maps/tileset/Phyrexian_Buildings.atlas",
+	"sprite": "DrossOutpost",
+	"map": "maps/map/phyrexian_black1.tmx"
+	"questTags": [
+		"Hostile",
+		"Phyrexian",
+		"Dungeon",
+		"Sidequest"
 	]
 },
 {
@@ -1588,6 +1591,21 @@
 		"Hostile",
 		"Dungeon",
 		"Fort",
+		"Sidequest"
+	]
+},
+{
+	"name": "FurnaceBase",
+	"type": "dungeon",
+	"count": 2,
+	"radiusFactor": 0.8,
+	"spriteAtlas": "maps/tileset/Phyrexian_Buildings.atlas",
+	"sprite": "FurnaceBase",
+	"map": "maps/map/phyrexian_r1.tmx",
+	"questTags": [
+		"Hostile",
+		"Phyrexian",
+		"Dungeon",
 		"Sidequest"
 	]
 },
@@ -3015,6 +3033,7 @@
 },
 {
 	"name": "Swamp Town2",
+	"type": "town",
 	"count": 3,
 	"spriteAtlas": "maps/tileset/buildings.atlas",
 	"sprite": "SwampTown",

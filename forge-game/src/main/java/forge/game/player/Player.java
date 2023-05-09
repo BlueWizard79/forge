@@ -197,6 +197,8 @@ public class Player extends GameEntity implements Comparable<Player> {
     private List<Player> attackedPlayersLastTurn = new ArrayList<>();
     private List<Player> attackedPlayersThisCombat = new ArrayList<>();
 
+    private boolean beenDealtCombatDamageSinceLastTurn = false;
+
     private boolean activateLoyaltyAbilityThisTurn = false;
     private boolean tappedLandForManaThisTurn = false;
     private List<Card> completedDungeons = new ArrayList<>();
@@ -207,6 +209,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     private Map<Card, Card> maingameCardsMap = Maps.newHashMap();
 
     private CardCollection currentPlanes = new CardCollection();
+    private CardCollection planeswalkedToThisTurn = new CardCollection();
 
     private PlayerStatistics stats = new PlayerStatistics();
     private PlayerController controller;
@@ -1845,6 +1848,13 @@ public class Player extends GameEntity implements Comparable<Player> {
         this.tappedLandForManaThisTurn = tappedLandForManaThisTurn;
     }
 
+    public final boolean hasBeenDealtCombatDamageSinceLastTurn() {
+        return beenDealtCombatDamageSinceLastTurn;
+    }
+    public final void setBeenDealtCombatDamageSinceLastTurn(final boolean b) {
+        beenDealtCombatDamageSinceLastTurn = b;
+    }
+
     public final boolean getActivateLoyaltyAbilityThisTurn() {
         return activateLoyaltyAbilityThisTurn;
     }
@@ -1907,6 +1917,10 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
     public void resetCompletedDungeons() {
         completedDungeons.clear();
+    }
+
+    public final List<Card> getPlaneswalkedToThisTurn() {
+        return planeswalkedToThisTurn;
     }
 
     public final void altWinBySpellEffect(final String sourceName) {
@@ -2124,10 +2138,15 @@ public class Player extends GameEntity implements Comparable<Player> {
             if (!equals(sourceController)) {
                 return false;
             }
-        } else {
-            if (!incR[0].equals("Player")) {
+        } else if (incR[0].equals("Any")) {
+            //todo further check for Effect API and other replacement Effect
+            /*if (spellAbility == null)
                 return false;
-            }
+            ApiType apiType = ((SpellAbility) spellAbility).getApi();
+            if (!(ApiType.DealDamage.equals(apiType) || ApiType.PreventDamage.equals(apiType)))
+                return false;*/
+        } else if (!incR[0].equals("Player")) {
+            return false;
         }
 
         if (incR.length > 1) {
@@ -2444,9 +2463,11 @@ public class Player extends GameEntity implements Comparable<Player> {
         setNumManaConversion(0);
 
         damageReceivedThisTurn.clear();
+        planeswalkedToThisTurn.clear();
 
         // set last turn nr
         if (game.getPhaseHandler().isPlayerTurn(this)) {
+            setBeenDealtCombatDamageSinceLastTurn(false);
             setAttackedPlayersMyLastTurn(getAttackedPlayersMyTurn());
             clearAttackedMyTurn();
             this.lastTurnNr = game.getPhaseHandler().getTurn();
@@ -2602,7 +2623,7 @@ public class Player extends GameEntity implements Comparable<Player> {
      * Then runs triggers.
      */
     public void planeswalkTo(SpellAbility sa, final CardCollectionView destinations) {
-        System.out.println(getName() + ": planeswalk to " + destinations.toString());
+        System.out.println(getName() + " planeswalks to " + destinations.toString());
         currentPlanes.addAll(destinations);
         game.getView().updatePlanarPlayer(getView());
 
@@ -2610,8 +2631,9 @@ public class Player extends GameEntity implements Comparable<Player> {
         moveParams.put(AbilityKey.LastStateBattlefield, sa.getLastStateBattlefield());
         moveParams.put(AbilityKey.LastStateGraveyard, sa.getLastStateGraveyard());
 
-        for (Card c : currentPlanes) {
+        for (Card c : destinations) {
             game.getAction().moveTo(ZoneType.Command, c, sa, moveParams);
+            planeswalkedToThisTurn.add(c);
             //getZone(ZoneType.PlanarDeck).remove(c);
             //getZone(ZoneType.Command).add(c);
         }
@@ -2619,7 +2641,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         game.setActivePlanes(currentPlanes);
         //Run PlaneswalkedTo triggers here.
         final Map<AbilityKey, Object> runParams = AbilityKey.newMap();
-        runParams.put(AbilityKey.Cards, currentPlanes);
+        runParams.put(AbilityKey.Cards, destinations);
         game.getTriggerHandler().runTrigger(TriggerType.PlaneswalkedTo, runParams, false);
         view.updateCurrentPlaneName(currentPlanes.toString().replaceAll(" \\(.*","").replace("[",""));
     }
@@ -2645,17 +2667,19 @@ public class Player extends GameEntity implements Comparable<Player> {
      * Sets up the first plane of a round.
      */
     public void initPlane() {
-        Card firstPlane = null;
+        if (game.isGameOver())
+            return;
+        Card firstPlane;
         view.updateCurrentPlaneName("");
         game.getView().updatePlanarPlayer(getView());
+        PlayerZone planarDeck = getZone(ZoneType.PlanarDeck);
 
-        while (true) {
-            firstPlane = getZone(ZoneType.PlanarDeck).get(0);
-            getZone(ZoneType.PlanarDeck).remove(firstPlane);
+        while (!planarDeck.isEmpty()) {
+            firstPlane = planarDeck.get(0);
+            planarDeck.remove(firstPlane);
             if (firstPlane.getType().isPhenomenon()) {
-                getZone(ZoneType.PlanarDeck).add(firstPlane);
-            }
-            else {
+                planarDeck.add(firstPlane);
+            } else {
                 currentPlanes.add(firstPlane);
                 getZone(ZoneType.Command).add(firstPlane);
                 break;
@@ -3159,7 +3183,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             {
                 final String drawTrig = "Mode$ Phase | Phase$ End of Turn | TriggerZones$ Command | " +
                 "ValidPlayer$ You |  TriggerDescription$ At the beginning of your end step, draw a card.";
-                final String drawEff = "AB$ Draw | Cost$ 0 | Defined$ You";
+                final String drawEff = "DB$ Draw | Defined$ You";
 
                 final Trigger drawTrigger = TriggerHandler.parseTrigger(drawTrig, monarchEffect, true);
 
@@ -3170,7 +3194,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             {
                 final String damageTrig = "Mode$ DamageDone | ValidSource$ Creature | ValidTarget$ You | CombatDamage$ True | TriggerZones$ Command |" +
                 " TriggerDescription$ Whenever a creature deals combat damage to you, its controller becomes the monarch.";
-                final String damageEff = "AB$ BecomeMonarch | Cost$ 0 | Defined$ TriggeredSourceController";
+                final String damageEff = "DB$ BecomeMonarch | Defined$ TriggeredSourceController";
 
                 final Trigger damageTrigger = TriggerHandler.parseTrigger(damageTrig, monarchEffect, true);
 

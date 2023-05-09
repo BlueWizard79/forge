@@ -37,6 +37,7 @@ public final class ForgeConstants {
     public static final String SETLOOKUP_DIR = RES_DIR + "setlookup" + PATH_SEPARATOR;
     public static final String KEYWORD_LIST_FILE                     = LISTS_DIR + "NonStackingKWList.txt";
     public static final String TYPE_LIST_FILE                        = LISTS_DIR + "TypeLists.txt";
+    public static final String SPECIAL_CARD_ACHIEVEMENT_LIST_FILE    = LISTS_DIR + "special-card-achievements.txt";
     public static final String PLANESWALKER_ACHIEVEMENT_LIST_FILE    = LISTS_DIR + "planeswalker-achievements.txt";
     public static final String ALTWIN_ACHIEVEMENT_LIST_FILE          = LISTS_DIR + "altwin-achievements.txt";
     public static final String IMAGE_LIST_TOKENS_FILE                = LISTS_DIR + "token-images.txt";
@@ -250,7 +251,7 @@ public final class ForgeConstants {
     public static final String BG_89                  = "Ghirapur.jpg";
     public static final String BG_90                  = "Inys_Haen.jpg";
     public static final String BG_91                  = "Ketria.jpg";
-    public static final String BG_92                  = "Littiara.jpg";
+    public static final String BG_92                  = "Littjara.jpg";
     public static final String BG_93                  = "Megaflora_Jungle.jpg";
     public static final String BG_94                  = "Naktamun.jpg";
     public static final String BG_95                  = "New_Argive.jpg";
@@ -469,6 +470,9 @@ public final class ForgeConstants {
 
     // Set boolean constant for landscape mode for gdx port
     public static final boolean isGdxPortLandscape = FileUtil.doesFileExist(ASSETS_DIR + "switch_orientation.ini");
+
+    // Supported video mode names and dimensions (currently used in Adventure Mode)
+    public static final String[] VIDEO_MODES = {"720p", "768p", "900p", "1080p", "1440p", "2160p"};
 
     public enum CounterDisplayLocation {
 

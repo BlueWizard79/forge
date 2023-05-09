@@ -1453,7 +1453,6 @@ public class AbilityUtils {
 
         // Needed - Equip an untapped creature with Sword of the Paruns then cast Deadshot on it. Should deal 2 more damage.
         game.getAction().checkStaticAbilities(); // this will refresh continuous abilities for players and permanents.
-        game.getTriggerHandler().resetActiveTriggers(!sa.isReplacementAbility());
         AbilityUtils.resolveApiAbility(abSub, game);
     }
 
@@ -2690,8 +2689,8 @@ public class AbilityUtils {
             return doXMath(game.getStack().getSpellsCastThisTurn().size() - 1, expr, c, ctb);
         }
 
-        if (sq[0].startsWith("RolledThisTurn")) {
-            return game.getPhaseHandler().getPlanarDiceRolledthisTurn();
+        if (sq[0].startsWith("PlanarDiceSpecialActionThisTurn")) {
+            return game.getPhaseHandler().getPlanarDiceSpecialActionThisTurn();
         }
 
         if (sq[0].contains("CardTypes")) {
@@ -3542,6 +3541,10 @@ public class AbilityUtils {
             return doXMath(amount, m, source, ctb);
         }
 
+        if (value.equals("BeenDealtCombatDamageSinceLastTurn")) {
+            return doXMath(player.hasBeenDealtCombatDamageSinceLastTurn() ? 1 : 0, m, source, ctb);
+        }
+
         if (value.equals("DungeonsCompleted")) {
             return doXMath(player.getCompletedDungeons().size(), m, source, ctb);
         }
@@ -3575,6 +3578,18 @@ public class AbilityUtils {
                 }
             }
             return doXMath(amount, m, source, ctb);
+        }
+        if (value.startsWith("PlaneswalkedToThisTurn")) {
+            int found = 0;
+            String name = value.split(" ")[1];
+            List<Card> pwTo = player.getPlaneswalkedToThisTurn();
+            for (Card c : pwTo) {
+                if (c.getName().equals(name)) {
+                    found++;
+                    break;
+                }
+            }
+            return doXMath(found, m, source, ctb);
         }
 
         return doXMath(0, m, source, ctb);

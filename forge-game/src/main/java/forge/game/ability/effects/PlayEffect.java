@@ -25,6 +25,7 @@ import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
+import forge.game.card.CardCollectionView;
 import forge.game.card.CardFactoryUtil;
 import forge.game.card.CardZoneTable;
 import forge.game.cost.Cost;
@@ -109,13 +110,13 @@ public class PlayEffect extends SpellAbilityEffect {
         }
 
         CardCollection tgtCards;
-        CardCollection showCards = new CardCollection();
+        CardCollectionView showCards = new CardCollection();
 
         if (sa.hasParam("Valid")) {
             List<ZoneType> zones = sa.hasParam("ValidZone") ? ZoneType.listValueOf(sa.getParam("ValidZone")) : ImmutableList.of(ZoneType.Hand);
             tgtCards = new CardCollection(AbilityUtils.filterListByType(game.getCardsIn(zones), sa.getParam("Valid"), sa));
             if (sa.hasParam("ShowCards")) {
-                showCards = new CardCollection(AbilityUtils.filterListByType(game.getCardsIn(zones), sa.getParam("ShowCards"), sa));
+                showCards = AbilityUtils.filterListByType(game.getCardsIn(zones), sa.getParam("ShowCards"), sa);
             }
         } else if (sa.hasParam("AnySupportedCard")) {
             final String valid = sa.getParam("AnySupportedCard");
@@ -256,9 +257,10 @@ public class PlayEffect extends SpellAbilityEffect {
             if (sa.hasParam("ShowCardToActivator")) {
                 game.getAction().revealTo(tgtCard, controller);
             }
+            String prompt = sa.hasParam("CastTransformed") ? "lblDoYouWantPlayCardTransformed" : "lblDoYouWantPlayCard";
             if (singleOption && sa.getTargetCard() == null)
                 sa.setPlayEffectCard(tgtCard);// show card to play rather than showing the source card
-            if (singleOption && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage("lblDoYouWantPlayCard", CardTranslation.getTranslatedName(tgtCard.getName())), null)) {
+            if (singleOption && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage(prompt, CardTranslation.getTranslatedName(tgtCard.getName())), null)) {
                 if (wasFaceDown) {
                     tgtCard.turnFaceDownNoUpdate();
                     tgtCard.updateStateForView();
@@ -415,6 +417,10 @@ public class PlayEffect extends SpellAbilityEffect {
 
             if (sa.hasParam("Madness")) {
                 tgtSA.setAlternativeCost(AlternativeCost.Madness);
+            }
+
+            if (sa.hasParam("CastTransformed")) {
+                tgtSA.putParam("CastTransformed", "True");
             }
 
             if (tgtSA.usesTargeting() && !optional) {

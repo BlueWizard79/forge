@@ -143,6 +143,10 @@ public class CardProperty {
             if (!card.isBackSide()) {
                 return false;
             }
+        } else if (property.equals("CanTransform")) {
+            if (!card.isTransformable()) {
+                return false;
+            }
         } else if (property.equals("Transformed")) {
             if (!card.isTransformed()) {
                 return false;
@@ -216,6 +220,14 @@ public class CardProperty {
         } else if (property.startsWith("OppProtect")) {
             if (card.getProtectingPlayer() == null
                     || !sourceController.getOpponents().contains(card.getProtectingPlayer())) {
+                return false;
+            }
+        } else if (property.startsWith("ProtectedBy")) {
+            if (card.getProtectingPlayer() == null) {
+                return false;
+            }
+            final List<Player> lp = AbilityUtils.getDefinedPlayers(source, property.substring(12), spellAbility);
+            if (!lp.contains(card.getProtectingPlayer())) {
                 return false;
             }
         } else if (property.startsWith("DefendingPlayer")) {
@@ -1075,6 +1087,10 @@ public class CardProperty {
             if (!property.startsWith("without") && !card.hasStartOfUnHiddenKeyword(property.substring(4))) {
                 return false;
             }
+        } else if (property.startsWith("activated")) {
+            if (!card.activatedThisTurn()) {
+                return false;
+            }
         } else if (property.startsWith("tapped")) {
             if (!card.isTapped()) {
                 return false;
@@ -1238,6 +1254,10 @@ public class CardProperty {
             if (card.getDamageHistory().getCreatureAttacksThisTurn() == 0) {
                 return false;
             }
+        } else if (property.startsWith("attackedBattleThisTurn")) {
+            if (!card.getDamageHistory().hasAttackedBattleThisTurn()) {
+                return false;
+            }
         } else if (property.startsWith("attackedYouThisTurn")) {
             if (!card.getDamageHistory().hasAttackedThisTurn(sourceController)) {
                 return false;
@@ -1296,7 +1316,14 @@ public class CardProperty {
                 }
             }
         } else if (property.startsWith("leastToughness")) {
-            final CardCollectionView cards = CardLists.filter(game.getCardsIn(ZoneType.Battlefield), Presets.CREATURES);
+            CardCollectionView cards = CardLists.filter(game.getCardsIn(ZoneType.Battlefield), Presets.CREATURES);
+            if (property.contains("ControlledBy")) { // 4/25/2023 only used for adventure mode Death Ring
+                FCollectionView<Player> p = AbilityUtils.getDefinedPlayers(source, property.split("ControlledBy")[1], spellAbility);
+                cards = CardLists.filterControlledBy(cards, p);
+                if (!cards.contains(card)) {
+                    return false;
+                }
+            }
             for (final Card crd : cards) {
                 if (crd.getNetToughness() < card.getNetToughness()) {
                     return false;

@@ -303,6 +303,10 @@ public abstract class GameState {
                 newText.append("|Flipped");
             } else if (c.getCurrentStateName().equals(CardStateName.Meld)) {
                 newText.append("|Meld");
+                if (c.getMeldedWith() != null) {
+                    newText.append(":");
+                    newText.append(c.getMeldedWith().getName());
+                }
             } else if (c.getCurrentStateName().equals(CardStateName.Modal)) {
                 newText.append("|Modal");
             }
@@ -1246,6 +1250,17 @@ public abstract class GameState {
                 } else if (info.startsWith("Flipped")) {
                     c.setState(CardStateName.Flipped, true);
                 } else if (info.startsWith("Meld")) {
+                    if (info.indexOf(':') > 0) {
+                        String meldCardName = info.substring(info.indexOf(':') + 1).replace("^", ",");
+                        Card meldTarget;
+                        PaperCard pc = StaticData.instance().getCommonCards().getCard(meldCardName);
+                        if (pc == null) {
+                            System.err.println("ERROR: Tried to create a non-existent card named " + meldCardName + " (as a MeldedWith card) when loading game state!");
+                            continue;
+                        }
+                        meldTarget = Card.fromPaperCard(pc, c.getOwner());
+                        c.setMeldedWith(meldTarget);
+                    }
                     c.setState(CardStateName.Meld, true);
                     c.setBackSide(true);
                 } else if (info.startsWith("Modal")) {
