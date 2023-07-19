@@ -253,6 +253,13 @@ public class CardView extends GameEntityView {
         set(TrackableProperty.IsBoon, c.isBoon());
     }
 
+    public boolean canSpecialize() {
+        return get(TrackableProperty.CanSpecialize);
+    }
+    public void updateSpecialize(Card c) {
+        set(TrackableProperty.CanSpecialize, c.canSpecialize());
+    }
+
     public boolean isTokenCard() { return get(TrackableProperty.TokenCard); }
     void updateTokenCard(Card c) { set(TrackableProperty.TokenCard, c.isTokenCard()); }
 
@@ -917,6 +924,7 @@ public class CardView extends GameEntityView {
         updateName(c);
         updateZoneText(c);
         updateDamage(c);
+        updateSpecialize(c);
 
         if (c.getIntensity(false) > 0) {
             updateIntensity(c);
@@ -1266,8 +1274,13 @@ public class CardView extends GameEntityView {
             String rulesText = null;
 
             if (type.isVanguard() && rules != null) {
-                rulesText = "Hand Modifier: " + rules.getHand() +
-                        "\r\nLife Modifier: " + rules.getLife();
+                boolean decHand = rules.getHand() < 0;
+                boolean decLife = rules.getLife() < 0;
+                String handSize = Localizer.getInstance().getMessageorUseDefault("lblHandSize", "Hand Size")
+                        + (!decHand ? ": +" : ": ") + rules.getHand();
+                String startingLife = Localizer.getInstance().getMessageorUseDefault("lblStartingLife", "Starting Life")
+                        + (!decLife ? ": +" : ": ") + rules.getLife();
+                rulesText = handSize + "\r\n" + startingLife;
             }
             set(TrackableProperty.RulesText, rulesText);
         }

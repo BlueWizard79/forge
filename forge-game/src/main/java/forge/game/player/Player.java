@@ -327,7 +327,6 @@ public class Player extends GameEntity implements Comparable<Player> {
 
         game.getTriggerHandler().suppressMode(TriggerType.ChangesZone);
         activeScheme = getZone(ZoneType.SchemeDeck).get(0);
-        // gameAction moveTo ?
         game.getAction().moveTo(ZoneType.Command, activeScheme, null, moveParams);
         game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
 
@@ -509,13 +508,11 @@ public class Player extends GameEntity implements Comparable<Player> {
             return false;
         }
 
-        boolean newLifeSet = false;
-
         if (lifeGain > 0) {
             int oldLife = life;
             life += lifeGain;
             view.updateLife(this);
-            newLifeSet = true;
+            boolean firstGain = lifeGainedTimesThisTurn == 0;
             lifeGainedThisTurn += lifeGain;
             lifeGainedTimesThisTurn++;
 
@@ -529,13 +526,15 @@ public class Player extends GameEntity implements Comparable<Player> {
             runParams.put(AbilityKey.LifeAmount, lifeGain);
             runParams.put(AbilityKey.Source, source);
             runParams.put(AbilityKey.SourceSA, sa);
+            runParams.put(AbilityKey.FirstTime, firstGain);
             game.getTriggerHandler().runTrigger(TriggerType.LifeGained, runParams, false);
 
             game.fireEvent(new GameEventPlayerLivesChanged(this, oldLife, life));
-        } else {
-            System.out.println("Player - trying to gain negative or 0 life");
+            return true;
         }
-        return newLifeSet;
+
+        System.out.println("Player - trying to gain negative or 0 life");
+        return false;
     }
 
     public final boolean canGainLife() {
@@ -621,13 +620,26 @@ public class Player extends GameEntity implements Comparable<Player> {
             return false;
         }
 
-        loseLife(lifePayment, false, false);
+        final int lost = loseLife(lifePayment, false, false);
         cause.setPaidLife(lifePayment);
 
         // Run triggers
         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromPlayer(this);
         runParams.put(AbilityKey.LifeAmount, lifePayment);
         game.getTriggerHandler().runTrigger(TriggerType.PayLife, runParams, false);
+        if (lost > 0) { // Run triggers if player actually lost life
+            boolean runAll = false;
+            Map<Player, Integer> lossMap = cause.getLoseLifeMap();
+            if (lossMap == null) {
+                lossMap = Maps.newHashMap();
+                runAll = true;
+            }
+            lossMap.put(this, lost);
+            if (runAll) {
+                final Map<AbilityKey, Object> runParams2 = AbilityKey.mapFromPIMap(lossMap);
+                game.getTriggerHandler().runTrigger(TriggerType.LifeLostAll, runParams2, false);
+            }
+        }
 
         return true;
     }
@@ -692,12 +704,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
         else if (!hasKeyword("Damage doesn't cause you to lose life.")) {
             // rule 118.2. Damage dealt to a player normally causes that player to lose that much life.
-            if (isCombat) {
-                // currently all abilities treat is as single event
-                simultaneousDamage += amount;
-            } else {
-                loseLife(amount, true, false);
-            }
+            simultaneousDamage += amount;
         }
 
         if (isCombat) {
@@ -800,7 +807,7 @@ public class Player extends GameEntity implements Comparable<Player> {
                     restDamage = 2;
                 }
             } else if (c.getName().equals("Elderscale Wurm")) {
-                if (c.getController().equals(this) && getLife() - restDamage < 7) {
+                if (c.getController().equals(this) && getLife() >= 7 && getLife() - restDamage < 7) {
                     restDamage = getLife() - 7;
                     if (restDamage < 0) {
                         restDamage = 0;
@@ -830,9 +837,10 @@ public class Player extends GameEntity implements Comparable<Player> {
         return restDamage;
     }
 
-    public final void dealCombatDamage() {
-        loseLife(simultaneousDamage, true, false);
+    public final int processDamage() {
+        int lost = loseLife(simultaneousDamage, true, false);
         simultaneousDamage = 0;
+        return lost;
     }
 
     /**
@@ -3268,9 +3276,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
 
         final TriggerHandler triggerHandler = game.getTriggerHandler();
-        triggerHandler.suppressMode(TriggerType.ChangesZone);
-        game.getAction().moveTo(ZoneType.Command, initiativeEffect, null, null);
-        triggerHandler.clearSuppression(TriggerType.ChangesZone);
+        com.add(initiativeEffect);
         triggerHandler.clearActiveTriggers(initiativeEffect, null);
         triggerHandler.registerActiveTrigger(initiativeEffect, false);
 
@@ -3408,7 +3414,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             return false;
         }
         return targetPlayer == null || !targetPlayer.equals(sa.getActivatingPlayer())
- || !hasKeyword("Spells and abilities you control can't cause you to search your library.");
+                || !hasKeyword("Spells and abilities you control can't cause you to search your library.");
     }
 
     public Card getKeywordCard() {

@@ -436,6 +436,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public Integer announceRequirements(final SpellAbility ability, final String announce) {
+        final Card host = ability.getHostCard();
         int max = Integer.MAX_VALUE;
         boolean canChooseZero = true;
         Cost cost = ability.getPayCosts();
@@ -443,7 +444,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         if ("X".equals(announce)) {
             canChooseZero = !ability.hasParam("XCantBe0");
             if (ability.hasParam("XMaxLimit")) {
-                max = Math.min(max, AbilityUtils.calculateAmount(ability.getHostCard(), ability.getParam("XMaxLimit"), ability));
+                max = Math.min(max, AbilityUtils.calculateAmount(host, ability.getParam("XMaxLimit"), ability));
             }
             if (cost != null) {
                 Integer costX = cost.getMaxForNonManaX(ability, player, false);
@@ -457,10 +458,14 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         }
         final int min = canChooseZero ? 0 : 1;
 
+        if (ability.hasParam("AnnounceMax")) {
+            max = Math.min(max, AbilityUtils.calculateAmount(host, ability.getParam("AnnounceMax"), ability));
+        }
+
         if (ability.usesTargeting()) {
             // if announce is used as min targets, check what the max possible number would be
             if (announce.equals(ability.getTargetRestrictions().getMinTargets())) {
-                max = Math.min(max, CardUtil.getValidCardsToTarget(ability.getTargetRestrictions(), ability).size());
+                max = Math.min(max, CardUtil.getValidCardsToTarget(ability).size());
             }
         }
         if (min > max) {
@@ -471,14 +476,14 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 ability.getParamOrDefault("AnnounceTitle", announce);
         if (cost.isMandatory()) {
             return chooseNumber(ability, localizer.getMessage("lblChooseAnnounceForCard", announceTitle,
-                    CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max);
+                    CardTranslation.getTranslatedName(host.getName())), min, max);
         }
         if ("NumTimes".equals(announce)) {
             return getGui().getInteger(localizer.getMessage("lblHowManyTimesToPay", ability.getPayCosts().getTotalMana(),
-                    CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
+                    CardTranslation.getTranslatedName(host.getName())), min, max, min + 9);
         }
         return getGui().getInteger(localizer.getMessage("lblChooseAnnounceForCard", announceTitle,
-                CardTranslation.getTranslatedName(ability.getHostCard().getName())), min, max, min + 9);
+                CardTranslation.getTranslatedName(host.getName())), min, max, min + 9);
     }
 
     @Override
@@ -827,7 +832,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             }
         }
         if (GuiBase.getInterface().isLibgdxPort()) {
-            return this.getGui().confirm(wrapper.getView().getHostCard(), buildQuestion.toString().replaceAll("\n", " "));
+            CardView cardView;
+            SpellAbilityView spellAbilityView = wrapper.getView();
+            if (spellAbilityView != null) //updated view
+                cardView = spellAbilityView.getHostCard();
+            else
+                cardView = wrapper.getCardView();
+            return this.getGui().confirm(cardView, buildQuestion.toString().replaceAll("\n", " "));
         } else {
             final InputConfirm inp = new InputConfirm(this, buildQuestion.toString(), wrapper);
             inp.showAndWait();
@@ -1426,7 +1437,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     public boolean confirmReplacementEffect(final ReplacementEffect replacementEffect, final SpellAbility effectSA,
                                             GameEntity affected, final String question) {
         if (GuiBase.getInterface().isLibgdxPort()) {
-            return this.getGui().confirm(effectSA.getView().getHostCard(), question.replaceAll("\n", " "));
+            CardView cardView;
+            SpellAbilityView spellAbilityView = effectSA.getView();
+            if (spellAbilityView != null) //updated view
+                cardView = spellAbilityView.getHostCard();
+            else //fallback
+                cardView = effectSA.getCardView();
+            return this.getGui().confirm(cardView, question.replaceAll("\n", " "));
         } else {
             final InputConfirm inp = new InputConfirm(this, question, effectSA);
             inp.showAndWait();
@@ -1856,7 +1873,11 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             try {
                 cardView = CardView.getCardForUi(ImageUtil.getPaperCardFromImageKey(sa.getView().getHostCard().getCurrentState().getTrackableImageKey()));
             } catch (Exception e) {
-                cardView = sa.getView().getHostCard();
+                SpellAbilityView spellAbilityView = sa.getView();
+                if (spellAbilityView != null) //updated view
+                    cardView = spellAbilityView.getHostCard();
+                else //fallback
+                    cardView = sa.getCardView();
             }
             return this.getGui().confirm(cardView, question.replaceAll("\n", " "));
         } else {
@@ -2446,8 +2467,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         private GameState createGameStateObject() {
             return new GameState() {
                 @Override
-                public IPaperCard getPaperCard(final String cardName) {
-                    return FModel.getMagicDb().getCommonCards().getCard(cardName);
+                public IPaperCard getPaperCard(final String cardName, final String setCode, final int artID) {
+                    return FModel.getMagicDb().getCommonCards().getCard(cardName, setCode, artID);
                 }
             };
         }
