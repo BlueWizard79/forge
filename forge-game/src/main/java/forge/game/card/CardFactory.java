@@ -155,9 +155,6 @@ public class CardFactory {
         copy.setXManaCostPaidByColor(original.getXManaCostPaidByColor());
         copy.setKickerMagnitude(original.getKickerMagnitude());
 
-        for (OptionalCost cost : original.getOptionalCostsPaid()) {
-            copy.addOptionalCostPaid(cost);
-        }
         if (targetSA.isBestow()) {
             copy.animateBestow();
         }
@@ -186,7 +183,6 @@ public class CardFactory {
             copySA = getCopiedTriggeredAbility((WrappedAbility)targetSA, c, controller);
         } else {
             copySA = targetSA.copy(c, controller, false);
-            c.setCastSA(copySA);
             // need to copy keyword
             if (targetSA.getKeyword() != null) {
                 KeywordInterface kw = targetSA.getKeyword().copy(c, false);
@@ -206,13 +202,15 @@ public class CardFactory {
         if (copySA instanceof Spell) {
             Spell spell = (Spell) copySA;
             spell.setCastFaceDown(false);
+            c.setCastSA(copySA);
         }
 
+        // mana is not copied
+        copySA.clearManaPaid();
         //remove all costs
         if (!copySA.isTrigger()) {
             copySA.setPayCosts(new Cost("", targetSA.isAbility()));
         }
-        copySA.setActivatingPlayer(controller);
 
         return copySA;
     }
