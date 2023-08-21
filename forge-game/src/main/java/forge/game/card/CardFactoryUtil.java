@@ -555,8 +555,9 @@ public class CardFactoryUtil {
                     hexproofkw.add(k);
                 } else if (k.startsWith("Trample")) {
                     tramplekw.add(k);
+                } else {
+                    allkw.add(k.toLowerCase());
                 }
-                allkw.add(k);
             }
         }
         for (String keyword : kw) {
@@ -570,7 +571,7 @@ public class CardFactoryUtil {
                 filteredkw.addAll(hexproofkw);
             } else if (keyword.equals("Trample")) {
                 filteredkw.addAll(tramplekw);
-            } else if (allkw.contains(keyword)) {
+            } else if (allkw.contains(keyword.toLowerCase())) {
                 filteredkw.add(keyword);
             }
         }
@@ -3030,7 +3031,7 @@ public class CardFactoryUtil {
 
                     if (!isIntrinsic()) {
                         // because it doesn't work other wise
-                        c.setForetoldByEffect(true);
+                        c.setForetoldCostByEffect(true);
                     }
                     String sb = TextUtil.concatWithSpace(getActivatingPlayer().toString(),"has foretold.");
                     game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);

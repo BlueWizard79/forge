@@ -284,6 +284,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                     break;
                 }
             }
+            for (SpellAbility sa : hostCard.getAllSpellAbilities()) {
+                if (sa.hasParam("Activator")
+                        && player.isValid(sa.getParam("Activator"), hostCard.getController(), hostCard, sa)) {
+                    noPermission = false;
+                    break;
+                }
+            }
             if (noPermission) {
                 return null;
             }
@@ -1451,14 +1458,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         final InputLondonMulligan inp = new InputLondonMulligan(this, player, cardsToReturn);
         inp.showAndWait();
         return inp.getSelectedCards();
-    }
-
-    @Override
-    public CardCollectionView getCardsToMulligan(final Player firstPlayer) {
-        // Partial Paris is gone, so it being commander doesn't really matter anymore...
-        final InputConfirmMulligan inp = new InputConfirmMulligan(this, player, firstPlayer);
-        inp.showAndWait();
-        return inp.isKeepHand() ? null : player.getCardsIn(ZoneType.Hand);
     }
 
     @Override
