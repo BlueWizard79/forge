@@ -2090,9 +2090,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
                         s.append(" on it.");
                     }
                     sbLong.append(s).append("\r\n");
-                } else if (keyword.startsWith("ManaConvert")) {
-                    final String[] k = keyword.split(":");
-                    sbLong.append(k[2]).append("\r\n");
                 } else if (keyword.startsWith("Protection:") || keyword.startsWith("DeckLimit")) {
                     final String[] k = keyword.split(":");
                     sbLong.append(k[2]).append("\r\n");
@@ -3117,7 +3114,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return false;
         }
         for (SpellAbility sa : getSpellAbilities()) {
-            if (!(sa instanceof SpellPermanent) && !sa.isMorphUp()) {
+            if (!(sa instanceof SpellPermanent && sa.isBasicSpell()) && !sa.isMorphUp()) {
                 return false;
             }
         }
@@ -5842,7 +5839,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
      * This function handles damage after replacement and prevention effects are applied.
      */
     @Override
-    public final int addDamageAfterPrevention(final int damageIn, final Card source, final boolean isCombat, GameEntityCounterTable counterTable) {
+    public final int addDamageAfterPrevention(final int damageIn, final Card source, final SpellAbility cause, final boolean isCombat, GameEntityCounterTable counterTable) {
         if (damageIn <= 0) {
             return 0; // 120.8
         }
@@ -5863,6 +5860,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         Map<AbilityKey, Object> runParams = AbilityKey.newMap();
         runParams.put(AbilityKey.DamageSource, source);
         runParams.put(AbilityKey.DamageTarget, this);
+        runParams.put(AbilityKey.Cause, cause);
         runParams.put(AbilityKey.DamageAmount, damageIn);
         runParams.put(AbilityKey.IsCombatDamage, isCombat);
         if (!isCombat) {
@@ -6812,6 +6810,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         // this can only be called by the Human
         final List<SpellAbility> abilities = Lists.newArrayList();
         for (SpellAbility sa : getSpellAbilities()) {
+            //adventure spell check
+            if (isAdventureCard() && sa.isAdventure()) {
+                if (getExiledWith() != null && CardStateName.Adventure.equals(getExiledWith().getCurrentStateName()))
+                    continue; // skip since it's already on adventure
+            }
             //add alternative costs as additional spell abilities
             abilities.add(sa);
             abilities.addAll(GameActionUtil.getAlternativeCosts(sa, player));
@@ -6890,7 +6893,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
             // extra for MayPlay
             for (CardPlayOption o : source.mayPlay(player)) {
-                la = new LandAbility(this, player, o.getAbility());
+                la = new LandAbility(this, player, o);
                 la.setCardState(oState);
                 if (la.canPlay()) {
                     abilities.add(la);
@@ -6942,7 +6945,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
                 // extra for MayPlay
                 for (CardPlayOption o : source.mayPlay(player)) {
-                    la = new LandAbility(this, player, o.getAbility());
+                    la = new LandAbility(this, player, o);
                     la.setCardState(modal);
                     if (la.canPlay(source)) {
                         abilities.add(la);
@@ -6965,9 +6968,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
     public static Card fromPaperCard(IPaperCard pc, Player owner) {
         return CardFactory.getCard(pc, owner, owner == null ? null : owner.getGame());
-    }
-    public static Card fromPaperCard(IPaperCard pc, Player owner, Game game) {
-        return CardFactory.getCard(pc, owner, game);
     }
 
     private static final Map<PaperCard, Card> cp2card = Maps.newHashMap();
