@@ -1164,6 +1164,9 @@ public class AbilityUtils {
             players.addAll(game.getPlayersInTurnOrder());
             players.removeAll(getDefinedPlayers(card, defined.substring(3), sa));
         }
+        else if (defined.equals("Registered")) {
+            players.addAll(game.getRegisteredPlayers());
+        }
         else if (defined.equals("EnchantedPlayer")) {
             final Object o = sa.getHostCard().getEntityAttachedTo();
             if (o instanceof Player) {
@@ -2359,7 +2362,7 @@ public class AbilityUtils {
             String[] props = l[0].split(" ");
             Boolean isCombat = null;
             if (sq[0].contains("CombatDamage")) {
-                isCombat = true;
+                isCombat = !sq[0].contains("Non");
             }
             int num;
             List<Integer> dmgInstances = game.getDamageDoneThisTurn(isCombat, false, props[1], props[2], c, player, ctb);
