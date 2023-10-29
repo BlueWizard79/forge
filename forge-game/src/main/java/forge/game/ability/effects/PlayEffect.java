@@ -32,6 +32,7 @@ import forge.game.cost.Cost;
 import forge.game.cost.CostDiscard;
 import forge.game.cost.CostPart;
 import forge.game.cost.CostReveal;
+import forge.game.keyword.Keyword;
 import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
 import forge.game.replacement.ReplacementEffect;
@@ -160,7 +161,7 @@ public class PlayEffect extends SpellAbilityEffect {
                 return;
             }
         } else if (sa.hasParam("CopyFromChosenName")) {
-            String name = source.getChosenName();
+            String name = controller.getNamedCard();
             if (name.trim().isEmpty()) return;
             Card card = Card.fromPaperCard(StaticData.instance().getCommonCards().getUniqueByName(name), controller);
             // so it gets added to stack
@@ -383,6 +384,8 @@ public class PlayEffect extends SpellAbilityEffect {
                         continue;
                     }
                     abCost = new Cost(source.getManaCost(), false);
+                } else if (cost.equals("SuspendCost")) {
+                    abCost = Iterables.find(tgtCard.getNonManaAbilities(), s -> s.getKeyword() != null && s.getKeyword().getKeyword() == Keyword.SUSPEND).getPayCosts();
                 } else {
                     if (cost.contains("ConvertedManaCost")) {
                         if (unpayableCost) {
@@ -561,7 +564,7 @@ public class PlayEffect extends SpellAbilityEffect {
             "Event$ DealtDamage | ValidCard$ Card.IsRemembered+faceDown",
             "Event$ Tap | ValidCard$ Card.IsRemembered+faceDown"
         };
-        String effect = "DB$ SetState | Defined$ ReplacedCard | Mode$ TurnFace";
+        String effect = "DB$ SetState | Defined$ ReplacedCard | Mode$ TurnFaceUp";
 
         for (int i = 0; i < 3; ++i) {
             ReplacementEffect re = ReplacementHandler.parseReplacement(repeffstrs[i], eff, true);

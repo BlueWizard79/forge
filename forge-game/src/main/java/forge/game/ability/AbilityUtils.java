@@ -532,10 +532,11 @@ public class AbilityUtils {
             val = xCount(ability.getOriginalHost(), calcX[1], ability);
         } else if (calcX[0].startsWith("ExiledWith")) {
             val = handlePaid(card.getExiledCards(), calcX[1], card, ability);
-	    } else if (calcX[0].startsWith("Convoked")) {
-	        val = handlePaid(card.getConvoked(), calcX[1], card, ability);
-	    }
-        else if (calcX[0].startsWith("Remembered")) {
+        } else if (calcX[0].startsWith("Convoked")) {
+            val = handlePaid(card.getConvoked(), calcX[1], card, ability);
+        } else if (calcX[0].startsWith("Emerged")) {
+            val = handlePaid(card.getEmerged(), calcX[1], card, ability);
+        } else if (calcX[0].startsWith("Remembered")) {
             // Add whole Remembered list to handlePaid
             final CardCollection list = new CardCollection();
             Card newCard = card;
@@ -1580,49 +1581,6 @@ public class AbilityUtils {
             host.addRemembered(sb.toString());
         }
 
-        if (sa.hasParam("RememberCostCards") && !sa.getPaidHash().isEmpty()) {
-            List <Card> noList = Lists.newArrayList();
-            Table<String, Boolean, CardCollection> paidLists = sa.getPaidHash();
-            if (sa.hasParam("RememberCostExcept")) {
-                noList.addAll(AbilityUtils.getDefinedCards(host, sa.getParam("RememberCostExcept"), sa));
-            }
-            if (paidLists.contains("Exiled", true)) {
-                final CardCollection paidListExiled = sa.getPaidList("Exiled", true);
-                for (final Card exiledAsCost : paidListExiled) {
-                    if (!noList.contains(exiledAsCost)) {
-                        host.addRemembered(exiledAsCost);
-                    }
-                }
-            } else if (paidLists.contains("Sacrificed", true)) {
-                final CardCollection paidListSacrificed = sa.getPaidList("Sacrificed", true);
-                for (final Card sacrificedAsCost : paidListSacrificed) {
-                    if (!noList.contains(sacrificedAsCost)) {
-                        host.addRemembered(sacrificedAsCost);
-                    }
-                }
-            } else if (paidLists.contains("Tapped", true)) {
-                final CardCollection paidListTapped = sa.getPaidList("Tapped", true);
-                for (final Card tappedAsCost : paidListTapped) {
-                    if (!noList.contains(tappedAsCost)) {
-                        host.addRemembered(tappedAsCost);
-                    }
-                }
-            } else if (paidLists.contains("Unattached", true)) {
-                final CardCollection paidListUnattached = sa.getPaidList("Unattached", true);
-                for (final Card unattachedAsCost : paidListUnattached) {
-                    if (!noList.contains(unattachedAsCost)) {
-                        host.addRemembered(unattachedAsCost);
-                    }
-                }
-            } else if (paidLists.contains("Discarded", true)) {
-                final CardCollection paidListDiscarded = sa.getPaidList("Discarded", true);
-                for (final Card discardedAsCost : paidListDiscarded) {
-                    if (!noList.contains(discardedAsCost)) {
-                        host.addRemembered(discardedAsCost);
-                    }
-                }
-            }
-        }
         // make sure that when this is from a trigger LKI is updated
         host.getGame().updateLastStateForCard(host);
     }
@@ -1998,7 +1956,10 @@ public class AbilityUtils {
             return doXMath(calculateAmount(c, sq[!isUnlinkedFromCastSA(ctb, c) && c.getKickerMagnitude() > 0 ? 1 : 2], ctb), expr, c, ctb);
         }
         if (sq[0].startsWith("Escaped")) {
-            return doXMath(calculateAmount(c, sq[c.getCastSA() != null && c.getCastSA().isEscape() ? 1 : 2], ctb), expr, c, ctb);
+            return doXMath(calculateAmount(c, sq[!isUnlinkedFromCastSA(ctb, c) && c.getCastSA() != null && c.getCastSA().isEscape() ? 1 : 2], ctb), expr, c, ctb);
+        }
+        if (sq[0].startsWith("Emerged")) {
+            return doXMath(calculateAmount(c, sq[!isUnlinkedFromCastSA(ctb, c) && c.getCastSA() != null && c.getCastSA().isEmerge() ? 1 : 2], ctb), expr, c, ctb);
         }
         if (sq[0].startsWith("AltCost")) {
             return doXMath(calculateAmount(c, sq[c.isOptionalCostPaid(OptionalCost.AltCost) ? 1 : 2], ctb), expr, c, ctb);
@@ -2009,6 +1970,9 @@ public class AbilityUtils {
 
         if (sq[0].contains("CardPower")) {
             return doXMath(c.getNetPower(), expr, c, ctb);
+        }
+        if (sq[0].contains("CardBasePower")) {
+            return doXMath(c.getCurrentPower(), expr, c, ctb);
         }
         if (sq[0].contains("CardToughness")) {
             return doXMath(c.getNetToughness(), expr, c, ctb);
@@ -2288,6 +2252,10 @@ public class AbilityUtils {
 
         if (sq[0].equals("YouSurveilThisTurn")) {
             return doXMath(player.getSurveilThisTurn(), expr, c, ctb);
+        }
+
+        if (sq[0].equals("YouDescendedThisTurn")) {
+            return doXMath(player.getDescended(), expr, c, ctb);
         }
 
         if (sq[0].equals("YouCastThisGame")) {
@@ -2662,6 +2630,25 @@ public class AbilityUtils {
 
         if (sq[0].equals("MaxDistinctOnStack")) {
             return doXMath(game.getStack().getMaxDistinctSources(), expr, c, ctb);
+        }
+
+        if (sq[0].equals("MaxSameStoredRolls")) {
+            int max = 0;
+            List<Integer> rolls = c.getStoredRolls();
+            if (rolls != null) {
+                int lastNum = 0;
+                for (Integer roll : rolls) {
+                    if (roll.equals(lastNum)) {
+                        continue; // no need to count instances of the same roll multiple times
+                    }
+                    int tally = Collections.frequency(rolls, roll);
+                    if (tally > max) {
+                        max = tally;
+                    }
+                    lastNum = roll;
+                }
+            }
+            return doXMath(max, expr, c, ctb);
         }
 
         //Count$Random.<Min>.<Max>
@@ -3922,6 +3909,14 @@ public class AbilityUtils {
             }
             def[0] = def[0].substring(8);
             return spawner;
+        }
+        if (def[0].startsWith("TriggeredSpellAbility>") && ctb instanceof SpellAbility) {
+            SpellAbility trig = (SpellAbility) ((SpellAbility) ctb).getTriggeringObject(AbilityKey.SpellAbility);
+            if (trig == null) {
+                return ctb;
+            }
+            def[0] = def[0].substring(22);
+            return trig;
         }
         return ctb;
     }

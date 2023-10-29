@@ -15,8 +15,6 @@ import forge.game.GameActionUtil;
 import forge.game.GameEntityView;
 import forge.game.GameEntityViewMap;
 import forge.game.ability.AbilityUtils;
-import forge.game.ability.ApiType;
-import forge.game.ability.effects.CharmEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
@@ -101,13 +99,6 @@ public class HumanPlay {
             source.forceTurnFaceUp();
         }
 
-        if (sa.getApi() == ApiType.Charm && !CharmEffect.makeChoices(sa)) {
-            // 603.3c If no mode is chosen, the ability is removed from the stack.
-            return false;
-        }
-
-        sa = AbilityUtils.addSpliceEffects(sa);
-
         final HumanPlaySpellAbility req = new HumanPlaySpellAbility(controller, sa);
         if (!req.playAbility(true, false, false)) {
             Card rollback = p.getGame().getCardState(source);
@@ -164,15 +155,6 @@ public class HumanPlay {
         final Card source = sa.getHostCard();
 
         source.setSplitStateToPlayAbility(sa);
-
-        if (sa.getApi() == ApiType.Charm && !CharmEffect.makeChoices(sa)) {
-            // 603.3c If no mode is chosen, the ability is removed from the stack.
-            return;
-        }
-
-        if (!sa.isCopied()) {
-            sa = AbilityUtils.addSpliceEffects(sa);
-        }
 
         final HumanPlaySpellAbility req = new HumanPlaySpellAbility(controller, sa);
         req.playAbility(mayChooseNewTargets, true, false);
@@ -548,16 +530,20 @@ public class HumanPlay {
             emerge.setUsedToPay(false);
             if (!manaInputCancelled) {
                 game.getAction().sacrifice(emerge, ability, false, table, null);
+                ability.setSacrificedAsEmerge(game.getChangeZoneLKIInfo(emerge));
+            } else {
+                ability.resetSacrificedAsEmerge();
             }
-            ability.resetSacrificedAsEmerge();
         }
         if (ability.getTappedForConvoke() != null) {
+            game.getTriggerHandler().suppressMode(TriggerType.Taps);
             for (final Card c : ability.getTappedForConvoke()) {
                 c.setTapped(false);
                 if (!manaInputCancelled) {
                     c.tap(true, ability, ability.getActivatingPlayer());
                 }
             }
+            game.getTriggerHandler().clearSuppression(TriggerType.Taps);
             if (manaInputCancelled) {
                 ability.clearTappedForConvoke();
             }
@@ -655,14 +641,6 @@ public class HumanPlay {
             if (ability.getSacrificedAsEmerge() == null && emerge != null) {
                 ability.setSacrificedAsEmerge(emerge);
             }
-        }
-        if (ability.getTappedForConvoke() != null) {
-            activator.getGame().getTriggerHandler().suppressMode(TriggerType.Taps);
-            for (final Card c : ability.getTappedForConvoke()) {
-                c.setTapped(false);
-                c.tap(true, ability, activator);
-            }
-            activator.getGame().getTriggerHandler().clearSuppression(TriggerType.Taps);
         }
         return handleOfferingConvokeAndDelve(ability, cardsToDelve, false);
     }

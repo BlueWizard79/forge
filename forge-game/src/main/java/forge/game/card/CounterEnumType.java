@@ -122,6 +122,8 @@ public enum CounterEnumType {
     EON("EON", 23, 194, 255),
 
     EMBER("EMBER", 247, 52, 43),
+    
+    EXPOSURE("EXPOSURE", 50, 180, 30),
 
     EYEBALL("EYE", 184, 202, 201),
 
@@ -136,6 +138,8 @@ public enum CounterEnumType {
     FETCH("FETCH", 180, 235, 52),
 
     FILIBUSTER("FLBTR", 255, 179, 119),
+
+    FINALITY("FINAL", 255, 255, 255),
 
     FLAME("FLAME", 255, 143, 43),
     
