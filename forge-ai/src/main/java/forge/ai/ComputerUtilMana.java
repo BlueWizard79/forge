@@ -613,7 +613,7 @@ public class ComputerUtilMana {
         ManaCostShard toPay;
         // Loop over mana needed
         while (!cost.isPaid()) {
-            toPay = getNextShardToPay(cost);
+            toPay = getNextShardToPay(cost, sourcesForShards);
 
             Collection<SpellAbility> saList = sourcesForShards.get(toPay);
             if (saList == null) {
@@ -714,7 +714,7 @@ public class ComputerUtilMana {
                 break;    // no mana abilities to use for paying
             }
 
-            toPay = getNextShardToPay(cost);
+            toPay = getNextShardToPay(cost, sourcesForShards);
 
             boolean lifeInsteadOfBlack = toPay.isBlack() && ai.hasKeyword("PayLifeInsteadOf:B");
 
@@ -1091,9 +1091,17 @@ public class ComputerUtilMana {
         return false;
     }
 
-    private static ManaCostShard getNextShardToPay(ManaCostBeingPaid cost) {
+    private static ManaCostShard getNextShardToPay(ManaCostBeingPaid cost, Multimap<ManaCostShard, SpellAbility> sourcesForShards) {
+        List<ManaCostShard> shardsToPay = Lists.newArrayList(cost.getDistinctShards());
+        // optimize order so that the shards with less available sources are considered first
+        Collections.sort(shardsToPay, new Comparator<ManaCostShard>() {
+            @Override
+            public int compare(final ManaCostShard shard1, final ManaCostShard shard2) {
+                return sourcesForShards.get(shard1).size() - sourcesForShards.get(shard2).size();
+            }
+        });
         // mind the priorities
-        // * Pay mono-colored first,curPhase == PhaseType.CLEANUP
+        // * Pay mono-colored first
         // * Pay 2/C with matching colors
         // * pay hybrids
         // * pay phyrexian, keep mana for colorless
@@ -1315,7 +1323,7 @@ public class ComputerUtilMana {
                 manaToAdd = AbilityUtils.calculateAmount(card, "X", sa) * xCounter;
             }
 
-            if (manaToAdd < 1 && !payCosts.getCostMana().canXbe0()) {
+            if (manaToAdd < 1 && payCosts != null && payCosts.getCostMana().getXMin() > 0) {
                 // AI cannot really handle X costs properly but this keeps AI from violating rules
                 manaToAdd = 1;
             }

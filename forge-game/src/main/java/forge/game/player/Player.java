@@ -161,6 +161,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     private int numDrawnThisDrawStep;
     private int numRollsThisTurn;
     private int numDiscardedThisTurn;
+    private int numExploredThisTurn;
     private int numTokenCreatedThisTurn;
     private int numForetoldThisTurn;
     private int numCardsInHandStartedThisTurnWith;
@@ -556,7 +557,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             int oldLife = life;
             // Run applicable replacement effects
             final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(this);
-            repParams.put(AbilityKey.Result, oldLife-toLose);
+            repParams.put(AbilityKey.Amount, toLose);
             repParams.put(AbilityKey.IsDamage, damage);
 
             switch (getGame().getReplacementHandler().run(ReplacementType.LifeReduced, repParams)) {
@@ -565,8 +566,7 @@ public class Player extends GameEntity implements Comparable<Player> {
             case Updated:
                 // check if this is still the affected player
                 if (this.equals(repParams.get(AbilityKey.Affected))) {
-                    int result = (int) repParams.get(AbilityKey.Result);
-                    toLose = oldLife - result;
+                    toLose = (int) repParams.get(AbilityKey.Amount);
                     // there is nothing that changes lifegain into lifeloss this way
                     if (toLose <= 0) {
                         return 0;
@@ -1160,7 +1160,7 @@ public class Player extends GameEntity implements Comparable<Player> {
                 return;
         }
 
-        final CardCollection topN = new CardCollection(this.getCardsIn(ZoneType.Library, num));
+        final CardCollection topN = getTopXCardsFromLibrary(num);
 
         if (topN.isEmpty()) {
             return;
@@ -1187,6 +1187,9 @@ public class Player extends GameEntity implements Comparable<Player> {
             for (Card c : toTop) {
                 getGame().getAction().moveToLibrary(c, cause, params);
                 numToTop++;
+            }
+            if (cause.hasParam("RememberKept")) {
+                cause.getHostCard().addRemembered(toTop);
             }
         }
 
@@ -1586,6 +1589,16 @@ public class Player extends GameEntity implements Comparable<Player> {
         numDiscardedThisTurn = 0;
     }
 
+    public final int getNumExploredThisTurn() {
+        return numExploredThisTurn;
+    }
+    public final void addExploredThisTurn() {
+        numExploredThisTurn++;
+    }
+    public final void resetNumExploredThisTurn() {
+        numExploredThisTurn = 0;
+    }
+
     public int getNumCardsInHandStartedThisTurnWith() {
         return numCardsInHandStartedThisTurnWith;
     }
@@ -1653,19 +1666,18 @@ public class Player extends GameEntity implements Comparable<Player> {
             }
         }
 
-        CardCollectionView milledView = getCardsIn(ZoneType.Library);
+        Iterable<Card> milledView = getCardsIn(ZoneType.Library);
         // 614.13c
         if (sa.getRootAbility().getReplacingObject(AbilityKey.SimultaneousETB) != null) {
-            Iterables.removeAll(milledView, (CardCollection) sa.getRootAbility().getReplacingObject(AbilityKey.SimultaneousETB));
+            milledView = Iterables.filter(milledView, c -> !((CardCollection) sa.getRootAbility().getReplacingObject(AbilityKey.SimultaneousETB)).contains(c));
         }
-        CardCollection milled = new CardCollection(Iterables.limit(milledView, n));
-        milledView = milled;
+        CardCollectionView milled = new CardCollection(Iterables.limit(milledView, n));
 
         if (destination == ZoneType.Graveyard) {
-            milledView = GameActionUtil.orderCardsByTheirOwners(game, milledView, ZoneType.Graveyard, sa);
+            milled = GameActionUtil.orderCardsByTheirOwners(game, milled, ZoneType.Graveyard, sa);
         }
 
-        for (Card m : milledView) {
+        for (Card m : milled) {
             final ZoneType origin = m.getZone().getZoneType();
             final Card d = game.getAction().moveTo(destination, m, sa, params);
             if (d.getZone().is(destination)) {
@@ -2523,6 +2535,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         resetNumDrawnThisTurn();
         resetNumRollsThisTurn();
         resetNumDiscardedThisTurn();
+        resetNumExploredThisTurn();
         resetNumForetoldThisTurn();
         resetNumTokenCreatedThisTurn();
         setNumCardsInHandStartedThisTurnWith(getCardsIn(ZoneType.Hand).size());
@@ -2970,7 +2983,15 @@ public class Player extends GameEntity implements Comparable<Player> {
             List<Card> commanders = Lists.newArrayList();
             for (PaperCard pc : registeredPlayer.getCommanders()) {
                 Card cmd = Card.fromPaperCard(pc, this);
-                if (cmd.hasKeyword("If CARDNAME is your commander, choose a color before the game begins.")) {
+                boolean color = false;
+                for (StaticAbility stAb : cmd.getStaticAbilities()) {
+                    if (stAb.hasParam("Description") && stAb.getParam("Description")
+                            .contains("If CARDNAME is your commander, choose a color before the game begins.")) {
+                        color = true;
+                        break;
+                    }
+                }
+                if (color) {
                     Player p = cmd.getController();
                     List<String> colorChoices = new ArrayList<>(MagicColor.Constant.ONLY_COLORS);
                     String prompt = Localizer.getInstance().getMessage("lblChooseAColorFor", cmd.getName());
@@ -2978,7 +2999,9 @@ public class Player extends GameEntity implements Comparable<Player> {
                     SpellAbility cmdColorsa = new SpellAbility.EmptySa(ApiType.ChooseColor, cmd, p);
                     chosenColors = p.getController().chooseColors(prompt,cmdColorsa, 1, 1, colorChoices);
                     cmd.setChosenColors(chosenColors);
-                    p.getGame().getAction().notifyOfValue(cmdColorsa, cmd, Localizer.getInstance().getMessage("lblPlayerPickedChosen", p.getName(), Lang.joinHomogenous(chosenColors)), p);
+                    p.getGame().getAction().notifyOfValue(cmdColorsa, cmd,
+                            Localizer.getInstance().getMessage("lblPlayerPickedChosen", p.getName(),
+                                    Lang.joinHomogenous(chosenColors)), p);
                 }
                 cmd.setCommander(true);
                 com.add(cmd);

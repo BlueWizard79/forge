@@ -260,9 +260,7 @@ public class PlayEffect extends SpellAbilityEffect {
                 game.getAction().revealTo(tgtCard, controller);
             }
             String prompt = sa.hasParam("CastTransformed") ? "lblDoYouWantPlayCardTransformed" : "lblDoYouWantPlayCard";
-            if (singleOption && sa.getTargetCard() == null)
-                sa.setPlayEffectCard(tgtCard);// show card to play rather than showing the source card
-            if (singleOption && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage(prompt, CardTranslation.getTranslatedName(tgtCard.getName())), null)) {
+            if (singleOption && !controller.getController().confirmAction(sa, null, Localizer.getInstance().getMessage(prompt, CardTranslation.getTranslatedName(tgtCard.getName())), tgtCard, null)) {
                 if (wasFaceDown) {
                     tgtCard.turnFaceDownNoUpdate();
                     tgtCard.updateStateForView();
@@ -369,7 +367,8 @@ public class PlayEffect extends SpellAbilityEffect {
             final int tgtCMC = tgtSA.getPayCosts().getTotalMana().getCMC();
 
             // illegal action, cancel early
-            if ((sa.hasParam("WithoutManaCost") || sa.hasParam("PlayCost")) && tgtSA.costHasManaX() && !tgtSA.getPayCosts().getCostMana().canXbe0()) {
+            if ((sa.hasParam("WithoutManaCost") || sa.hasParam("PlayCost")) && tgtSA.costHasManaX() &&
+                    tgtSA.getPayCosts().getCostMana().getXMin() > 0) {
                 continue;
             }
 

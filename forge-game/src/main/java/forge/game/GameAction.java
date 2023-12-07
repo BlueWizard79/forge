@@ -24,10 +24,7 @@ import forge.StaticData;
 import forge.card.CardStateName;
 import forge.card.MagicColor;
 import forge.deck.DeckSection;
-import forge.game.ability.AbilityFactory;
-import forge.game.ability.AbilityKey;
-import forge.game.ability.AbilityUtils;
-import forge.game.ability.ApiType;
+import forge.game.ability.*;
 import forge.game.card.*;
 import forge.game.event.*;
 import forge.game.keyword.Keyword;
@@ -115,6 +112,7 @@ public class GameAction {
 
         boolean toBattlefield = zoneTo.is(ZoneType.Battlefield) || zoneTo.is(ZoneType.Merged);
         boolean fromBattlefield = zoneFrom != null && zoneFrom.is(ZoneType.Battlefield);
+        boolean fromGraveyard = zoneFrom != null && zoneFrom.is(ZoneType.Graveyard);
         boolean wasFacedown = c.isFaceDown();
 
         // Rule 111.8: A token that has left the battlefield can't move to another zone
@@ -187,14 +185,22 @@ public class GameAction {
             }
         }
         CardCollectionView lastBattlefield = null;
+        CardCollectionView lastGraveyard = null;
         if (params != null) {
             lastBattlefield = (CardCollectionView) params.get(AbilityKey.LastStateBattlefield);
+            lastGraveyard = (CardCollectionView) params.get(AbilityKey.LastStateGraveyard);
         }
         if (lastBattlefield == null && cause != null) {
             lastBattlefield = cause.getLastStateBattlefield();
         }
+        if (lastGraveyard == null && cause != null) {
+            lastGraveyard = cause.getLastStateGraveyard();
+        }
         if (lastBattlefield == null) {
             lastBattlefield = game.getLastStateBattlefield();
+        }
+        if (lastGraveyard == null) {
+            lastGraveyard = game.getLastStateGraveyard();
         }
 
         if (c.isSplitCard()) {
@@ -240,6 +246,12 @@ public class GameAction {
                 int idx = lastBattlefield.indexOf(c);
                 if (idx != -1) {
                     lastKnownInfo = lastBattlefield.get(idx);
+                }
+            }
+            if (fromGraveyard) {
+                int idx = lastGraveyard.indexOf(c);
+                if (idx != -1) {
+                    lastKnownInfo = lastGraveyard.get(idx);
                 }
             }
 
@@ -492,6 +504,10 @@ public class GameAction {
                 // 607.2q linked ability can find cards exiled as cost while it was a spell
                 copied.addExiledCards(c.getExiledCards());
             }
+
+            if (cause != null && cause.isCraft() && toBattlefield) { // retain cards crafted while ETB transformed
+                copied.retainPaidList(cause, "ExiledCards");
+            }
         }
 
         // if an adventureCard is put from Stack somewhere else, need to reset to Original State
@@ -536,6 +552,9 @@ public class GameAction {
                     zoneTo.add(copied, position, toBattlefield ? null : lastKnownInfo); // the modified state of the card is also reported here (e.g. for Morbid + Awaken)
                 } else {
                     zoneTo.add(card, position, CardUtil.getLKICopy(card));
+                    card.setState(CardStateName.Original, false);
+                    card.setBackSide(false);
+                    card.updateStateForView();
                 }
                 card.setZone(zoneTo);
             }
@@ -549,7 +568,11 @@ public class GameAction {
         if (fromBattlefield) {
             // order here is important so it doesn't unattach cards that might have returned from UntilHostLeavesPlay
             unattachCardLeavingBattlefield(copied);
+            game.addLeftBattlefieldThisTurn(lastKnownInfo);
             c.runLeavesPlayCommands();
+        }
+        if (fromGraveyard) {
+            game.addLeftGraveyardThisTurn(lastKnownInfo);
         }
 
         // do ETB counters after zone add
@@ -925,6 +948,8 @@ public class GameAction {
         if (params != null) {
             runParams.putAll(params);
         }
+        runParams.put(AbilityKey.CostStack, game.costPaymentStack);
+        runParams.put(AbilityKey.IndividualCostPaymentInstance, game.costPaymentStack.peek());
 
         game.getTriggerHandler().runTrigger(TriggerType.Exiled, runParams, false);
 
