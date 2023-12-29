@@ -497,16 +497,8 @@ public class CardView extends GameEntityView {
         sb.append("\r\nRemembered: \r\n");
         for (final Object o : c.getRemembered()) {
             if (o != null) {
-                if (o instanceof Card && c.isImmutable() && c.getName().contains("Perpetual Effect")) {
-                    Card rc = (Card) o;
-                    if (!rc.getGame().getCardState(rc).getZone().getZoneType().isHidden()) {
-                        sb.append(o.toString());
-                        sb.append("\r\n");
-                    }
-                } else {
-                    sb.append(o.toString());
-                    sb.append("\r\n");
-                }
+                sb.append(o.toString());
+                sb.append("\r\n");
             }
         }
         set(TrackableProperty.Remembered, sb.toString());
@@ -1000,7 +992,7 @@ public class CardView extends GameEntityView {
         }
 
         CardStateView currentStateView = currentState.getView();
-        if (getCurrentState() != currentStateView) {
+        if (getCurrentState() != currentStateView || c.hasPerpetual()) {
             set(TrackableProperty.CurrentState, currentStateView);
             currentStateView.updateName(currentState);
             currentStateView.updatePower(c); //ensure power, toughness, and loyalty updated when current state changes

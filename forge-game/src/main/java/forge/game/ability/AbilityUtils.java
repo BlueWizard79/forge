@@ -1296,6 +1296,7 @@ public class AbilityUtils {
     public static FCollection<SpellAbility> getDefinedSpellAbilities(final Card card, final String def, final CardTraitBase sa) {
         final FCollection<SpellAbility> sas = new FCollection<>();
         final String defined = (def == null) ? "Self" : applyAbilityTextChangeEffects(def, sa); // default to Self
+        final Player player = sa instanceof SpellAbility ? ((SpellAbility)sa).getActivatingPlayer() : card.getController();
         final Game game = card.getGame();
 
         SpellAbility s = null;
@@ -1357,6 +1358,14 @@ public class AbilityUtils {
                     } else {
                         sas.add(targetSpell);
                     }
+                }
+            }
+        } else if (defined.startsWith("ValidStack")) {
+            String[] valid = defined.split(" ", 2);
+            for (SpellAbilityStackInstance stackInstance : game.getStack()) {
+                SpellAbility instanceSA = stackInstance.getSpellAbility();
+                if (instanceSA != null && instanceSA.isValid(valid[1], player, card, s)) {
+                    sas.add(instanceSA);
                 }
             }
         }
@@ -1537,6 +1546,10 @@ public class AbilityUtils {
 
         boolean alreadyPaid = false;
         for (Player payer : allPayers) {
+            if (!payer.isInGame()) {
+                // CR 800.4f
+                continue;
+            }
             if (unlessCost.equals("LifeTotalHalfUp")) {
                 String halfup = Integer.toString(Math.max(0,(int) Math.ceil(payer.getLife() / 2.0)));
                 cost = new Cost("PayLife<" + halfup + ">", true);
@@ -2141,9 +2154,11 @@ public class AbilityUtils {
         if (sq[0].contains("CardManaCost")) {
             int cmc = c.getCMC();
 
-            if (sq[0].contains("LKI") && ctb instanceof SpellAbility && !c.isInZone(ZoneType.Stack) && c.getManaCost() != null) {
-                if (((SpellAbility) ctb).getXManaCostPaid() != null) {
+            if (sq[0].contains("LKI") && !c.isInZone(ZoneType.Stack) && c.getManaCost() != null) {
+                if (ctb instanceof SpellAbility && ((SpellAbility) ctb).getXManaCostPaid() != null) {
                     cmc += ((SpellAbility) ctb).getXManaCostPaid() * c.getManaCost().countX();
+                } else {
+                    cmc += c.getXManaCostPaid() * c.getManaCost().countX();
                 }
             }
 
@@ -2152,6 +2167,10 @@ public class AbilityUtils {
 
         if (sq[0].startsWith("RememberedSize")) {
             return doXMath(c.getRememberedCount(), expr, c, ctb);
+        }
+
+        if (sq[0].startsWith("ChosenSize")) {
+            return doXMath(c.getChosenCards().size(), expr, c, ctb);
         }
 
         if (sq[0].startsWith("ImprintedSize")) {
@@ -2635,6 +2654,10 @@ public class AbilityUtils {
 
         if (sq[0].equals("StormCount")) {
             return doXMath(game.getStack().getSpellsCastThisTurn().size() - 1, expr, c, ctb);
+        }
+
+        if (sq[0].equals("FinalChapterNr")) {
+            return doXMath(c.getFinalChapterNr(), expr, c, ctb);
         }
 
         if (sq[0].startsWith("PlanarDiceSpecialActionThisTurn")) {

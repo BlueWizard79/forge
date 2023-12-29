@@ -365,9 +365,9 @@ public class ComputerUtilCost {
                         return false;
                     }
                     if (source.isCreature()) {
-                        // e.g. Sakura Tribe-Elder
+                        // e.g. Sakura-Tribe Elder
                         final Combat combat = ai.getGame().getCombat();
-                        final boolean beforeNextTurn = ai.getGame().getPhaseHandler().is(PhaseType.END_OF_TURN) && ai.getGame().getPhaseHandler().getNextTurn().equals(ai);
+                        final boolean beforeNextTurn = ai.getGame().getPhaseHandler().is(PhaseType.END_OF_TURN) && ai.getGame().getPhaseHandler().getNextTurn().equals(ai) && ComputerUtilCard.evaluateCreature(source) <= 150;
                         final boolean creatureInDanger = ComputerUtil.predictCreatureWillDieThisTurn(ai, source, sourceAbility, false)
                                 && !ComputerUtilCombat.willOpposingCreatureDieInCombat(ai, source, combat);
                         final int lifeThreshold = ai.getController().isAI() ? (((PlayerControllerAi) ai.getController()).getAi().getIntProperty(AiProps.AI_IN_DANGER_THRESHOLD)) : 4;
@@ -522,11 +522,12 @@ public class ComputerUtilCost {
             sa.setActivatingPlayer(player, true); // complaints on NPE had came before this line was added.
         }
 
-        final boolean cannotBeCountered = !CardFactoryUtil.isCounterable(sa.getHostCard());
+        boolean cannotBeCountered = false;
 
         // Check for stuff like Nether Void
         int extraManaNeeded = 0;
         if (sa instanceof Spell) {
+            cannotBeCountered = !sa.isCounterableBy(null);
             for (Card c : player.getGame().getCardsIn(ZoneType.Battlefield)) {
                 final String snem = c.getSVar("AI_SpellsNeedExtraMana");
                 if (!StringUtils.isBlank(snem)) {
@@ -796,7 +797,7 @@ public class ComputerUtilCost {
         if (ApiType.Counter.equals(sa.getApi())) {
             List<SpellAbility> spells = AbilityUtils.getDefinedSpellAbilities(source, sa.getParamOrDefault("Defined", "Targeted"), sa);
             for (SpellAbility toBeCountered : spells) {
-                if (toBeCountered.isSpell() && !CardFactoryUtil.isCounterable(toBeCountered.getHostCard())) {
+                if (!toBeCountered.isCounterableBy(sa)) {
                     return false;
                 }
                 // no reason to pay if we don't plan to confirm
