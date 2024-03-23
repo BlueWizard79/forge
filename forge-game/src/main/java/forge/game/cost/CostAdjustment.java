@@ -52,7 +52,7 @@ public class CostAdjustment {
         boolean isStateChangeToFaceDown = false;
 
         if (sa.isSpell()) {
-            if (sa.isCastFaceDown()) {
+            if (sa.isCastFaceDown() && !host.isFaceDown()) {
                 // Turn face down to apply cost modifiers correctly
                 host.turnFaceDownNoUpdate();
                 isStateChangeToFaceDown = true;
@@ -65,7 +65,7 @@ public class CostAdjustment {
                     result.add(new Cost(ManaCost.get(n), false));
                 }
             }
-        } // isSpell
+        }
 
         CardCollection cardsOnBattlefield = new CardCollection(game.getCardsIn(ZoneType.Battlefield));
         cardsOnBattlefield.addAll(game.getCardsIn(ZoneType.Stack));
@@ -147,6 +147,15 @@ public class CostAdjustment {
                     count += tc.size();
                 }
                 --count;
+            } else if ("Spree".equals(amount)) {
+                SpellAbility sub = sa;
+                while (sub != null) {
+                    if (sub.hasParam("SpreeCost")) {
+                        Cost part = new Cost(sub.getParam("SpreeCost"), sa.isAbility(), sa.getHostCard().equals(hostCard));
+                        cost.mergeTo(part, count, sa);
+                    }
+                    sub = sub.getSubAbility();
+                }
             } else {
                 if (StringUtils.isNumeric(amount)) {
                     count = Integer.parseInt(amount);
@@ -181,7 +190,7 @@ public class CostAdjustment {
         boolean isStateChangeToFaceDown = false;
 
         if (sa.isSpell()) {
-            if (sa.isCastFaceDown()) {
+            if (sa.isCastFaceDown() && !originalCard.isFaceDown()) {
                 // Turn face down to apply cost modifiers correctly
                 originalCard.turnFaceDownNoUpdate();
                 isStateChangeToFaceDown = true;
@@ -200,7 +209,7 @@ public class CostAdjustment {
         // Sort abilities to apply them in proper order
         for (Card c : cardsOnBattlefield) {
             for (final StaticAbility stAb : c.getStaticAbilities()) {
-                if (stAb.checkMode("ReduceCost")) {
+                if (stAb.checkMode("ReduceCost") && checkRequirement(sa, stAb)) {
                     reduceAbilities.add(stAb);
                 }
                 else if (stAb.checkMode("SetCost")) {
@@ -223,7 +232,7 @@ public class CostAdjustment {
         // need to reduce generic extra because of 2 hybrid mana
         cost.decreaseGenericMana(sumGeneric);
 
-        if (sa.isSpell() && !sa.getPipsToReduce().isEmpty()) {
+        if (sa.isSpell()) {
             for (String pip : sa.getPipsToReduce()) {
                 cost.decreaseShard(ManaCostShard.parseNonGeneric(pip), 1);
             }
@@ -400,10 +409,6 @@ public class CostAdjustment {
         final Card hostCard = staticAbility.getHostCard();
         final Card card = sa.getHostCard();
         final String amount = staticAbility.getParam("Amount");
-
-        if (!checkRequirement(sa, staticAbility)) {
-            return 0;
-        }
 
         int value;
         if ("AffectedX".equals(amount)) {

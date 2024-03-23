@@ -206,16 +206,44 @@ public abstract class SpellAbilityEffect {
     protected final static CardCollection getDefinedCardsOrTargeted(final SpellAbility sa) {                            return getCards(true,  "Defined",    sa); }
     protected final static CardCollection getDefinedCardsOrTargeted(final SpellAbility sa, final String definedParam) { return getCards(true,  definedParam, sa); }
 
+    protected static List<Card> getTargetCardsWithDuplicates(final boolean definedFirst, final String definedParam, final SpellAbility sa) {
+        List<Card> result = Lists.newArrayList();
+        getCards(definedFirst, definedParam, sa, result);
+        return result;
+    }
+
+    // overloaded variant that returns the unique objects instead of filling a result list
     private static CardCollection getCards(final boolean definedFirst, final String definedParam, final SpellAbility sa) {
+        return getCards(definedFirst, definedParam, sa, null);
+    }
+    private static CardCollection getCards(final boolean definedFirst, final String definedParam, final SpellAbility sa, List<Card> resultDuplicate) {
         if (sa.hasParam("ThisDefinedAndTgts")) {
-            CardCollection cards =
-                    AbilityUtils.getDefinedCards(sa.getHostCard(), sa.getParam("ThisDefinedAndTgts"), sa);
+            CardCollection cards = AbilityUtils.getDefinedCards(sa.getHostCard(), sa.getParam("ThisDefinedAndTgts"), sa);
             cards.addAll(sa.getTargets().getTargetCards());
             return cards;
         }
+
+        CardCollection resultUnique = null;
         final boolean useTargets = sa.usesTargeting() && (!definedFirst || !sa.hasParam(definedParam));
-        return useTargets ? new CardCollection(sa.getTargets().getTargetCards())
-                : AbilityUtils.getDefinedCards(sa.getHostCard(), sa.getParam(definedParam), sa);
+        if (useTargets) {
+            if (resultDuplicate == null) {
+                resultUnique = new CardCollection();
+                resultDuplicate = resultUnique;
+            }
+            Iterables.addAll(resultDuplicate, sa.getTargets().getTargetCards());
+        } else {
+            String[] def = sa.getParamOrDefault(definedParam, "Self").split(" & ");
+            for (String d : def) {
+                CardCollection defResult = AbilityUtils.getDefinedCards(sa.getHostCard(), d, sa);
+                if (resultDuplicate == null) {
+                    resultUnique = defResult;
+                    resultDuplicate = resultUnique;
+                } else {
+                    resultDuplicate.addAll(defResult);
+                }
+            }
+        }
+        return resultUnique;
     }
 
     // Players
@@ -224,16 +252,44 @@ public abstract class SpellAbilityEffect {
     protected final static PlayerCollection getDefinedPlayersOrTargeted(final SpellAbility sa) {                            return getPlayers(true,  "Defined",    sa); }
     protected final static PlayerCollection getDefinedPlayersOrTargeted(final SpellAbility sa, final String definedParam) { return getPlayers(true,  definedParam, sa); }
 
+    protected static List<Player> getTargetPlayersWithDuplicates(final boolean definedFirst, final String definedParam, final SpellAbility sa) {
+        List<Player> result = Lists.newArrayList();
+        getPlayers(definedFirst, definedParam, sa, result);
+        return result;
+    }
+
+    // overloaded variant that returns the unique objects instead of filling a result list
     private static PlayerCollection getPlayers(final boolean definedFirst, final String definedParam, final SpellAbility sa) {
+        return getPlayers(definedFirst, definedParam, sa, null);
+    }
+    private static PlayerCollection getPlayers(final boolean definedFirst, final String definedParam, final SpellAbility sa, List<Player> resultDuplicate) {
+        PlayerCollection resultUnique = null;
         final boolean useTargets = sa.usesTargeting() && (!definedFirst || !sa.hasParam(definedParam));
-        PlayerCollection players = useTargets ? new PlayerCollection(sa.getTargets().getTargetPlayers())
-                : AbilityUtils.getDefinedPlayers(sa.getHostCard(), sa.getParam(definedParam), sa);
-        // try sort in APNAP order
-        int indexAP = players.indexOf(sa.getHostCard().getGame().getPhaseHandler().getPlayerTurn());
-        if (indexAP != -1) {
-            Collections.rotate(players, - indexAP);
+        if (useTargets) {
+            if (resultDuplicate == null) {
+                resultUnique = new PlayerCollection();
+                resultDuplicate = resultUnique;
+            }
+            Iterables.addAll(resultDuplicate, sa.getTargets().getTargetPlayers());
+        } else {
+            String[] def = sa.getParamOrDefault(definedParam, "You").split(" & ");
+            for (String d : def) {
+                PlayerCollection defResult = AbilityUtils.getDefinedPlayers(sa.getHostCard(), d, sa);
+                if (resultDuplicate == null) {
+                    resultUnique = defResult;
+                    resultDuplicate = resultUnique;
+                } else {
+                    resultDuplicate.addAll(defResult);
+                }
+            }
         }
-        return players;
+
+        // try sort in APNAP order
+        int indexAP = resultDuplicate.indexOf(sa.getHostCard().getGame().getPhaseHandler().getPlayerTurn());
+        if (indexAP != -1) {
+            Collections.rotate(resultDuplicate, - indexAP);
+        }
+        return resultUnique;
     }
 
     // Spells
@@ -326,7 +382,7 @@ public abstract class SpellAbilityEffect {
         }
         delTrig.append("| TriggerDescription$ ").append(desc);
 
-        final Trigger trig = TriggerHandler.parseTrigger(delTrig.toString(), CardUtil.getLKICopy(sa.getHostCard()), intrinsic);
+        final Trigger trig = TriggerHandler.parseTrigger(delTrig.toString(), CardCopyService.getLKICopy(sa.getHostCard()), intrinsic);
         long ts = sa.getHostCard().getGame().getNextTimestamp();
         for (final Card c : crds) {
             trig.addRemembered(c);
@@ -480,11 +536,7 @@ public abstract class SpellAbilityEffect {
             eff.copyChangedTextFrom(card);
         }
 
-        // TODO: Add targeting to the effect so it knows who it's dealing with
-        game.getTriggerHandler().suppressMode(TriggerType.ChangesZone);
-        game.getAction().moveTo(ZoneType.Command, eff, sa, null);
-        eff.updateStateForView();
-        game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
+        game.getAction().moveToCommand(eff, sa);
     }
 
     protected static void addLeaveBattlefieldReplacement(final Card eff, final String zone) {
@@ -508,7 +560,7 @@ public abstract class SpellAbilityEffect {
         final Game game = hostCard.getGame();
         final Card eff = new Card(game.nextCardId(), game);
 
-        eff.setTimestamp(game.getNextTimestamp());
+        eff.setGameTimestamp(game.getNextTimestamp());
         eff.setName(name);
         eff.setColor(hostCard.getColor().getColor());
         // if name includes emblem then it should be one
@@ -572,8 +624,8 @@ public abstract class SpellAbilityEffect {
                     "| Origin$ Battlefield | Destination$ Graveyard " +
                     "| Description$ If that permanent would die this turn, exile it instead.";
             String effect = "DB$ ChangeZone | Defined$ ReplacedCard | Origin$ Battlefield | Destination$ " + zone;
-            if (sa.hasParam("ReplaceDyingRemember")) {
-                effect += " | RememberToEffectSource$ True";
+            if (sa.hasParam("ReplaceDyingExiledWith")) {
+                effect += " | ExiledWithEffectSource$ True";
             }
 
             ReplacementEffect re = ReplacementHandler.parseReplacement(repeffstr, eff, true);
@@ -592,65 +644,43 @@ public abstract class SpellAbilityEffect {
                 eff.copyChangedTextFrom(host);
             }
 
-            final GameCommand endEffect = new GameCommand() {
-                private static final long serialVersionUID = -5861759814760561373L;
+            game.getEndOfTurn().addUntil(exileEffectCommand(game, eff));
 
-                @Override
-                public void run() {
-                    game.getAction().exile(eff, null, null);
-                }
-            };
-
-            game.getEndOfTurn().addUntil(endEffect);
-
-            // TODO: Add targeting to the effect so it knows who it's dealing with
-            game.getTriggerHandler().suppressMode(TriggerType.ChangesZone);
-            game.getAction().moveTo(ZoneType.Command, eff, sa, null);
-            eff.updateStateForView();
-            game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
+            game.getAction().moveToCommand(eff, sa);
         }
     }
 
-    protected static boolean addToCombat(Card c, Player controller, SpellAbility sa, String attackingParam, String blockingParam) {
+    protected static boolean addToCombat(Card c, SpellAbility sa, String attackingParam, String blockingParam) {
         final Card host = sa.getHostCard();
-        final Game game = controller.getGame();
+        final Game game = host.getGame();
         if (!c.isCreature() || !game.getPhaseHandler().inCombat()) {
             return false;
         }
         boolean combatChanged = false;
         final Combat combat = game.getCombat();
 
-        if (sa.hasParam(attackingParam) && combat.getAttackingPlayer().equals(controller)) {
+        if (sa.hasParam(attackingParam) && combat.getAttackingPlayer().equals(c.getController())) {
             String attacking = sa.getParam(attackingParam);
 
             GameEntity defender = null;
-            FCollection<GameEntity> defs = null;
+            FCollection<GameEntity> defs = new FCollection<>();
             // important to update defenders here, maybe some PW got removed
             combat.initConstraints();
-            if (sa.hasParam("ChoosePlayerOrPlaneswalker")) {
-                PlayerCollection defendingPlayers = AbilityUtils.getDefinedPlayers(sa.hasParam("ForEach") ? c : host, attacking, sa);
-                defs = new FCollection<>(defendingPlayers);
-                defs.addAll(Iterables.filter(combat.getDefendingPlaneswalkers(), CardPredicates.isControlledByAnyOf(defendingPlayers)));
-            } else if ("True".equalsIgnoreCase(attacking)) {
-                defs = (FCollection<GameEntity>) combat.getDefenders();
+            if ("True".equalsIgnoreCase(attacking)) {
+                defs.addAll(combat.getDefenders());
             } else {
-                defs = AbilityUtils.getDefinedEntities(host, attacking, sa);
+                defs.addAll(AbilityUtils.getDefinedEntities(sa.hasParam("ForEach") ? c : host, attacking.split(" & "), sa));
             }
 
-            if (defs != null) {
-                Map<String, Object> params = Maps.newHashMap();
-                params.put("Attacker", c);
-                Player chooser;
-                if (sa.hasParam("Chooser")) {
-                    chooser = Iterables.getFirst(AbilityUtils.getDefinedPlayers(host, sa.getParam("Chooser"), sa), null);
-                } else {
-                    chooser = controller;
-                }
-                defender = chooser.getController().chooseSingleEntityForEffect(defs, sa,
-                        Localizer.getInstance().getMessage("lblChooseDefenderToAttackWithCard", CardTranslation.getTranslatedName(c.getName())), false, params);
-            }
+            Map<String, Object> params = Maps.newHashMap();
+            params.put("Attacker", c);
+            defender = sa.getActivatingPlayer().getController().chooseSingleEntityForEffect(defs, sa,
+                    Localizer.getInstance().getMessage("lblChooseDefenderToAttackWithCard", CardTranslation.getTranslatedName(c.getName())), false, params);
 
-            if (defender != null) {
+            if (defender != null && !combat.getAttackersOf(defender).contains(c)) {
+                // we might be reselecting
+                combat.removeFromCombat(c);
+
                 combat.addAttacker(c, defender);
                 combat.getBandOfAttacker(c).setBlocked(false);
                 combatChanged = true;
@@ -702,7 +732,7 @@ public abstract class SpellAbilityEffect {
 
         final Card lki;
         if (sa.hasParam("ReturnAbility")) {
-            lki = CardUtil.getLKICopy(hostCard);
+            lki = CardCopyService.getLKICopy(hostCard);
             lki.clearControllers();
             lki.setOwner(sa.getActivatingPlayer());
         } else {
@@ -731,7 +761,7 @@ public abstract class SpellAbilityEffect {
                         }
                         // better check if card didn't changed zones again?
                         Card newCard = game.getCardState(c, null);
-                        if (newCard == null || !newCard.equalsWithTimestamp(c)) {
+                        if (newCard == null || !newCard.equalsWithGameTimestamp(c)) {
                             continue;
                         }
                         if (sa.hasAdditionalAbility("ReturnAbility")) {
@@ -766,18 +796,17 @@ public abstract class SpellAbilityEffect {
         };
     }
 
-    protected static void discard(SpellAbility sa, CardZoneTable table, final boolean effect, Map<Player, CardCollectionView> discardedMap, Map<AbilityKey, Object> params) {
+    protected static void discard(SpellAbility sa, final boolean effect, Map<Player, CardCollectionView> discardedMap, Map<AbilityKey, Object> params) {
         Set<Player> discarders = discardedMap.keySet();
+        Map<Player, List<Card>> discardedBefore = Maps.newHashMap();
         for (Player p : discarders) {
+            discardedBefore.put(p, Lists.newArrayList(p.getDiscardedThisTurn()));
             final CardCollection discardedByPlayer = new CardCollection();
             for (Card card : Lists.newArrayList(discardedMap.get(p))) { // without copying will get concurrent modification exception
                 if (card == null) { continue; }
-                if (p.discard(card, sa, effect, table, params) != null) {
-                    discardedByPlayer.add(card);
-
-                    if (sa.hasParam("RememberDiscarded")) {
-                        sa.getHostCard().addRemembered(card);
-                    }
+                Card moved = p.discard(card, sa, effect, params);
+                if (moved != null) {
+                    discardedByPlayer.add(moved);
                 }
             }
             discardedMap.put(p, discardedByPlayer);
@@ -786,11 +815,10 @@ public abstract class SpellAbilityEffect {
         for (Player p : discarders) {
             CardCollectionView discardedByPlayer = discardedMap.get(p);
             if (!discardedByPlayer.isEmpty()) {
-                boolean firstDiscard = p.getNumDiscardedThisTurn() - discardedByPlayer.size() == 0;
                 final Map<AbilityKey, Object> runParams = AbilityKey.mapFromPlayer(p);
                 runParams.put(AbilityKey.Cards, discardedByPlayer);
                 runParams.put(AbilityKey.Cause, sa);
-                runParams.put(AbilityKey.FirstTime, firstDiscard);
+                runParams.put(AbilityKey.DiscardedBefore, discardedBefore.get(p));
                 p.getGame().getTriggerHandler().runTrigger(TriggerType.DiscardedAll, runParams, false);
 
                 if (sa.hasParam("RememberDiscardingPlayers")) {
@@ -881,6 +909,27 @@ public abstract class SpellAbilityEffect {
         }
     }
 
+    protected static boolean checkValidDuration(String duration, SpellAbility sa) {
+        if (duration == null) {
+            return true;
+        }
+        Card hostCard = sa.getHostCard();
+
+        //if host is not on the battlefield don't apply
+        // Suspend should does Affect the Stack
+        if ((duration.startsWith("UntilHostLeavesPlay") || "UntilLoseControlOfHost".equals(duration) || "UntilUntaps".equals(duration))
+                && !(hostCard.isInPlay() || hostCard.isInZone(ZoneType.Stack))) {
+            return false;
+        }
+        if ("UntilLoseControlOfHost".equals(duration) && hostCard.getController() != sa.getActivatingPlayer()) {
+            return false;
+        }
+        if ("UntilUntaps".equals(duration) && !hostCard.isTapped()) {
+            return false;
+        }
+        return true;
+    }
+
     public static Player getNewChooser(final SpellAbility sa, final Player activator, final Player loser) {
         // CR 800.4g
         final PlayerCollection options;
@@ -898,11 +947,17 @@ public abstract class SpellAbilityEffect {
         }
     }
     public static void handleExiledWith(final Card movedCard, final SpellAbility cause) {
+        handleExiledWith(movedCard, cause, cause.getHostCard());
+    }
+    public static void handleExiledWith(final Card movedCard, final SpellAbility cause, Card exilingSource) {
         if (movedCard.isToken()) {
             return;
         }
 
-        Card exilingSource = cause.getHostCard();
+        if (cause.hasParam("ExiledWithEffectSource")) {
+            exilingSource = exilingSource.getEffectSource();
+        }
+
         // during replacement LKI might be used
         if (cause.isReplacementAbility() && exilingSource.isLKI()) {
             exilingSource = exilingSource.getGame().getCardState(exilingSource);
@@ -919,5 +974,16 @@ public abstract class SpellAbilityEffect {
         }
         movedCard.setExiledWith(exilingSource);
         movedCard.setExiledBy(cause.getActivatingPlayer());
+    }
+
+    public static GameCommand exileEffectCommand(final Game game, final Card effect) {
+        return new GameCommand() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void run() {
+                game.getAction().exileEffect(effect);
+            }
+        };
     }
 }

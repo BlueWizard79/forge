@@ -10,6 +10,7 @@ import forge.adventure.data.*;
 import forge.adventure.pointofintrest.PointOfInterestChanges;
 import forge.adventure.scene.AdventureDeckEditor;
 import forge.adventure.scene.DeckEditScene;
+import forge.adventure.stage.MapStage;
 import forge.adventure.util.*;
 import forge.adventure.world.WorldSave;
 import forge.card.ColorSet;
@@ -452,29 +453,24 @@ public class AdventurePlayer implements Serializable, SaveFileContent {
         setSelectedDeckSlot(data.readInt("selectedDeckIndex"));
         cards.addAll(CardPool.fromCardList(Lists.newArrayList((String[]) data.readObject("cards"))));
 
-        //newCards.addAll(InventoryItem data.readObject("cards"))));
-        data.storeObject("newCards", newCards.toFlatList().toArray(new InventoryItem[0]));
-        data.storeObject("autoSellCards", autoSellCards.toFlatList().toArray(new InventoryItem[0]));
-        data.storeObject("noSellCards", noSellCards.toFlatList().toArray(new InventoryItem[0]));
-
-//        if (data.containsKey("newCards")) {
-//            InventoryItem[] items = (InventoryItem[]) data.readObject("newCards");
-//            for (InventoryItem item : items){
-//                newCards.add((PaperCard)item);
-//            }
-//        }
-//        if (data.containsKey("noSellCards")) {
-//            PaperCard[] items = (PaperCard[]) data.readObject("noSellCards");
-//            for (PaperCard item : items){
-//                noSellCards.add(item);
-//            }
-//        }
-//        if (data.containsKey("autoSellCards")) {
-//            PaperCard[] items = (PaperCard[]) data.readObject("autoSellCards");
-//            for (PaperCard item : items){
-//                autoSellCards.add(item);
-//            }
-//        }
+        if (data.containsKey("newCards")) {
+            InventoryItem[] items = (InventoryItem[]) data.readObject("newCards");
+            for (InventoryItem item : items){
+                newCards.add((PaperCard)item);
+            }
+        }
+        if (data.containsKey("noSellCards")) {
+            PaperCard[] items = (PaperCard[]) data.readObject("noSellCards");
+            for (PaperCard item : items){
+                noSellCards.add(item);
+            }
+        }
+        if (data.containsKey("autoSellCards")) {
+            PaperCard[] items = (PaperCard[]) data.readObject("autoSellCards");
+            for (PaperCard item : items){
+                autoSellCards.add(item);
+            }
+        }
 
         fantasyMode = data.containsKey("fantasyMode") && data.readBool("fantasyMode");
         announceFantasy = data.containsKey("announceFantasy") && data.readBool("announceFantasy");
@@ -590,6 +586,9 @@ public class AdventurePlayer implements Serializable, SaveFileContent {
     public TextureRegion avatar() {
         return HeroListData.getAvatar(heroRace, isFemale, avatarIndex);
     }
+    public String raceName() {
+        return HeroListData.getRaces().get(Current.player().heroRace);
+    }
 
     public void addCard(PaperCard card) {
         cards.add(card);
@@ -613,7 +612,7 @@ public class AdventurePlayer implements Serializable, SaveFileContent {
                 break;
             case Item:
                 if (reward.getItem() != null)
-                    inventoryItems.add(reward.getItem().name);
+                    addItem(reward.getItem().name);
                 break;
             case CardPack:
                 if (reward.getDeck() != null) {
@@ -931,6 +930,7 @@ public class AdventurePlayer implements Serializable, SaveFileContent {
         if (item == null)
             return false;
         inventoryItems.add(name);
+        AdventureQuestController.instance().updateItemReceived(item);
         return true;
     }
 
@@ -1014,15 +1014,18 @@ public class AdventurePlayer implements Serializable, SaveFileContent {
 
     public void addQuest(AdventureQuestData q) {
         //TODO: add a config flag for this
-        boolean autoTrack = true;
+        boolean noTrackedQuests = true;
         for (AdventureQuestData existing : quests) {
-            if (autoTrack && existing.isTracked) {
-                autoTrack = false;
+            if (noTrackedQuests && existing.isTracked) {
+                noTrackedQuests = false;
                 break;
             }
         }
-        q.isTracked = autoTrack;
         quests.add(q);
+        if (noTrackedQuests || q.autoTrack)
+            AdventureQuestController.trackQuest(q);
+        q.activateNextStages();
+        AdventureQuestController.instance().showQuestDialogs(MapStage.getInstance());
     }
 
     public List<AdventureQuestData> getQuests() {

@@ -47,7 +47,7 @@ import forge.game.staticability.StaticAbilityCantAttach;
 import forge.game.zone.ZoneType;
 
 public abstract class GameEntity extends GameObject implements IIdentifiable {
-    protected final int id;
+    protected int id;
     private String name = "";
     protected CardCollection attachedCards = new CardCollection();
     protected Map<CounterType, Integer> counters = Maps.newHashMap();
@@ -363,7 +363,7 @@ public abstract class GameEntity extends GameObject implements IIdentifiable {
             if (isCombat != null && dmg.getRight() != isCombat) {
                 continue;
             }
-            if (source != null && !getGame().getDamageLKI(dmg).getLeft().equalsWithTimestamp(source)) {
+            if (source != null && !getGame().getDamageLKI(dmg).getLeft().equalsWithGameTimestamp(source)) {
                 continue;
             }
             num += dmg.getLeft();

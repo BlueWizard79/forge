@@ -44,19 +44,9 @@ public class PumpEffect extends SpellAbilityEffect {
         final String duration = sa.getParam("Duration");
         final boolean perpetual = ("Perpetual").equals(duration);
 
-        //if host is not on the battlefield don't apply
-        // Suspend should does Affect the Stack
-        if (((duration != null && duration.startsWith("UntilHostLeavesPlay")) || "UntilLoseControlOfHost".equals(duration))
-                && !(host.isInPlay() || host.isInZone(ZoneType.Stack))) {
-            return;
-        }
-        if ("UntilLoseControlOfHost".equals(duration) && host.getController() != sa.getActivatingPlayer()) {
-            return;
-        }
-
         // do Game Check there in case of LKI
         final Card gameCard = game.getCardState(applyTo, null);
-        if (gameCard == null || !applyTo.equalsWithTimestamp(gameCard)) {
+        if (gameCard == null || !applyTo.equalsWithGameTimestamp(gameCard)) {
             return;
         }
         final List<String> kws = Lists.newArrayList();
@@ -149,15 +139,7 @@ public class PumpEffect extends SpellAbilityEffect {
 
     private static void applyPump(final SpellAbility sa, final Player p,
             final List<String> keywords, final long timestamp) {
-        final Card host = sa.getHostCard();
         final String duration = sa.getParam("Duration");
-
-        //if host is not on the battlefield don't apply
-        // Suspend should does Affect the Stack
-        if (((duration != null && duration.startsWith("UntilHostLeavesPlay")) || "UntilLoseControlOfHost".equals(duration))
-                && !(host.isInPlay() || host.isInZone(ZoneType.Stack))) {
-            return;
-        }
 
         if (!keywords.isEmpty()) {
             p.addChangedKeywords(keywords, ImmutableList.of(), timestamp, 0);
@@ -294,6 +276,10 @@ public class PumpEffect extends SpellAbilityEffect {
 
     @Override
     public void resolve(final SpellAbility sa) {
+        if (!checkValidDuration(sa.getParam("Duration"), sa)) {
+            return;
+        }
+
         final Player activator = sa.getActivatingPlayer();
         final Game game = activator.getGame();
         final Card host = sa.getHostCard();
@@ -310,8 +296,15 @@ public class PumpEffect extends SpellAbilityEffect {
                     Localizer.getInstance().getMessage("lblChooseKeyword"), tgtCards.get(0));
             keywords.add(chosen);
         }
-        final int a = AbilityUtils.calculateAmount(host, sa.getParam("NumAtt"), sa, !sa.hasParam("Double"));
-        final int d = AbilityUtils.calculateAmount(host, sa.getParam("NumDef"), sa, !sa.hasParam("Double"));
+        
+        int a = 0;
+        int d = 0;
+        if (sa.hasParam("NumAtt") && !sa.getParam("NumAtt").equals("Double")) {
+            a = AbilityUtils.calculateAmount(host, sa.getParam("NumAtt"), sa, true);
+        }
+        if (sa.hasParam("NumDef") && !sa.getParam("NumDef").equals("Double")) {
+            d = AbilityUtils.calculateAmount(host, sa.getParam("NumDef"), sa, true);
+        }
 
         if (sa.hasParam("SharedKeywordsZone")) {
             List<ZoneType> zones = ZoneType.listValueOf(sa.getParam("SharedKeywordsZone"));
@@ -434,7 +427,9 @@ public class PumpEffect extends SpellAbilityEffect {
         }
         if (sa.hasParam("ClearNotedCardsFor")) {
             for (Player p : tgtPlayers) {
-                p.clearNotesForName(sa.getParam("ClearNotedCardsFor"));
+                for (String s : sa.getParam("ClearNotedCardsFor").split(",")) {
+                    p.clearNotesForName(s);
+                }
             }
         }
 
@@ -500,6 +495,13 @@ public class PumpEffect extends SpellAbilityEffect {
                         return input;
                     }
                 });
+            }
+
+            if (sa.hasParam("NumAtt") && sa.getParam("NumAtt").equals("Double")) {
+                a = tgtC.getNetPower();
+            }
+            if (sa.hasParam("NumDef") && sa.getParam("NumDef").equals("Double")) {
+                d = tgtC.getNetToughness();
             }
 
             applyPump(sa, tgtC, a, d, affectedKeywords, timestamp);

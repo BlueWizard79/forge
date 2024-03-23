@@ -18,6 +18,7 @@ public enum ApiType {
     AddOrRemoveCounter (CountersPutOrRemoveEffect.class),
     AddPhase (AddPhaseEffect.class),
     AddTurn (AddTurnEffect.class),
+    AlterAttribute (AlterAttributeEffect.class),
     Amass (AmassEffect.class),
     Animate (AnimateEffect.class),
     AnimateAll (AnimateAllEffect.class),
@@ -52,6 +53,7 @@ public enum ApiType {
     Clash (ClashEffect.class),
     ClassLevelUp (ClassLevelUpEffect.class),
     Cleanup (CleanUpEffect.class),
+    Cloak (CloakEffect.class),
     Clone (CloneEffect.class),
     CompanionChoose (ChooseCompanionEffect.class),
     Connive (ConniveEffect.class),
@@ -202,7 +204,9 @@ public enum ApiType {
     DamageResolve (DamageResolveEffect.class),
     ChangeZoneResolve (ChangeZoneResolveEffect.class),
     InternalLegendaryRule (CharmEffect.class),
-    InternalIgnoreEffect (CharmEffect.class);
+    InternalIgnoreEffect (CharmEffect.class),
+    InternalRadiation (InternalRadiationEffect.class),
+    ;
 
     private final SpellAbilityEffect instanceEffect;
     private final Class<? extends SpellAbilityEffect> clsEffect;

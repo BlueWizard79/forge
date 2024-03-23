@@ -84,7 +84,7 @@ public class SetStateEffect extends SpellAbilityEffect {
             // gameCard is LKI in that case, the card is not in game anymore
             // or the timestamp did change
             // this should check Self too
-            if (gameCard == null || !tgtCard.equalsWithTimestamp(gameCard)) {
+            if (gameCard == null || !tgtCard.equalsWithGameTimestamp(gameCard)) {
                 continue;
             }
 
@@ -109,13 +109,13 @@ public class SetStateEffect extends SpellAbilityEffect {
                         }
                     }
                     if (hasNonPermanent) {
-                        Card lki = CardUtil.getLKICopy(nonPermanentCard);
+                        Card lki = CardCopyService.getLKICopy(nonPermanentCard);
                         lki.forceTurnFaceUp();
                         game.getAction().reveal(new CardCollection(lki), lki.getOwner(), true, Localizer.getInstance().getMessage("lblFaceDownCardCantTurnFaceUp"));
                         continue;
                     }
                 } else if (!gameCard.getState(CardStateName.Original).getType().isPermanent()) {
-                    Card lki = CardUtil.getLKICopy(gameCard);
+                    Card lki = CardCopyService.getLKICopy(gameCard);
                     lki.forceTurnFaceUp();
                     game.getAction().reveal(new CardCollection(lki), lki.getOwner(), true, Localizer.getInstance().getMessage("lblFaceDownCardCantTurnFaceUp"));
 
@@ -161,10 +161,8 @@ public class SetStateEffect extends SpellAbilityEffect {
             }
 
             boolean hasTransformed = false;
-            if (sa.isMorphUp()) {
+            if (sa.isTurnFaceUp()) {
                 hasTransformed = gameCard.turnFaceUp(sa);
-            } else if (sa.isManifestUp()) {
-                hasTransformed = gameCard.turnFaceUp(true, true, sa);
             } else if ("Specialize".equals(mode)) {
                 hasTransformed = gameCard.changeCardState(mode, host.getChosenColor(), sa);
                 host.setChosenColors(null);
@@ -182,10 +180,15 @@ public class SetStateEffect extends SpellAbilityEffect {
                 } else if (sa.isManifestUp()) {
                     String sb = p + " has unmanifested " + gameCard.getName();
                     game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
+                } else if (sa.isDisguiseUp()) {
+                    String sb = p + " has undisguised " + gameCard.getName();
+                    game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
+                } else if (sa.isCloakUp()) {
+                    String sb = p + " has uncloaked " + gameCard.getName();
+                    game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
                 } else if (hiddenAgenda) {
                     if (gameCard.hasKeyword("Double agenda")) {
-                        String sb = p + " has revealed " + gameCard.getName() + " with the chosen names: " +
-                                gameCard.getNamedCards();
+                        String sb = p + " has revealed " + gameCard.getName() + " with the chosen names: " + gameCard.getNamedCards();
                         game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
                     } else {
                         String sb = p + " has revealed " + gameCard.getName() + " with the chosen name " + gameCard.getNamedCard();

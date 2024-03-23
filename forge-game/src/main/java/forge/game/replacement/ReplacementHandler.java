@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import forge.game.card.*;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -41,12 +42,6 @@ import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
-import forge.game.card.Card;
-import forge.game.card.CardCollection;
-import forge.game.card.CardCollectionView;
-import forge.game.card.CardDamageMap;
-import forge.game.card.CardState;
-import forge.game.card.CardUtil;
 import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.spellability.AbilitySub;
@@ -96,7 +91,7 @@ public class ReplacementHandler {
 
             // Rule 614.12 Enter the Battlefield Replacement Effects look at what the card would be on the battlefield
             affectedCard = (Card) runParams.get(AbilityKey.Affected);
-            affectedLKI = CardUtil.getLKICopy(affectedCard);
+            affectedLKI = CardCopyService.getLKICopy(affectedCard);
             affectedLKI.setLastKnownZone(affectedCard.getController().getZone(ZoneType.Battlefield));
 
             // need to apply Counters to check its future state on the battlefield
@@ -123,22 +118,19 @@ public class ReplacementHandler {
             public boolean visit(Card crd) {
                 Card c = preList.get(crd);
                 Zone cardZone = game.getZoneOf(c);
-                Zone lkiZone = game.getChangeZoneLKIInfo(c).getLastKnownZone();
 
                 // only when not prelist
-                boolean noLKIstate = c != crd || event != ReplacementType.Moved;
-                // might be inbound token
-                noLKIstate |= lkiZone == null || !lkiZone.is(ZoneType.Battlefield);
-                noLKIstate |= !runParams.containsKey(AbilityKey.LastStateBattlefield) || runParams.get(AbilityKey.LastStateBattlefield) == null;
+                boolean noLKIstate = c != crd || event != ReplacementType.Moved || c.isImmutable() || runParams.get(AbilityKey.LastStateBattlefield) == null;
                 if (!noLKIstate) {
-                    Card lastState = ((CardCollectionView) runParams.get(AbilityKey.LastStateBattlefield)).get(crd);
-                    // no LKI found for this card so it shouldn't apply, this can happen during simultaneous zone changes
-                    if (lastState == crd) {
+                    Card lastState = ((CardCollectionView) runParams.get(AbilityKey.LastStateBattlefield)).get(c);
+                    if (lastState != c) {
+                        // use LKI because it has the right RE from the state before the effect started
+                        c = lastState;
+                        cardZone = lastState.getLastKnownZone();
+                    } else if (cardZone.is(ZoneType.Battlefield)) {
+                        // no LKI found so it shouldn't apply, this can happen during simultaneous zone changes
                         return true;
                     }
-                    // use the LKI because it has the right RE from the state before the effect started
-                    c = lastState;
-                    cardZone = lkiZone;
                 }
 
                 for (final ReplacementEffect replacementEffect : c.getReplacementEffects()) {
@@ -172,7 +164,7 @@ public class ReplacementHandler {
                    affectedCard.addKeywordForStaticAbility(affectedCard.getCastSA().getKeyword());
                 }
                 runParams.put(AbilityKey.Affected, affectedCard);
-                runParams.put(AbilityKey.NewCard, CardUtil.getLKICopy(affectedLKI));
+                runParams.put(AbilityKey.NewCard, CardCopyService.getLKICopy(affectedLKI));
             }
             game.getAction().checkStaticAbilities(false);
         }
@@ -312,7 +304,7 @@ public class ReplacementHandler {
                 replacementEffect.setReplacingObjects(runParams, tailend);
                 //set original Params to update them later
                 tailend.setReplacingObject(AbilityKey.OriginalParams, runParams);
-                tailend.setReplacingObjectsFrom(runParams, AbilityKey.SimultaneousETB);
+                tailend.setReplacingObjectsFrom(runParams, AbilityKey.InternalTriggerTable, AbilityKey.SimultaneousETB);
                 tailend = tailend.getSubAbility();
             } while(tailend != null);
 
@@ -336,7 +328,7 @@ public class ReplacementHandler {
 
             String name = CardTranslation.getTranslatedName(host.getCardForUi().getName());
             String effectDesc = TextUtil.fastReplace(replacementEffect.getDescription(), "CARDNAME", name);
-            final String question = replacementEffect instanceof ReplaceDiscard
+            final String question = runParams.containsKey(AbilityKey.Card)
                 ? Localizer.getInstance().getMessage("lblApplyCardReplacementEffectToCardConfirm", name, runParams.get(AbilityKey.Card).toString(), effectDesc)
                 : Localizer.getInstance().getMessage("lblApplyReplacementEffectOfCardConfirm", name, effectDesc);
             GameEntity affected = (GameEntity) runParams.get(AbilityKey.Affected);

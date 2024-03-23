@@ -16,6 +16,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
 import forge.ImageKeys;
+import forge.StaticData;
 import forge.card.CardEdition;
 import forge.card.CardRarity;
 import forge.card.CardRules;
@@ -143,6 +144,9 @@ public class CardView extends GameEntityView {
 
     public boolean isManifested() {
         return get(TrackableProperty.Manifested);
+    }
+    public boolean isCloaked() {
+        return get(TrackableProperty.Cloaked);
     }
 
     public boolean isFlipCard() {
@@ -793,13 +797,6 @@ public class CardView extends GameEntityView {
 
         sb.append(getRemembered());
 
-        PlayerView chosenPlayer = getChosenPlayer();
-        if (chosenPlayer != null) {
-            sb.append("\r\n[Chosen player: ");
-            sb.append(chosenPlayer);
-            sb.append("]\r\n");
-        }
-
         Direction chosenDirection = getChosenDirection();
         if (chosenDirection != null) {
             sb.append("\r\n[Chosen direction: ");
@@ -833,7 +830,6 @@ public class CardView extends GameEntityView {
                 sb.append(" each combat.");
                 sb.append("\r\n");
             }
-
         }
 
         Set<String> cantHaveKeyword = this.getCantHaveKeyword();
@@ -936,7 +932,7 @@ public class CardView extends GameEntityView {
             updateIntensity(c);
         }
 
-        if (getBackup() == null && !c.isFaceDown() && (c.isDoubleFaced()||c.isFlipCard()||c.isAdventureCard())) {
+        if (getBackup() == null && !c.isFaceDown() && (c.isDoubleFaced() || c.isFlipCard() || c.isAdventureCard() || c.isCloned())) {
             set(TrackableProperty.PaperCardBackup, c.getPaperCard());
         }
 
@@ -947,6 +943,7 @@ public class CardView extends GameEntityView {
         set(TrackableProperty.Facedown, c.isFaceDown());
         set(TrackableProperty.Foretold, c.isForetold());
         set(TrackableProperty.Manifested, c.isManifested());
+        set(TrackableProperty.Cloaked, c.isCloaked());
         set(TrackableProperty.Adventure, c.isAdventureCard());
         set(TrackableProperty.DoubleFaced, c.isDoubleFaced());
         set(TrackableProperty.Modal, c.isModal());
@@ -1002,7 +999,8 @@ public class CardView extends GameEntityView {
 
             // update the color only while in Game
             if (c.getGame() != null) {
-                currentStateView.updateColors(currentState);
+                if (c.hasPerpetual()) currentStateView.updateColors(c);
+                else currentStateView.updateColors(currentState);
                 currentStateView.updateHasChangeColors(!Iterables.isEmpty(c.getChangedCardColors()));
             }
         } else {
@@ -1229,11 +1227,19 @@ public class CardView extends GameEntityView {
                 if (getCard().getZone() == ZoneType.Exile) {
                     return ImageKeys.getTokenKey(getCard().isForeTold() ? ImageKeys.FORETELL_IMAGE : ImageKeys.HIDDEN_CARD);
                 }
-                return ImageKeys.getTokenKey(getCard().isManifested() ? ImageKeys.MANIFEST_IMAGE
-                        : getType().getCreatureTypes().isEmpty() ? isCreature() ? ImageKeys.MORPH_IMAGE : ImageKeys.HIDDEN_CARD
+                if (getCard().isManifested()) {
+                    return ImageKeys.getTokenKey(ImageKeys.MANIFEST_IMAGE);
+                } else if (getCard().isCloaked()) {
+                    return ImageKeys.getTokenKey(ImageKeys.CLOAKED_IMAGE);
+                }
+
+                return ImageKeys.getTokenKey(getType().getCreatureTypes().isEmpty() ? isCreature() ? ImageKeys.MORPH_IMAGE : ImageKeys.HIDDEN_CARD
                         : getType().getCreatureTypes().toString().toLowerCase().replace(" ", "_").replace("[", "").replace("]",""));
             }
             if (canBeShownToAny(viewers)) {
+                if (isCloned() && StaticData.instance().useSourceImageForClone()) {
+                    return getBackup().getCurrentState().getImageKey(viewers);
+                }
                 return get(TrackableProperty.ImageKey);
             }
             return ImageKeys.getTokenKey(ImageKeys.HIDDEN_CARD);
@@ -1273,6 +1279,9 @@ public class CardView extends GameEntityView {
             return get(TrackableProperty.ManaCost);
         }
         void updateManaCost(CardState c) {
+            set(TrackableProperty.ManaCost, c.getManaCost());
+        }
+        void updateManaCost(Card c) {
             set(TrackableProperty.ManaCost, c.getManaCost());
         }
 

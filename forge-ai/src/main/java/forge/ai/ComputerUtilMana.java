@@ -592,7 +592,7 @@ public class ComputerUtilMana {
 
         if (cost.isPaid()) {
             // refund any mana taken from mana pool when test
-            ManaPool.refundMana(manaSpentToPay, ai, sa);
+            ai.getManaPool().refundMana(manaSpentToPay);
             CostPayment.handleOfferings(sa, true, cost.isPaid());
             return manaSources;
         }
@@ -600,7 +600,7 @@ public class ComputerUtilMana {
         // arrange all mana abilities by color produced.
         final ListMultimap<Integer, SpellAbility> manaAbilityMap = groupSourcesByManaColor(ai, true);
         if (manaAbilityMap.isEmpty()) {
-            ManaPool.refundMana(manaSpentToPay, ai, sa);
+            ai.getManaPool().refundMana(manaSpentToPay);
             CostPayment.handleOfferings(sa, true, cost.isPaid());
             return manaSources;
         }
@@ -648,7 +648,7 @@ public class ComputerUtilMana {
         }
 
         CostPayment.handleOfferings(sa, true, cost.isPaid());
-        ManaPool.refundMana(manaSpentToPay, ai, sa);
+        ai.getManaPool().refundMana(manaSpentToPay);
 
         return manaSources;
     }
@@ -677,7 +677,10 @@ public class ComputerUtilMana {
                 AbilityUtils.applyManaColorConversion(manapool, sa.getGrantorStatic().getParam("ManaConversion"));
             }
         }
-        StaticAbilityManaConvert.manaConvert(manapool, ai, sa.getHostCard(), effect ? null : sa);
+        if (sa.hasParam("ManaConversion")) {
+            AbilityUtils.applyManaColorConversion(manapool, sa.getParam("ManaConversion"));
+        }
+        StaticAbilityManaConvert.manaConvert(manapool, ai, sa.getHostCard(), effect && !sa.isCastFromPlayEffect() ? null : sa);
 
         if (ManaPool.payManaCostFromPool(cost, sa, ai, test, manaSpentToPay)) {
             return true;    // paid all from floating mana
@@ -855,7 +858,7 @@ public class ComputerUtilMana {
 
         // The cost is still unpaid, so refund the mana and report
         if (!cost.isPaid()) {
-            ManaPool.refundMana(manaSpentToPay, ai, sa);
+            manapool.refundMana(manaSpentToPay);
             if (test) {
                 resetPayment(paymentList);
             } else {
@@ -865,7 +868,7 @@ public class ComputerUtilMana {
         }
 
         if (test) {
-            ManaPool.refundMana(manaSpentToPay, ai, sa);
+            manapool.refundMana(manaSpentToPay);
             resetPayment(paymentList);
         }
 
@@ -976,7 +979,7 @@ public class ComputerUtilMana {
             // Check if AI can still play this mana ability
             ma.setActivatingPlayer(ai, true);
             // if the AI can't pay the additional costs skip the mana ability
-            if (!CostPayment.canPayAdditionalCosts(ma.getPayCosts(), ma)) {
+            if (!CostPayment.canPayAdditionalCosts(ma.getPayCosts(), ma, false)) {
                 return false;
             } else if (ma.getRestrictions() != null && ma.getRestrictions().isInstantSpeed()) {
                 return false;
@@ -1517,7 +1520,7 @@ public class ComputerUtilMana {
                 if (cost != null) {
                     // if the AI can't pay the additional costs skip the mana ability
                     m.setActivatingPlayer(ai, true);
-                    if (!CostPayment.canPayAdditionalCosts(m.getPayCosts(), m)) {
+                    if (!CostPayment.canPayAdditionalCosts(m.getPayCosts(), m, false)) {
                         continue;
                     }
 

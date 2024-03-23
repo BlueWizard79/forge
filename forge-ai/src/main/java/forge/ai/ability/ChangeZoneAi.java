@@ -62,7 +62,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
                     }
                     int amt = part.getAbilityAmount(sa);
                     needed += amt;
-                    CardCollection toAdd = ComputerUtil.chooseExileFrom(ai, (CostExile) part, source, amt, sa);
+                    CardCollection toAdd = ComputerUtil.chooseExileFrom(ai, (CostExile) part, source, amt, sa, true);
                     if (toAdd != null) {
                         payingCards.addAll(toAdd);
                     }
@@ -344,12 +344,11 @@ public class ChangeZoneAi extends SpellAbilityAi {
         Iterable<Player> pDefined = Lists.newArrayList(source.getController());
         final TargetRestrictions tgt = sa.getTargetRestrictions();
         if (tgt != null && tgt.canTgtPlayer()) {
+            sa.resetTargets();
             boolean isCurse = sa.isCurse();
             if (isCurse && sa.canTarget(opponent)) {
-                sa.resetTargets();
                 sa.getTargets().add(opponent);
             } else if (!isCurse && sa.canTarget(ai)) {
-                sa.resetTargets();
                 sa.getTargets().add(ai);
             }
             if (!sa.isTargetNumberValid()) {
@@ -756,7 +755,7 @@ public class ChangeZoneAi extends SpellAbilityAi {
                 // (e.g. Reassembing Skeleton + Elesh Norn, Grand Cenobite)
                 for (final Card c : retrieval) {
                     if (c.isCreature()) {
-                        final Card copy = CardUtil.getLKICopy(c);
+                        final Card copy = CardCopyService.getLKICopy(c);
                         ComputerUtilCard.applyStaticContPT(c.getGame(), copy, null);
                         if (copy.getNetToughness() <= 0) {
                             return false;

@@ -29,7 +29,6 @@ import com.google.common.collect.Lists;
 import forge.card.mana.ManaAtom;
 import forge.card.mana.ManaCostShard;
 import forge.game.Game;
-import forge.game.GlobalRuleChange;
 import forge.game.ability.AbilityKey;
 import forge.game.cost.CostPayment;
 import forge.game.event.EventValueChangeType;
@@ -112,7 +111,7 @@ public class ManaPool extends ManaConversionMatrix implements Iterable<Mana> {
 
     public final boolean hasBurn() {
         final Game game = owner.getGame();
-        return game.getRules().hasManaBurn() || game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.manaBurn);
+        return game.getRules().hasManaBurn() || StaticAbilityUnspentMana.hasManaBurn(owner);
     }
 
     public final List<Mana> clearPool(boolean isEndOfPhase) {
@@ -185,17 +184,12 @@ public class ManaPool extends ManaConversionMatrix implements Iterable<Mana> {
         return removeMana(mana, true);
     }
     public boolean removeMana(final Mana mana, boolean updateView) {
-        boolean success = false;
-        // make sure to remove the most recent in case of rollback
-        int lastIdx = floatingMana.get(mana.getColor()).lastIndexOf(mana);
-        if (lastIdx != -1) {
-            success = floatingMana.get(mana.getColor()).remove(lastIdx) != null;
-        }
-        if (success && updateView) {
+        boolean result = floatingMana.remove(mana.getColor(), mana);
+        if (result && updateView) {
             owner.updateManaForView();
             owner.getGame().fireEvent(new GameEventManaPool(owner, EventValueChangeType.Removed, mana));
         }
-        return success;
+        return result;
     }
 
     public final void payManaFromAbility(final SpellAbility saPaidFor, ManaCostBeingPaid manaCost, final SpellAbility saPayment) {
@@ -299,8 +293,8 @@ public class ManaPool extends ManaConversionMatrix implements Iterable<Mana> {
         return true;
     }
 
-    public static void refundMana(List<Mana> manaSpent, Player player, SpellAbility sa) {
-        player.getManaPool().add(manaSpent);
+    public void refundMana(List<Mana> manaSpent) {
+        add(manaSpent);
         manaSpent.clear();
     }
 
@@ -310,7 +304,7 @@ public class ManaPool extends ManaConversionMatrix implements Iterable<Mana> {
         // Send all mana back to your mana pool, before accounting for it.
 
         // move non-undoable paying mana back to floating
-        refundMana(sa.getPayingMana(), owner, sa);
+        refundMana(sa.getPayingMana());
 
         List<SpellAbility> payingAbilities = sa.getPayingManaAbilities();
 
@@ -383,7 +377,7 @@ public class ManaPool extends ManaConversionMatrix implements Iterable<Mana> {
         if (cost.isPaid()) {
             // refund any mana taken from mana pool when test
             if (test) {
-                refundMana(manaSpentToPay, player, sa);
+                player.getManaPool().refundMana(manaSpentToPay);
             }
             CostPayment.handleOfferings(sa, test, cost.isPaid());
             return true;

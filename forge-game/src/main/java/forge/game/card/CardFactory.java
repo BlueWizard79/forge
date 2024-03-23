@@ -70,50 +70,6 @@ import java.util.Map.Entry;
 public class CardFactory {
     /**
      * <p>
-     * copyCard.
-     * </p>
-     *
-     * @param in
-     *            a {@link forge.game.card.Card} object.
-     * @return a {@link forge.game.card.Card} object.
-     */
-    public final static Card copyCard(final Card in, boolean assignNewId) {
-        Card out;
-        if (!(in.isRealToken() || in.getCopiedPermanent() != null)) {
-            out = assignNewId ? getCard(in.getPaperCard(), in.getOwner(), in.getGame())
-                              : getCard(in.getPaperCard(), in.getOwner(), in.getId(), in.getGame());
-        } else { // token
-            out = CardFactory.copyStats(in, in.getController(), assignNewId);
-            out.setToken(true);
-
-            // need to copy this values for the tokens
-            out.setTokenSpawningAbility(in.getTokenSpawningAbility());
-        }
-
-        out.setZone(in.getZone());
-        out.setState(in.getFaceupCardStateName(), true);
-        out.setBackSide(in.isBackSide());
-
-        // this's necessary for forge.game.GameAction.unattachCardLeavingBattlefield(Card)
-        out.setAttachedCards(in.getAttachedCards());
-        out.setEntityAttachedTo(in.getEntityAttachedTo());
-
-        out.setSpecialized(in.isSpecialized());
-        out.addRemembered(in.getRemembered());
-        out.addImprintedCards(in.getImprintedCards());
-        out.setCommander(in.isRealCommander());
-        //out.setFaceDown(in.isFaceDown());
-
-        int foil = in.getCurrentState().getFoil();
-        if (foil > 0) {
-            out.setFoil(foil);
-        }
-
-        return out;
-    }
-
-    /**
-     * <p>
      * copySpellHost.
      * Helper function for copySpellAbilityAndPossiblyHost.
      * creates a copy of the card hosting the ability we want to copy.
@@ -121,14 +77,14 @@ public class CardFactory {
      * which wouldn't ordinarily get set during a simple Card.copy() call.
      * </p>
      * */
-    private final static Card copySpellHost(final SpellAbility sourceSA, final SpellAbility targetSA, Player controller) {
+    private static Card copySpellHost(final SpellAbility sourceSA, final SpellAbility targetSA, Player controller) {
         final Card source = sourceSA.getHostCard();
         final Card original = targetSA.getHostCard();
         final Game game = source.getGame();
         int id = game.nextCardId();
 
         // need to create a physical card first, i need the original card faces
-        final Card copy = CardFactory.getCard(original.getPaperCard(), controller, id, game);
+        final Card copy = getCard(original.getPaperCard(), controller, id, game);
 
         if (original.isTransformable()) {
             // 707.8a If an effect creates a token that is a copy of a transforming permanent or a transforming double-faced card not on the battlefield,
@@ -216,10 +172,10 @@ public class CardFactory {
         return copySA;
     }
 
-    public final static Card getCard(final IPaperCard cp, final Player owner, final Game game) {
+    public static Card getCard(final IPaperCard cp, final Player owner, final Game game) {
         return getCard(cp, owner, owner == null ? -1 : owner.getGame().nextCardId(), game);
     }
-    public final static Card getCard(final IPaperCard cp, final Player owner, final int cardId, final Game game) {
+    public static Card getCard(final IPaperCard cp, final Player owner, final int cardId, final Game game) {
         CardRules cardRules = cp.getRules();
         final Card c = readCard(cardRules, cp, cardId, game);
         c.setRules(cardRules);
@@ -318,40 +274,9 @@ public class CardFactory {
 
         // ******************************************************************
         // ************** Link to different CardFactories *******************
-        if (card.isPlane()) {
-            buildPlaneAbilities(card);
-        }
         buildBattleAbilities(card);
         CardFactoryUtil.setupKeywordedAbilities(card); // Should happen AFTER setting left/right split abilities to set Fuse ability to both sides
         card.updateStateForView();
-    }
-
-    private static void buildPlaneAbilities(Card card) {
-        String trigger = "Mode$ PlanarDice | Result$ Planeswalk | TriggerZones$ Command | Secondary$ True | " +
-                "TriggerDescription$ Whenever you roll the Planeswalker symbol on the planar die, planeswalk.";
-
-        String rolledWalk = "DB$ Planeswalk | Cause$ PlanarDie";
-
-        Trigger planesWalkTrigger = TriggerHandler.parseTrigger(trigger, card, true);
-        planesWalkTrigger.setOverridingAbility(AbilityFactory.getAbility(rolledWalk, card));
-        card.addTrigger(planesWalkTrigger);
-
-        String chaosTrig = "Mode$ PlanarDice | Result$ Chaos | TriggerZones$ Command | Static$ True";
-
-        String rolledChaos = "DB$ ChaosEnsues";
-
-        Trigger chaosTrigger = TriggerHandler.parseTrigger(chaosTrig, card, true);
-        chaosTrigger.setOverridingAbility(AbilityFactory.getAbility(rolledChaos, card));
-        card.addTrigger(chaosTrigger);
-
-        String specialA = "ST$ RollPlanarDice | Cost$ X | SorcerySpeed$ True | Activator$ Player | SpecialAction$ True" +
-                " | ActivationZone$ Command | SpellDescription$ Roll the planar dice. X is equal to the number of " +
-                "times you have previously taken this action this turn. | CostDesc$ {X}: ";
-
-        SpellAbility planarRoll = AbilityFactory.getAbility(specialA, card);
-        planarRoll.setSVar("X", "Count$PlanarDiceSpecialActionThisTurn");
-
-        card.addSpellAbility(planarRoll);
     }
 
     private static void buildBattleAbilities(Card card) {
@@ -486,124 +411,7 @@ public class CardFactory {
         CardFactoryUtil.addAbilityFactoryAbilities(c, face.getAbilities());
     }
 
-    /**
-     * Copy the copiable characteristics of one card to another, taking the
-     * states of both cards into account.
-     *
-     * @param from the {@link Card} to copy from.
-     * @param to the {@link Card} to copy to.
-     */
-    @Deprecated
-    public static void copyCopiableCharacteristics(final Card from, final Card to, SpellAbility sourceSA, SpellAbility targetSA) {
-        final boolean toIsFaceDown = to.isFaceDown();
-        if (toIsFaceDown) {
-            // If to is face down, copy to its front side
-            to.setState(CardStateName.Original, false);
-            copyCopiableCharacteristics(from, to, sourceSA, targetSA);
-            to.setState(CardStateName.FaceDown, false);
-            return;
-        }
-
-        final boolean fromIsFlipCard = from.isFlipCard();
-        final boolean fromIsTransformedCard = from.getCurrentStateName() == CardStateName.Transformed || from.getCurrentStateName() == CardStateName.Meld;
-
-        if (fromIsFlipCard) {
-            if (to.getCurrentStateName().equals(CardStateName.Flipped)) {
-                copyState(from, CardStateName.Original, to, CardStateName.Original);
-            } else {
-                copyState(from, CardStateName.Original, to, to.getCurrentStateName());
-            }
-            copyState(from, CardStateName.Flipped, to, CardStateName.Flipped);
-        } else if (from.isTransformable()
-                && sourceSA != null && ApiType.CopySpellAbility.equals(sourceSA.getApi())
-                && targetSA != null && targetSA.isSpell() && targetSA.getHostCard().isPermanent()) {
-            copyState(from, CardStateName.Original, to, CardStateName.Original);
-            copyState(from, CardStateName.Transformed, to, CardStateName.Transformed);
-            // 707.10g If an effect creates a copy of a transforming permanent spell, the copy is also a transforming permanent spell that has both a front face and a back face.
-            // The characteristics of its front and back face are determined by the copiable values of the same face of the spell it is a copy of, as modified by any other copy effects.
-            // If the spell it is a copy of has its back face up, the copy is created with its back face up. The token that’s put onto the battlefield as that spell resolves is a transforming token.
-            to.setBackSide(from.isBackSide());
-            if (from.isTransformed()) {
-                to.incrementTransformedTimestamp();
-            }
-        } else if (fromIsTransformedCard) {
-            copyState(from, from.getCurrentStateName(), to, CardStateName.Original);
-        } else {
-            copyState(from, from.getCurrentStateName(), to, to.getCurrentStateName());
-        }
-    }
-
-    /**
-     * <p>
-     * Copy stats like power, toughness, etc. from one card to another.
-     * </p>
-     * <p>
-     * The copy is made independently for each state of the input {@link Card}.
-     * This amounts to making a full copy of the card, including the current
-     * state.
-     * </p>
-     *
-     * @param in
-     *            the {@link forge.game.card.Card} to be copied.
-     * @param newOwner
-     * 			  the {@link forge.game.player.Player} to be the owner of the newly
-     * 			  created Card.
-     * @return a new {@link forge.game.card.Card}.
-     */
-    public static Card copyStats(final Card in, final Player newOwner, boolean assignNewId) {
-        int id = in.getId();
-        if (assignNewId) {
-            id = newOwner == null ? 0 : newOwner.getGame().nextCardId();
-        }
-        final Card c = new Card(id, in.getPaperCard(), in.getGame());
-
-        c.setOwner(newOwner);
-        c.setSetCode(in.getSetCode());
-
-        for (final CardStateName state : in.getStates()) {
-            CardFactory.copyState(in, state, c, state);
-        }
-
-        c.setState(in.getCurrentStateName(), false);
-        c.setRules(in.getRules());
-        if (in.isTransformed()) {
-            c.incrementTransformedTimestamp();
-        }
-
-        return c;
-    }
-
-    /**
-     * Copy characteristics of a particular state of one card to those of a
-     * (possibly different) state of another.
-     *
-     * @param from
-     *            the {@link Card} to copy from.
-     * @param fromState
-     *            the {@link CardStateName} of {@code from} to copy from.
-     * @param to
-     *            the {@link Card} to copy to.
-     * @param toState
-     *            the {@link CardStateName} of {@code to} to copy to.
-     */
-    public static void copyState(final Card from, final CardStateName fromState, final Card to,
-            final CardStateName toState) {
-        copyState(from, fromState, to, toState, true);
-    }
-    public static void copyState(final Card from, final CardStateName fromState, final Card to,
-            final CardStateName toState, boolean updateView) {
-        // copy characteristics not associated with a state
-        to.setText(from.getSpellText());
-
-        // get CardCharacteristics for desired state
-        if (!to.getStates().contains(toState)) {
-            to.addAlternateState(toState, updateView);
-        }
-        final CardState toCharacteristics = to.getState(toState), fromCharacteristics = from.getState(fromState);
-        toCharacteristics.copyFrom(fromCharacteristics, false);
-    }
-
-    public static void copySpellAbility(SpellAbility from, SpellAbility to, final Card host, final Player p, final boolean lki) {
+    public static void copySpellAbility(SpellAbility from, SpellAbility to, final Card host, final Player p, final boolean lki, final boolean keepTextChanges) {
         if (from.usesTargeting()) {
             to.setTargetRestrictions(from.getTargetRestrictions());
         }
@@ -611,16 +419,16 @@ public class CardFactory {
         to.setStackDescription(from.getOriginalStackDescription());
 
         if (from.getSubAbility() != null) {
-            to.setSubAbility((AbilitySub) from.getSubAbility().copy(host, p, lki));
+            to.setSubAbility((AbilitySub) from.getSubAbility().copy(host, p, lki, keepTextChanges));
         }
         for (Map.Entry<String, SpellAbility> e : from.getAdditionalAbilities().entrySet()) {
-            to.setAdditionalAbility(e.getKey(), e.getValue().copy(host, p, lki));
+            to.setAdditionalAbility(e.getKey(), e.getValue().copy(host, p, lki, keepTextChanges));
         }
         for (Map.Entry<String, List<AbilitySub>> e : from.getAdditionalAbilityLists().entrySet()) {
             to.setAdditionalAbilityList(e.getKey(), Lists.transform(e.getValue(), new Function<AbilitySub, AbilitySub>() {
                 @Override
                 public AbilitySub apply(AbilitySub input) {
-                    return (AbilitySub) input.copy(host, p, lki);
+                    return (AbilitySub) input.copy(host, p, lki, keepTextChanges);
                 }
             }));
         }

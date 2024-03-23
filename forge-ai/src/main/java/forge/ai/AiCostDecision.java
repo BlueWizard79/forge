@@ -57,6 +57,14 @@ public class AiCostDecision extends CostDecisionMakerBase {
     }
 
     @Override
+    public PaymentDecision visit(CostCollectEvidence cost) {
+        int c = cost.getAbilityAmount(ability);
+        CardCollectionView chosen = ComputerUtil.chooseCollectEvidence(player, cost, source, c, ability, isEffect());
+
+        return null == chosen ? null : PaymentDecision.card(chosen);
+    }
+
+    @Override
     public PaymentDecision visit(CostDiscard cost) {
         final String type = cost.getType();
         CardCollectionView hand = player.getCardsIn(ZoneType.Hand);
@@ -162,7 +170,7 @@ public class AiCostDecision extends CostDecisionMakerBase {
             // TODO Determine exile from same zone for AI
             return null;
         } else {
-            CardCollectionView chosen = ComputerUtil.chooseExileFrom(player, cost, source, c, ability);
+            CardCollectionView chosen = ComputerUtil.chooseExileFrom(player, cost, source, c, ability, isEffect());
             return null == chosen ? null : PaymentDecision.card(chosen);
         }
     }
@@ -498,7 +506,7 @@ public class AiCostDecision extends CostDecisionMakerBase {
     }
 
     @Override
-    public PaymentDecision visit(CostRevealChosenPlayer cost) {
+    public PaymentDecision visit(CostRevealChosen cost) {
         return PaymentDecision.number(1);
     }
 

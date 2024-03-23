@@ -54,6 +54,7 @@
 	"Goblin Chief",
     "Goblin Fanatic",
 	"Goblin Warrior",
+	"Hedgehog",
 	"Heart-Piercer Manticore",
 	"Hellhound",
 	"Hellion",
@@ -125,7 +126,8 @@
 	"Temple of Chandra",
 	"Tibalts Fortress",
 	"Zedruu City",
-	"Lavaforge Kobold"
+	"Lavaforge Kobold",
+	"Quest_ShardMines"
 ],
 "structures": [
 	{

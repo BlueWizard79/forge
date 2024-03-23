@@ -251,6 +251,15 @@ public final class CardPredicates {
         };
     }
 
+    public static final Predicate<Card> canExiledBy(final SpellAbility sa, final boolean effect) {
+        return new Predicate<Card>() {
+            @Override
+            public boolean apply(final Card c) {
+                return c.canExiledBy(sa, effect);
+            }
+        };
+    }
+
     public static final Predicate<Card> canBeAttached(final Card aura, final SpellAbility sa) {
         return new Predicate<Card>() {
             @Override
@@ -454,11 +463,11 @@ public final class CardPredicates {
         };
     }
 
-    public static final Comparator<Card> compareByTimestamp() {
+    public static final Comparator<Card> compareByGameTimestamp() {
         return new Comparator<Card>() {
             @Override
             public int compare(Card arg0, Card arg1) {
-                return Long.compare(arg0.getTimestamp(), arg1.getTimestamp());
+                return Long.compare(arg0.getGameTimestamp(), arg1.getGameTimestamp());
             }
         };
     }

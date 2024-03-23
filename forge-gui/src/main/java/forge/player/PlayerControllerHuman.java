@@ -1225,21 +1225,14 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
     public CardCollectionView chooseCardsToDiscardUnlessType(final int num, final CardCollectionView hand,
                                                              final String uType, final SpellAbility sa) {
         String[] splitUTypes = uType.split(",");
-        final InputSelectEntitiesFromList<Card> target = new InputSelectEntitiesFromList<Card>(this, num, num, hand,
-                sa) {
+        final InputSelectEntitiesFromList<Card> target = new InputSelectEntitiesFromList<Card>(this, num, num, hand, sa) {
             private static final long serialVersionUID = -5774108410928795591L;
 
             @Override
             protected boolean hasEnoughTargets() {
                 for (final Card c : selected) {
-                    for (String part : splitUTypes) {
-                        if (c.getType().hasStringType(part)) {
-                            return true;
-                        } else if (part.equals("Basic Land")) {
-                            if (c.isBasicLand()) {
-                                return true;
-                            }
-                        }
+                    if (c.isValid(splitUTypes, sa.getActivatingPlayer(), sa.getHostCard(), sa)) {
+                        return true;
                     }
                 }
                 return super.hasEnoughTargets();
@@ -1414,7 +1407,10 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public Object vote(final SpellAbility sa, final String prompt, final List<Object> options,
-                       final ListMultimap<Object, Player> votes, Player forPlayer) {
+                       final ListMultimap<Object, Player> votes, Player forPlayer, boolean optional) {
+        if (optional) {
+            return getGui().oneOrNone(prompt, options);
+        }
         return getGui().one(prompt, options);
     }
 
@@ -2847,7 +2843,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
             PaperCard c = carddb.getUniqueByName(f.getOracleName());
             final Card forgeCard = Card.fromPaperCard(c, p);
-            forgeCard.setTimestamp(getGame().getNextTimestamp());
+            forgeCard.setGameTimestamp(getGame().getNextTimestamp());
 
             PaperCard finalC = c;
             getGame().getAction().invoke(() -> {
@@ -2910,7 +2906,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                             // Human player is choosing targets for an ability
                             // controlled by chosen player.
                             sa.setActivatingPlayer(p);
-                            sa.setSVar("IsCastFromPlayEffect", "True");
+                            sa.setCastFromPlayEffect(true);
                             HumanPlay.playSaWithoutPayingManaCost(PlayerControllerHuman.this, getGame(), sa, true);
                         }
                         // playSa could fire some triggers

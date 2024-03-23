@@ -18,6 +18,7 @@ import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.*;
 import forge.game.event.GameEventRandomLog;
+import forge.game.keyword.Keyword;
 import forge.game.player.Player;
 import forge.game.player.PlayerActionConfirmMode;
 import forge.game.player.PlayerController;
@@ -147,7 +148,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
             }
         } else if (sa.hasParam("Choices")) {
             int n = AbilityUtils.calculateAmount(card, sa.getParamOrDefault("ChoiceAmount", "1"), sa);
-            String what = (sa.getParamOrDefault("ChoicesDesc", sa.getParam("Choices")));
+            String what = sa.getParamOrDefault("ChoicesDesc", sa.getParam("Choices"));
             stringBuilder.append(Lang.nounWithNumeralExceptOne(n, what));
         } else {
             final List<Card> targetCards = SpellAbilityEffect.getTargetCards(sa);
@@ -260,7 +261,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
                 if (obj instanceof Card) {
                     Card tgtCard = (Card) obj;
                     Card gameCard = game.getCardState(tgtCard, null);
-                    if (gameCard == null || !tgtCard.equalsWithTimestamp(gameCard)) {
+                    if (gameCard == null || !tgtCard.equalsWithGameTimestamp(gameCard)) {
                         tgtObjects.remove(obj);
                     } else {
                         targets.add(gameCard);
@@ -295,7 +296,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
                     // gameCard is LKI in that case, the card is not in game anymore
                     // or the timestamp did change
                     // this should check Self too
-                    if (gameCard == null || !tgtCard.equalsWithTimestamp(gameCard)) {
+                    if (gameCard == null || !tgtCard.equalsWithGameTimestamp(gameCard)) {
                         continue;
                     }
                 }
@@ -486,9 +487,9 @@ public class CountersPutEffect extends SpellAbilityEffect {
                         }
                     }
 
-                    if (sa.hasParam("Tribute")) {
+                    if (sa.isKeyword(Keyword.TRIBUTE)) {
                         // make a copy to check if it would be on the battlefield
-                        Card noTributeLKI = CardUtil.getLKICopy(gameCard);
+                        Card noTributeLKI = CardCopyService.getLKICopy(gameCard);
                         // this check needs to check if this card would be on the battlefield
                         noTributeLKI.setLastKnownZone(activator.getZone(ZoneType.Battlefield));
 
@@ -535,17 +536,13 @@ public class CountersPutEffect extends SpellAbilityEffect {
                         gameCard.addCounter(counterType, counterAmount, placer, table);
                     }
 
-                    if (sa.hasParam("Evolve")) {
-                        game.getTriggerHandler().runTrigger(TriggerType.Evolved, AbilityKey.mapFromCard(gameCard),
-                                false);
-                    }
                     if (sa.hasParam("Monstrosity")) {
                         gameCard.setMonstrous(true);
                         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(gameCard);
                         runParams.put(AbilityKey.MonstrosityAmount, counterAmount);
                         game.getTriggerHandler().runTrigger(TriggerType.BecomeMonstrous, runParams, false);
                     }
-                    if (sa.hasParam("Renown")) {
+                    if (sa.isKeyword(Keyword.RENOWN)) {
                         gameCard.setRenowned(true);
                         game.getTriggerHandler().runTrigger(TriggerType.BecomeRenowned,
                                 AbilityKey.mapFromCard(gameCard), false);
@@ -554,9 +551,11 @@ public class CountersPutEffect extends SpellAbilityEffect {
                         game.getTriggerHandler().runTrigger(TriggerType.Adapt, AbilityKey.mapFromCard(gameCard),
                                 false);
                     }
-                    if (sa.hasParam("Training")) {
-                        game.getTriggerHandler().runTrigger(TriggerType.Trains, AbilityKey.mapFromCard(gameCard),
-                                false);
+
+                    if (sa.isKeyword(Keyword.MENTOR)) {
+                        final Map<AbilityKey, Object> runParams = AbilityKey.mapFromCard(gameCard);
+                        runParams.put(AbilityKey.Source, sa.getHostCard());
+                        game.getTriggerHandler().runTrigger(TriggerType.Mentored, runParams, false);
                     }
 
                     game.updateLastStateForCard(gameCard);

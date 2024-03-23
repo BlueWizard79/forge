@@ -65,13 +65,14 @@ public class HumanPlay {
     public final static boolean playSpellAbility(final PlayerControllerHuman controller, final Player p, SpellAbility sa) {
         FThreads.assertExecutedByEdt(false);
 
+        // Should I be storing state here? It should be the same as last stored state though?
+
         Card source = sa.getHostCard();
         sa.setActivatingPlayer(p);
 
         if (sa instanceof LandAbility) {
             if (sa.canPlay()) {
                 sa.resolve();
-                p.getGame().updateLastStateForCard(source);
             }
             return false;
         }
@@ -115,6 +116,7 @@ public class HumanPlay {
                     rollback.addMayLookTemp(p);
                 }
             }
+
             return false;
         }
         return true;
@@ -251,7 +253,8 @@ public class HumanPlay {
                     || part instanceof CostRemoveCounter
                     || part instanceof CostRemoveAnyCounter
                     || part instanceof CostMill
-                    || part instanceof CostSacrifice) {
+                    || part instanceof CostSacrifice
+                    || part instanceof CostCollectEvidence) {
                 PaymentDecision pd = part.accept(hcd);
 
                 if (pd == null) {
@@ -327,8 +330,7 @@ public class HumanPlay {
                         costExile.payAsDecided(p, PaymentDecision.card(newList), sourceAbility, hcd.isEffect());
                     }
                 }
-            }
-            else if (part instanceof CostPutCardToLib) {
+            } else if (part instanceof CostPutCardToLib) {
                 int amount = Integer.parseInt(part.getAmount());
                 final ZoneType from = ((CostPutCardToLib) part).getFrom();
                 final boolean sameZone = ((CostPutCardToLib) part).isSameZone();
@@ -422,7 +424,7 @@ public class HumanPlay {
                 if (!hasPaid) { return false; }
             }
             else if (part instanceof CostTapType) {
-                CardCollectionView list = CardLists.getValidCards(p.getCardsIn(ZoneType.Battlefield), part.getType(), p, source, sourceAbility);
+                CardCollectionView list = CardLists.getValidCards(p.getCardsIn(ZoneType.Battlefield), part.getType().split(";"), p, source, sourceAbility);
                 list = CardLists.filter(list, Presets.CAN_TAP);
                 int amount = part.getAbilityAmount(sourceAbility);
                 boolean hasPaid = payCostPart(controller, p, sourceAbility, hcd.isEffect(), (CostPartWithList)part, amount, list, Localizer.getInstance().getMessage("lblTap") + orString);
@@ -510,26 +512,26 @@ public class HumanPlay {
     }
 
     private static boolean handleOfferingConvokeAndDelve(final SpellAbility ability, CardCollection cardsToDelve, boolean manaInputCancelled) {
-        Card hostCard = ability.getHostCard();
+        final Card hostCard = ability.getHostCard();
         final Game game = hostCard.getGame();
+        final CardZoneTable table = new CardZoneTable(game.getLastStateBattlefield(), game.getLastStateGraveyard());
+        Map<AbilityKey, Object> params = AbilityKey.newMap();
+        AbilityKey.addCardZoneTableParams(params, table);
 
-        final CardZoneTable table = new CardZoneTable();
         if (!manaInputCancelled && !cardsToDelve.isEmpty()) {
             for (final Card c : cardsToDelve) {
                 hostCard.addDelved(c);
-                final ZoneType o = c.getZone().getZoneType();
-                final Card d = game.getAction().exile(c, null, null);
+                final Card d = game.getAction().exile(c, null, params);
                 hostCard.addExiledCard(d);
                 d.setExiledWith(hostCard);
                 d.setExiledBy(hostCard.getController());
-                table.put(o, d.getZone().getZoneType(), d);
             }
         }
         if (ability.isOffering() && ability.getSacrificedAsOffering() != null) {
             final Card offering = ability.getSacrificedAsOffering();
             offering.setUsedToPay(false);
             if (!manaInputCancelled) {
-                game.getAction().sacrifice(offering, ability, false, table, null);
+                game.getAction().sacrifice(offering, ability, false, params);
             }
             ability.resetSacrificedAsOffering();
         }
@@ -537,7 +539,7 @@ public class HumanPlay {
             final Card emerge = ability.getSacrificedAsEmerge();
             emerge.setUsedToPay(false);
             if (!manaInputCancelled) {
-                game.getAction().sacrifice(emerge, ability, false, table, null);
+                game.getAction().sacrifice(emerge, ability, false, params);
                 ability.setSacrificedAsEmerge(game.getChangeZoneLKIInfo(emerge));
             } else {
                 ability.resetSacrificedAsEmerge();

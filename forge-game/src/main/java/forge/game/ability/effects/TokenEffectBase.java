@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import forge.game.card.*;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 
 import com.google.common.collect.Iterables;
@@ -18,13 +19,6 @@ import forge.game.GameEntity;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.SpellAbilityEffect;
-import forge.game.card.Card;
-import forge.game.card.CardCollection;
-import forge.game.card.CardFactory;
-import forge.game.card.CardUtil;
-import forge.game.card.CardZoneTable;
-import forge.game.card.CounterType;
-import forge.game.card.TokenCreateTable;
 import forge.game.card.token.TokenInfo;
 import forge.game.event.GameEventCardStatsChanged;
 import forge.game.player.Player;
@@ -118,14 +112,14 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
             int cellAmount = c.getValue();
 
             for (int i = 0; i < cellAmount; i++) {
-                Card tok = CardFactory.copyCard(prototype, true);
+                Card tok = new CardCopyService(prototype).copyCard(true);
                 // Crafty Cutpurse would change under which control it does enter,
                 // but it shouldn't change who creates the token
                 tok.setOwner(creator);
                 if (creator != controller) {
                     tok.setController(controller, timestamp);
                 }
-                tok.setTimestamp(timestamp);
+                tok.setGameTimestamp(timestamp);
                 tok.setToken(true);
 
                 // do effect stuff with the token
@@ -157,10 +151,9 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
                     tok.setCopiedPermanent(prototype);
                 }
 
-                Card lki = CardUtil.getLKICopy(tok);
+                Card lki = CardCopyService.getLKICopy(tok);
                 moveParams.put(AbilityKey.CardLKI, lki);
 
-                // Should this be catching the Card that's returned?
                 Card moved = game.getAction().moveToPlay(tok, sa, moveParams);
                 if (moved == null || moved.getZone() == null) {
                     // in case token can't enter the battlefield, it isn't created
@@ -185,7 +178,7 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
                     addSelfTrigger(sa, sa.getParam("AtEOTTrig"), moved);
                 }
 
-                if (addToCombat(moved, tok.getController(), sa, "TokenAttacking", "TokenBlocking")) {
+                if (addToCombat(moved, sa, "TokenAttacking", "TokenBlocking")) {
                     combatChanged.setTrue();
                 }
 
@@ -230,7 +223,7 @@ public abstract class TokenEffectBase extends SpellAbilityEffect {
 
         if (aTo != null) {
             // check what the token would be on the battlefield
-            Card lki = CardUtil.getLKICopy(tok);
+            Card lki = CardCopyService.getLKICopy(tok);
 
             lki.setLastKnownZone(tok.getController().getZone(ZoneType.Battlefield));
 

@@ -49,9 +49,7 @@ public class BalanceEffect extends SpellAbilityEffect {
         }
 
         Map<AbilityKey, Object> params = AbilityKey.newMap();
-        params.put(AbilityKey.LastStateBattlefield, game.getLastStateBattlefield());
-        params.put(AbilityKey.LastStateGraveyard, game.getLastStateBattlefield());
-        CardZoneTable table = new CardZoneTable(game.getLastStateBattlefield(), game.getLastStateBattlefield());
+        CardZoneTable table = AbilityKey.addCardZoneTableParams(params, sa);
 
         for (int i = 0; i < players.size(); i++) {
             Player p = players.get(i);
@@ -64,13 +62,13 @@ public class BalanceEffect extends SpellAbilityEffect {
             } else { // Battlefield
                 for (Card card : p.getController().choosePermanentsToSacrifice(sa, numToBalance, numToBalance, validCards.get(i), valid)) {
                     if (null == card) continue;
-                    game.getAction().sacrifice(card, sa, true, table, params);
+                    game.getAction().sacrifice(card, sa, true, params);
                 }
             }
         }
 
         if (zone.equals(ZoneType.Hand)) {
-            discard(sa, table, true, discardedMap, params);
+            discard(sa, true, discardedMap, params);
         }
 
         table.triggerChangesZoneAll(game, sa);

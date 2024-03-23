@@ -543,15 +543,8 @@ public class PlayerControllerAi extends PlayerController {
 
     @Override
     public CardCollectionView chooseCardsToDiscardUnlessType(int num, CardCollectionView hand, String uType, SpellAbility sa) {
-        String [] splitUTypes = uType.split(",");
-        CardCollection cardsOfType = new CardCollection();
-        for (String part : splitUTypes) {
-            CardCollection partCards = CardLists.getType(hand, part);
-            if (!partCards.isEmpty()) {
-                cardsOfType.addAll(partCards);
-            }
-        }
-        if (!cardsOfType.isEmpty()) {
+        Iterable<Card> cardsOfType = Iterables.filter(hand, CardPredicates.restriction(uType.split(","), sa.getActivatingPlayer(), sa.getHostCard(), sa));
+        if (!Iterables.isEmpty(cardsOfType)) {
             Card toDiscard = Aggregates.itemWithMin(cardsOfType, CardPredicates.Accessors.fnGetCmc);
             return new CardCollection(toDiscard);
         }
@@ -574,7 +567,7 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
-    public Object vote(SpellAbility sa, String prompt, List<Object> options, ListMultimap<Object, Player> votes, Player forPlayer) {
+    public Object vote(SpellAbility sa, String prompt, List<Object> options, ListMultimap<Object, Player> votes, Player forPlayer, boolean optional) {
         return ComputerUtil.vote(player, options, sa, votes, forPlayer);
     }
 
@@ -666,7 +659,6 @@ public class PlayerControllerAi extends PlayerController {
         if (sa instanceof LandAbility) {
             if (sa.canPlay()) {
                 sa.resolve();
-                getGame().updateLastStateForCard(sa.getHostCard());
             }
         } else {
             ComputerUtil.handlePlayingSpellAbility(player, sa, getGame());
@@ -1063,9 +1055,13 @@ public class PlayerControllerAi extends PlayerController {
         final Ability emptyAbility = new AbilityStatic(source, cost, sa.getTargetRestrictions()) { @Override public void resolve() { } };
         emptyAbility.setActivatingPlayer(player, true);
         emptyAbility.setTriggeringObjects(sa.getTriggeringObjects());
+        emptyAbility.setReplacingObjects(sa.getReplacingObjects());
+        emptyAbility.setTrigger(sa.getTrigger());
+        emptyAbility.setReplacementEffect(sa.getReplacementEffect());
         emptyAbility.setSVars(sa.getSVars());
         emptyAbility.setCardState(sa.getCardState());
         emptyAbility.setXManaCostPaid(sa.getRootAbility().getXManaCostPaid());
+        emptyAbility.setTargets(sa.getTargets().clone());
 
         if (ComputerUtilCost.willPayUnlessCost(sa, player, cost, alreadyPaid, allPayers)) {
             boolean result = ComputerUtil.playNoStack(player, emptyAbility, getGame(), true); // AI needs something to resolve to pay that cost
@@ -1424,7 +1420,7 @@ public class PlayerControllerAi extends PlayerController {
             if (opt.getType() == OptionalCost.Kicker1 || opt.getType() == OptionalCost.Kicker2) {
                 SpellAbility kickedSaCopy = fullCostSa.copy();
                 kickedSaCopy.addOptionalCost(opt.getType());
-                Card copy = CardUtil.getLKICopy(chosen.getHostCard());
+                Card copy = CardCopyService.getLKICopy(chosen.getHostCard());
                 copy.setCastSA(kickedSaCopy);
                 if (ComputerUtilCard.checkNeedsToPlayReqs(copy, kickedSaCopy) != AiPlayDecision.WillPlay) {
                     continue; // don't choose kickers we don't want to play

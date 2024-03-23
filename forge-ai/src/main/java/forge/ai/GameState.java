@@ -292,6 +292,12 @@ public abstract class GameState {
             if (c.isRenowned()) {
                 newText.append("|Renowned");
             }
+            if (c.isSolved()) {
+                newText.append("|Solved");
+            }
+            if (c.isSuspected()) {
+                newText.append("|Suspected");
+            }
             if (c.isMonstrous()) {
                 newText.append("|Monstrous");
             }
@@ -303,6 +309,9 @@ public abstract class GameState {
                 newText.append("|FaceDown");
                 if (c.isManifested()) {
                     newText.append(":Manifested");
+                }
+                if (c.isCloaked()) {
+                    newText.append(":Cloaked");
                 }
             }
             if (c.getCurrentStateName().equals(CardStateName.Transformed)) {
@@ -401,7 +410,6 @@ public abstract class GameState {
             if (c.isForetoldThisTurn()) {
                 newText.append("|ForetoldThisTurn");
             }
-
         }
 
         if (zoneType == ZoneType.Battlefield || zoneType == ZoneType.Exile) {
@@ -1149,7 +1157,7 @@ public abstract class GameState {
                         // (will be overridden later, so the actual value shouldn't matter)
 
                         //FIXME it shouldn't be able to attach itself
-                        c.setEntityAttachedTo(CardFactory.copyCard(c, true));
+                        c.setEntityAttachedTo(new CardCopyService(c).copyCard(true));
                     }
 
                     if (cardsWithoutETBTrigs.contains(c)) {
@@ -1257,6 +1265,12 @@ public abstract class GameState {
                     c.tap(false, null, null);
                 } else if (info.startsWith("Renowned")) {
                     c.setRenowned(true);
+                } else if (info.startsWith("Solved")) {
+                    c.setSolved(true);
+                } else if (info.startsWith("Saddled")) {
+                    c.setSaddled(true);
+                } else if (info.startsWith("Suspected")) {
+                    c.setSuspected(true);
                 } else if (info.startsWith("Monstrous")) {
                     c.setMonstrous(true);
                 } else if (info.startsWith("PhasedOut")) {
@@ -1270,6 +1284,9 @@ public abstract class GameState {
                     c.turnFaceDown(true);
                     if (info.endsWith("Manifested")) {
                         c.setManifested(true);
+                    }
+                    if (info.endsWith("Cloaked")) {
+                        c.setCloaked(true);
                     }
                 } else if (info.startsWith("Transformed")) {
                     c.setState(CardStateName.Transformed, true);
@@ -1374,7 +1391,7 @@ public abstract class GameState {
                     c.turnFaceDown(true);
                     c.addMayLookTemp(c.getOwner());
                 } else if (info.equals("ForetoldThisTurn")) {
-                    c.setForetoldThisTurn(true);
+                    c.setTurnInZone(turn);
                 } else if (info.equals("IsToken")) {
                     c.setToken(true);
                 }

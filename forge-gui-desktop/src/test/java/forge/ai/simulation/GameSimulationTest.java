@@ -318,7 +318,7 @@ public class GameSimulationTest extends SimulationTest {
                 "Unmanifest");
         AssertJUnit.assertNotNull(unmanifestSA);
         AssertJUnit.assertEquals(2, manifestedCreature.getNetPower());
-        AssertJUnit.assertFalse(manifestedCreature.hasKeyword("Flying"));
+        AssertJUnit.assertFalse(manifestedCreature.hasKeyword(Keyword.FLYING));
 
         GameSimulator sim2 = createSimulator(simGame, simGame.getPlayers().get(1));
         Game simGame2 = sim2.getSimulatedGameState();
@@ -330,7 +330,7 @@ public class GameSimulationTest extends SimulationTest {
 
         Card ornithopter = findCardWithName(simGame2, "Ornithopter");
         AssertJUnit.assertEquals(0, ornithopter.getNetPower());
-        AssertJUnit.assertTrue(ornithopter.hasKeyword("Flying"));
+        AssertJUnit.assertTrue(ornithopter.hasKeyword(Keyword.FLYING));
         AssertJUnit.assertNull(findSAWithPrefix(ornithopter, "Unmanifest"));
 
         GameCopier copier = new GameCopier(simGame2);
@@ -1285,13 +1285,10 @@ public class GameSimulationTest extends SimulationTest {
         Player opp = game.getPlayers().get(1);
 
         addCardToZone("Kalitas, Traitor of Ghet", p, ZoneType.Battlefield);
-        for (int i = 0; i < 4; i++) {
-            addCardToZone("Plains", p, ZoneType.Battlefield);
-        }
 
-        for (int i = 0; i < 2; i++) {
-            addCardToZone("Aboroth", opp, ZoneType.Battlefield);
-        }
+        addCards("Plains", 4, p);
+
+        addCards("Aboroth", 2, opp);
 
         Card wrathOfGod = addCardToZone("Wrath of God", p, ZoneType.Hand);
         game.getPhaseHandler().devModeSet(PhaseType.MAIN2, p);
@@ -1359,12 +1356,12 @@ public class GameSimulationTest extends SimulationTest {
         Card bloodghast = addCardToZone("Bloodghast", p, ZoneType.Battlefield);
         game.getAction().checkStateEffects(true);
 
-        assert (!bloodghast.hasKeyword("Haste"));
+        AssertJUnit.assertFalse(bloodghast.hasKeyword(Keyword.HASTE));
 
         opp.setLife(5, null);
         game.getAction().checkStateEffects(true);
 
-        assert (bloodghast.hasKeyword("Haste"));
+        AssertJUnit.assertTrue(bloodghast.hasKeyword(Keyword.HASTE));
     }
 
     @Test

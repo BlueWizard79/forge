@@ -637,7 +637,8 @@
 		"IdentityWhite",
 		"IdentityBlue",
 		"BiomeWhite",
-		"Loner"
+		"Loner",
+		"Minion"
 	]
 },
 {
@@ -1707,7 +1708,8 @@
 		"IdentityWhite",
 		"IdentityGreen",
 		"IdentitySelesnya",
-		"BiomeWhite"
+		"BiomeWhite",
+		"Minion"
 	]
 },
 {
@@ -1752,6 +1754,7 @@
 		"Human",
 		"Archer",
 		"Soldier",
+		"Leader",
 		"IdentitySelesnya"
 	]
 },
@@ -1937,7 +1940,7 @@
 	"spawnRate": 0.5,
 	"difficulty": 0.1,
 	"speed": 15,
-	"scale": 0.8,
+	"scale": 0.7,
 	"life": 20,
 	"rewards": [
 		{
@@ -2293,7 +2296,8 @@
 		"IdentityRed",
 		"IdentityWhite",
 		"IdentityBoros",
-		"BiomeRed"
+		"BiomeRed",
+		"Minion"
 	]
 },
 {
@@ -3321,7 +3325,8 @@
 		"Zombie",
 		"Humanoid",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -3682,7 +3687,8 @@
 		"IdentityRed",
 		"IdentityGreen",
 		"IdentityGruul",
-		"BiomeRed"
+		"BiomeRed",
+		"Minion"
 	]
 },
 {
@@ -4164,7 +4170,8 @@
 		"IdentityGreen",
 		"IdentityWhite",
 		"IdentitySelesnya",
-		"BiomeWhite"
+		"BiomeWhite",
+		"Minion"
 	]
 },
 {
@@ -4302,7 +4309,8 @@
 		"IdentityGreen",
 		"IdentityWhite",
 		"IdentitySelesnya",
-		"BiomeGreen"
+		"BiomeGreen",
+		"Minion"
 	]
 },
 {
@@ -4781,7 +4789,7 @@
 			"type": "card",
 			"probability": 1,
 			"count": 1,
-			"cardName": "Chandra, Fire Of Kaladesh"
+			"cardName": "Chandra, Fire of Kaladesh"
 		},
 		{
 			"type": "Union",
@@ -4866,7 +4874,8 @@
 		"Chandra",
 		"Fire",
 		"IdentityRed"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Chandra's Acolyte",
@@ -6899,6 +6908,7 @@
 },
 {
 	"name": "Cyclops",
+	"nameOverride": "Youthful Cyclops",
 	"sprite": "sprites/enemy/giant/cyclops.atlas",
 	"deck": [
 		"decks/standard/cyclops.dck"
@@ -6907,7 +6917,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 16,
-	"life": 19,
+	"life": 12,
 	"rewards": [
 		{
 			"type": "deckCard",
@@ -6935,6 +6945,241 @@
 		"Loner",
 		"Mythical",
 		"IdentityRed",
+		"BiomeRed"
+	]
+},
+{
+	"name": "Giant Cyclops",
+	"sprite": "sprites/enemy/giant/cyclops_large.atlas",
+	"deck": [
+		"decks/standard/luckyminotaur.dck"
+	],
+	"ai": "",
+	"spawnRate": 1,
+	"difficulty": 0.1,
+	"speed": 16,
+	"scale": 0.7,
+	"life": 30,
+	"rewards": [
+		{
+			"type": "deckCard",
+			"probability": 1,
+			"count": 4,
+			"addMaxCount": 6,
+			"rarity": [
+				"Common",
+				"Rare",
+				"Uncommon"
+			]
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 100,
+			"addMaxCount": 200
+		},
+		{
+			"type": "shards",
+			"probability": 1,
+			"count": 10,
+			"addMaxCount": 10
+		},
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 2,
+			"addMaxCount": 2,
+			"colors": [
+				"Blue",
+				"Red"
+			],
+			"rarity": [
+				"Rare",
+				"Mythic Rare"
+			],
+			"colorType": "MultiColor"
+		}
+	],
+	"colors": "UR",
+	"questTags": [
+		"Humanoid",
+		"Giant",
+		"Barbarian",
+		"Loner",
+		"Mythical",
+		"IdentityRed",
+		"BiomeRed"
+	]
+},
+{
+	"name": "Mountain Ogre",
+	"sprite": "sprites/enemy/monstrosity/ogre_large.atlas",
+	"deck": [
+		"decks/standard/ogre_large.dck"
+	],
+	"ai": "",
+	"spawnRate": 1,
+	"difficulty": 0.1,
+	"speed": 16,
+	"scale": 0.6,
+	"life": 19,
+	"rewards": [
+		{
+			"type": "deckCard",
+			"probability": 1,
+			"count": 4,
+			"addMaxCount": 6,
+			"rarity": [
+				"Common",
+				"Rare",
+				"Uncommon"
+			]
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 15,
+			"addMaxCount": 85
+		},
+		{
+			"type": "shards",
+			"probability": 1,
+			"count": 5,
+			"addMaxCount": 10
+		},
+		{
+			"type": "card",
+			"probability": 0.5,
+			"count": 1,
+			"addMaxCount": 2,
+			"cardTypes": [
+				"Ogre"
+			]
+		}
+	],
+	"colors": "BR",
+	"questTags": [
+		"Humanoid",
+		"Giant",
+		"Loner",
+		"Mythical",
+		"IdentityRakdos",
+		"Large",
+		"Dungeon"
+	]
+},
+{
+	"name": "Hermit Crab",
+	"sprite": "sprites/enemy/beast/hermitcrab.atlas",
+	"deck": [
+		"decks/standard/hermitcrab.dck"
+	],
+	"ai": "",
+	"spawnRate": 0.5,
+	"difficulty": 0.1,
+	"speed": 15,
+	"scale": 0.8,
+	"life": 20,
+	"rewards": [
+		{
+			"type": "deckCard",
+			"probability": 1,
+			"count": 2,
+			"addMaxCount": 4,
+			"rarity": [
+				"common",
+				"uncommon",
+				"Rare"
+			],
+			"colorType": "Any"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 50,
+			"addMaxCount": 50
+		},
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"colors": [
+				"White",
+				"Green"
+			],
+			"rarity": [
+				"uncommon",
+				"common",
+				"Mythic Rare",
+				"Rare"
+			]
+		}
+	],
+	"colors": "UG",
+	"questTags": [
+		"Animal",
+		"Territorial",
+		"Wild",
+		"Small",
+		"IdentitySimic",
+		"BiomeBlue",
+		"Crab"
+	]
+},
+{
+	"name": "Hedgehog",
+	"sprite": "sprites/enemy/beast/hedgehog.atlas",
+	"deck": [
+		"decks/standard/hedgehog.dck"
+	],
+	"ai": "",
+	"spawnRate": 0.5,
+	"difficulty": 0.1,
+	"speed": 15,
+	"scale": 0.7,
+	"life": 20,
+	"rewards": [
+		{
+			"type": "deckCard",
+			"probability": 1,
+			"count": 2,
+			"addMaxCount": 4,
+			"rarity": [
+				"common",
+				"uncommon",
+				"Rare"
+			],
+			"colorType": "Any"
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 50,
+			"addMaxCount": 50
+		},
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"colors": [
+				"White",
+				"Green"
+			],
+			"rarity": [
+				"uncommon",
+				"common",
+				"Mythic Rare",
+				"Rare"
+			]
+		}
+	],
+	"colors": "G",
+	"questTags": [
+		"Animal",
+		"Territorial",
+		"Wild",
+		"Small",
+		"IdentityGreen",
 		"BiomeRed"
 	]
 },
@@ -7092,7 +7337,8 @@
 		"Unholy",
 		"Mounted",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -7174,7 +7420,8 @@
 		"Spirit",
 		"Flying",
 		"Ghost",
-		"IdentityBlack"
+		"IdentityBlack",
+		"Minion"
 	]
 },
 {
@@ -7340,7 +7587,8 @@
 		"Unholy",
 		"Mounted",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -7456,7 +7704,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 31,
-	"scale": 0.4,
+	"scale": 0.6,
 	"life": 30,
 	"rewards": [
 		{
@@ -8774,7 +9022,8 @@
 		"Mercenary",
 		"IdentityGruul",
 		"IdentityRed",
-		"Dwarf"
+		"Dwarf",
+		"Minion"
 	]
 },
 {
@@ -8856,7 +9105,7 @@
 	"nameOverride": "",
 	"sprite": "sprites/enemy/humanoid/dwarf/dwarflarge.atlas",
 	"deck": [
-		"decks/standard/tokens.dck"
+		"decks/standard/dwarf_whitecastle.dck"
 	],
 	"ai": "",
 	"spawnRate": 1,
@@ -9154,7 +9403,8 @@
 		"IdentityRed",
 		"IdentityWhite",
 		"IdentityBoros",
-		"BiomeWhite"
+		"BiomeWhite",
+		"Minion"
 	]
 },
 {
@@ -9483,7 +9733,8 @@
 		"Humanoid",
 		"Tribal",
 		"IdentityGreen",
-		"BiomeGreen"
+		"BiomeGreen",
+		"Minion"
 	]
 },
 {
@@ -9528,7 +9779,8 @@
 		"Humanoid",
 		"Tribal",
 		"IdentityGreen",
-		"BiomeGreen"
+		"BiomeGreen",
+		"Minion"
 	]
 },
 {
@@ -9692,7 +9944,8 @@
 		"Eldrazi",
 		"Boss",
 		"IdentityColorless"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Esper Artificer",
@@ -10323,7 +10576,8 @@
 		"Human",
 		"Knight",
 		"Unholy",
-		"IdentityBlack"
+		"IdentityBlack",
+		"Minion"
 	]
 },
 {
@@ -10662,7 +10916,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 23,
-	"scale": 1.2,
+	"scale": 1.4,
 	"life": 20,
 	"rewards": [
 		{
@@ -11663,7 +11917,7 @@
 		"decks/standard/geonid.dck"
 	],
 	"ai": "",
-	"spawnRate": 1,
+	"spawnRate": 0.5,
 	"difficulty": 0.1,
 	"speed": 15,
 	"scale": 0.75,
@@ -11808,7 +12062,8 @@
 		"Territorial",
 		"IdentityGreen",
 		"Ghalta"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Garruk",
@@ -11979,7 +12234,8 @@
 		"Ghost",
 		"Flying",
 		"IdentityBlue",
-		"BiomeBlue"
+		"BiomeBlue",
+		"Minion"
 	]
 },
 {
@@ -12097,7 +12353,8 @@
 		"IdentityBlack",
 		"IdentityBlue",
 		"IdentityDimir",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -12238,7 +12495,8 @@
 		"Flying",
 		"Ghost",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -12894,7 +13152,8 @@
 		"Boss",
 		"IdentityBlack",
 		"Griselbrand"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Grolnok",
@@ -12996,7 +13255,8 @@
 		"IdentityGreen",
 		"Giant",
 		"IdentitySultai"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Gorilla",
@@ -13269,7 +13529,8 @@
 		"Thief",
 		"Scavenger",
 		"IdentityRed",
-		"BiomeRed"
+		"BiomeRed",
+		"Minion"
 	]
 },
 {
@@ -13288,8 +13549,8 @@
 		{
 			"type": "deckCard",
 			"probability": 1,
-			"count": 2,
-			"addMaxCount": 4,
+			"count": 1,
+			"addMaxCount": 2,
 			"rarity": [
 				"common",
 				"uncommon"
@@ -13320,6 +13581,15 @@
 			"cardTypes": [
 				"land"
 			]
+		},
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"addMaxCount": 6,
+			"cardTypes": [
+				"Artifact"
+			]
 		}
 	],
 	"colors": "R",
@@ -13333,7 +13603,8 @@
 		"Small",
 		"Artificer",
 		"Scavenger",
-		"IdentityRed"
+		"IdentityRed",
+		"Minion"
 	]
 },
 {
@@ -13436,7 +13707,8 @@
 		"IdentityRed",
 		"IdentityGreen",
 		"IdentityGruul",
-		"BiomeRed"
+		"BiomeRed",
+		"Minion"
 	]
 },
 {
@@ -13608,7 +13880,8 @@
 		"Tribal",
 		"Small",
 		"IdentityRed",
-		"IdentityBlack"
+		"IdentityBlack",
+		"Minion"
 	]
 },
 {
@@ -13657,12 +13930,13 @@
 		"Tribal",
 		"Small",
 		"IdentityRed",
-		"BiomeRed"
+		"BiomeRed",
+		"Minion"
 	]
 },
 {
 	"name": "Golem",
-	"nameOverride": "Rustic Golem",
+	"nameOverride": "Rusted Golem",
 	"sprite": "sprites/enemy/construct/golem.atlas",
 	"deck": [
 		"decks/standard/golem.json",
@@ -13829,7 +14103,8 @@
 		"Tribal",
 		"IdentityBlack",
 		"IdentityGreen",
-		"IdentityGolgari"
+		"IdentityGolgari",
+		"Leader"
 	]
 },
 {
@@ -14913,7 +15188,8 @@
 		"Mystic",
 		"IdentityGreen",
 		"IdentityBlack",
-		"BiomeGreen"
+		"BiomeGreen",
+		"Minion"
 	]
 },
 {
@@ -15062,7 +15338,7 @@
 	"spawnRate": 0.8,
 	"difficulty": 0.1,
 	"speed": 15,
-	"scale": 0.45,
+	"scale": 0.75,
 	"life": 20,
 	"rewards": [
 		{
@@ -15208,7 +15484,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 24,
-	"scale": 0.7,
+	"scale": 0.8,
 	"life": 17,
 	"rewards": [
 		{
@@ -15221,6 +15497,12 @@
 				"Mythic Rare",
 				"Rare",
 				"Uncommon"
+			],
+			"cardTypes": [
+				"Creature",
+				"Instant",
+				"Artifact",
+				"Enchantment"
 			]
 		},
 		{
@@ -15239,6 +15521,122 @@
 		"IdentityDimir",
 		"BiomeBlue",
 		"BiomeBlack"
+	]
+},
+{
+	"name": "Holy Paladin",
+	"sprite": "sprites/enemy/humanoid/human/knight/paladin_large.atlas",
+	"deck": [
+		"decks/standard/holypaladin.dck"
+	],
+	"ai": "",
+	"spawnRate": 1,
+	"difficulty": 0.1,
+	"speed": 24,
+	"scale": 0.7,
+	"life": 25,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 4,
+			"colors": [
+				"White"
+			],
+			"rarity": [
+				"Rare"
+			]
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 50,
+			"addMaxCount": 200
+		},
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"rarity": [
+				"uncommon",
+				"rare"
+			],
+			"cardTypes": [
+				"Land"
+			]
+		},
+		{
+			"type": "shards",
+			"probability": 1,
+			"count": 30,
+			"addMaxCount": 20
+		}
+	],
+	"colors": "W",
+	"questTags": [
+		"IdentityWhite",
+		"Paladin",
+		"Human",
+		"Holy",
+		"Leader"
+	]
+},
+{
+	"name": "Royal King",
+	"sprite": "sprites/enemy/humanoid/human/knight/king_large.atlas",
+	"deck": [
+		"decks/standard/whiteking.dck"
+	],
+	"ai": "",
+	"spawnRate": 1,
+	"difficulty": 0.1,
+	"speed": 24,
+	"scale": 0.7,
+	"life": 25,
+	"rewards": [
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 4,
+			"colors": [
+				"White"
+			],
+			"rarity": [
+				"Rare"
+			]
+		},
+		{
+			"type": "gold",
+			"probability": 1,
+			"count": 50,
+			"addMaxCount": 200
+		},
+		{
+			"type": "card",
+			"probability": 1,
+			"count": 1,
+			"rarity": [
+				"uncommon",
+				"rare"
+			],
+			"cardTypes": [
+				"Land"
+			]
+		},
+		{
+			"type": "shards",
+			"probability": 1,
+			"count": 30,
+			"addMaxCount": 20
+		}
+	],
+	"colors": "W",
+	"questTags": [
+		"IdentityWhite",
+		"Warrior",
+		"Human",
+		"Holy",
+		"King"
 	]
 },
 {
@@ -15400,7 +15798,8 @@
 		"IdentityBlue",
 		"IdentityWhite",
 		"IdentityAzorius",
-		"BiomeWhite"
+		"BiomeWhite",
+		"Minion"
 	]
 },
 {
@@ -15562,7 +15961,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 25,
-	"life": 13,
+	"life": 18,
 	"rewards": [
 		{
 			"type": "deckCard",
@@ -15732,7 +16131,8 @@
 		"IdentityGreen",
 		"IdentityWhite",
 		"IdentitySelesnya",
-		"Mercenary"
+		"Mercenary",
+		"Minion"
 	]
 },
 {
@@ -16349,7 +16749,8 @@
 		"IdentityBlue",
 		"IdentityWhite",
 		"IdentityAzorius"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Jellyfish",
@@ -16692,7 +17093,8 @@
 		"IdentityGreen",
 		"IdentityBlue",
 		"IdentitySimic"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Knight",
@@ -16820,7 +17222,8 @@
 		"IdentityWhite",
 		"Mercenary",
 		"IdentityBlue",
-		"IdentityAzorius"
+		"IdentityAzorius",
+		"Minion"
 	]
 },
 {
@@ -17557,7 +17960,8 @@
 		"Huge",
 		"Boss",
 		"Lathliss"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Leonin Weaponmaster",
@@ -17612,7 +18016,8 @@
 		"BiomeWhite",
 		"Leonin",
 		"Armorer",
-		"Equipments"
+		"Equipments",
+		"Minion"
 	]
 },
 {
@@ -17661,7 +18066,8 @@
 		"IdentityWhite",
 		"IdentitySelesnya",
 		"BiomeWhite",
-		"Leonin"
+		"Leonin",
+		"Minion"
 	]
 },
 {
@@ -17870,7 +18276,8 @@
 		"Liliana",
 		"Death",
 		"IdentityBlack"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Liliana's Alchemist",
@@ -18045,7 +18452,7 @@
 	"spawnRate": 0.8,
 	"difficulty": 0.1,
 	"speed": 15,
-	"scale": 0.8,
+	"scale": 0.9,
 	"life": 12,
 	"rewards": [
 		{
@@ -18159,7 +18566,8 @@
 		"Octopus",
 		"IdentityBlue",
 		"Lorthos"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Mageripper",
@@ -18755,7 +19163,8 @@
 		"Territorial",
 		"Water",
 		"IdentityBlue",
-		"BiomeBlue"
+		"BiomeBlue",
+		"Minion"
 	]
 },
 {
@@ -18805,7 +19214,8 @@
 		"IdentityGreen",
 		"IdentityBlue",
 		"IdentitySimic",
-		"BiomeBlue"
+		"BiomeBlue",
+		"Minion"
 	]
 },
 {
@@ -18955,7 +19365,8 @@
 		"IdentityGreen",
 		"IdentityBlue",
 		"IdentitySimic",
-		"BiomeBlue"
+		"BiomeBlue",
+		"Minion"
 	]
 },
 {
@@ -19065,7 +19476,8 @@
 		"Soldier",
 		"Territorial",
 		"IdentityBlue",
-		"BiomeBlue"
+		"BiomeBlue",
+		"Minion"
 	]
 },
 {
@@ -19843,7 +20255,8 @@
 		"IdentityBlack",
 		"IdentityOrzhov",
 		"BiomeColorless",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -19897,7 +20310,8 @@
 		"Robot",
 		"Dungeon",
 		"Boss"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Naga Warrior",
@@ -20292,7 +20706,11 @@
 			"type": "deckCard",
 			"probability": 1,
 			"count": 3,
-			"addMaxCount": 6
+			"addMaxCount": 6,
+			"rarity": [
+				"uncomon",
+				"common"
+			]
 		},
 		{
 			"type": "card",
@@ -20755,7 +21173,8 @@
 		"IdentityGreen",
 		"IdentityBlack",
 		"IdentityGolgari"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Owl",
@@ -21297,7 +21716,8 @@
 		"IdentityIzzet",
 		"IdentityJund",
 		"Leader",
-		"Pirate"
+		"Pirate",
+		"Captain"
 	]
 },
 {
@@ -21376,7 +21796,9 @@
 		"Bandit",
 		"Thief",
 		"IdentityBlack",
-		"Dungeon"
+		"Dungeon",
+		"Pirate",
+		"Captain"
 	]
 },
 {
@@ -21653,7 +22075,7 @@
 	"spawnRate": 0.5,
 	"difficulty": 0.1,
 	"speed": 20,
-	"scale": 0.8,
+	"scale": 0.7,
 	"life": 20,
 	"rewards": [
 		{
@@ -22306,7 +22728,7 @@
 	"spawnRate": 0.5,
 	"difficulty": 0.1,
 	"speed": 20,
-	"scale": 0.8,
+	"scale": 0.7,
 	"life": 20,
 	"rewards": [
 		{
@@ -22912,7 +23334,8 @@
 		"Skeleton",
 		"Regenerating",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -22926,6 +23349,7 @@
 	"spawnRate": 0.8,
 	"difficulty": 0.1,
 	"speed": 15,
+	"scale": 1.1,
 	"life": 16,
 	"rewards": [
 		{
@@ -23530,7 +23954,8 @@
 		"Territorial",
 		"Leader",
 		"IdentityAll"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Scorpion",
@@ -24078,7 +24503,8 @@
 		"Skeleton",
 		"Regenerating",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -24112,7 +24538,8 @@
 		"Soldier",
 		"Regenerating",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -24292,7 +24719,8 @@
 		"IdentityBlack",
 		"IdentityGreen",
 		"IdentityGolgari"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Slivdrazi Experiment",
@@ -24747,7 +25175,8 @@
 		"Boss",
 		"Loner",
 		"IdentityRed"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Sliver Queen",
@@ -24802,7 +25231,8 @@
 		"Territorial",
 		"Nesting",
 		"IdentityAll"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Snake",
@@ -25420,6 +25850,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 23,
+	"scale": 1.5,
 	"life": 20,
 	"rewards": [
 		{
@@ -25835,12 +26266,13 @@
 		"IdentityBlue",
 		"IdentityWhite",
 		"IdentityAzorius"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "The Cheff",
-	"nameOverride": "",
-	"sprite": "sprites/enemy/humanoid/ironcheffboss.atlas",
+	"nameOverride": "Zedruu's Cook",
+	"sprite": "sprites/enemy/humanoid/halfling/korred.atlas",
 	"deck": [
 		"decks/miniboss/thecheff.dck"
 	],
@@ -25960,7 +26392,8 @@
 		"Cook",
 		"Human",
 		"Boss"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Tibalt",
@@ -26063,7 +26496,8 @@
 		"Boss",
 		"Planeswalker",
 		"IdentityRed"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Tiger",
@@ -26128,12 +26562,11 @@
 },
 {
 	"name": "Torturer",
-	"sprite": "sprites/enemy/undead/torturer.atlas",
+	"sprite": "sprites/enemy/humanoid/human/bandit/bandittorturer.atlas",
 	"deck": [
 		"decks/miniboss/torturer.dck"
 	],
 	"ai": "",
-	"flying": true,
 	"spawnRate": 1,
 	"difficulty": 0.1,
 	"speed": 20,
@@ -26187,7 +26620,8 @@
 		"Aggressive",
 		"IdentityBlack",
 		"Evil"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Turtle",
@@ -26595,7 +27029,8 @@
 		"Humanoid",
 		"Unholy",
 		"IdentityBlack"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Vampire",
@@ -26633,7 +27068,8 @@
 		"Predator",
 		"Nocturnal",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -26824,7 +27260,7 @@
 	"spawnRate": 1,
 	"difficulty": 0.3,
 	"speed": 20,
-	"scale": 0.65,
+	"scale": 0.75,
 	"life": 25,
 	"rewards": [
 		{
@@ -28013,7 +28449,8 @@
 		"IdentityBlack",
 		"Ghost",
 		"Undead",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {
@@ -28151,7 +28588,8 @@
 		"IdentityGreen",
 		"IdentityRed",
 		"IdentityJund"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Yeti",
@@ -28321,7 +28759,8 @@
 		"Illusionist",
 		"Leader",
 		"Large"
-	]
+	],
+	"gamesPerMatch": 3
 },
 {
 	"name": "Zombie",
@@ -28368,7 +28807,8 @@
 		"Zombie",
 		"Humanoid",
 		"IdentityBlack",
-		"BiomeBlack"
+		"BiomeBlack",
+		"Minion"
 	]
 },
 {

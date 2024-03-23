@@ -29,12 +29,9 @@ import forge.game.GameObject;
 import forge.game.GameObjectPredicates;
 import forge.game.GameType;
 import forge.game.ability.AbilityUtils;
-import forge.game.card.Card;
-import forge.game.card.CardCollection;
-import forge.game.card.CardLists;
-import forge.game.card.CardPlayOption;
-import forge.game.card.CardUtil;
+import forge.game.card.*;
 import forge.game.cost.IndividualCostPaymentInstance;
+import forge.game.keyword.Keyword;
 import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.staticability.StaticAbilityCastWithFlash;
@@ -97,6 +94,9 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             }
             if (value.equals("Blessing")) {
                 this.setBlessing(true);
+            }
+            if (value.equals("Solved")) {
+                this.setSolved(true);
             }
         }
 
@@ -216,7 +216,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             // if card is lki and bestowed, then do nothing there, it got already animated
             if (!(c.isLKI() && c.isBestowed())) {
                 if (!c.isLKI()) {
-                    cp = CardUtil.getLKICopy(c);
+                    cp = CardCopyService.getLKICopy(c);
                 }
 
                 cp.animateBestow(!cp.isLKI());
@@ -246,7 +246,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             }
             if (sa.isSpell()) {
                 final CardPlayOption o = c.mayPlay(sa.getMayPlay());
-                if (o == null) {
+                if (o == null || sa.isCastFromPlayEffect()) {
                     return this.getZone() == null || (cardZone != null && cardZone.is(this.getZone()));
                 } else if (o.getPlayer() == activator) {
                     Map<String,String> params = sa.getMayPlay().getMapParams();
@@ -374,6 +374,10 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             return false;
         }
 
+        if (sa.isKeyword(Keyword.FUSE) && !c.isInZone(ZoneType.Hand)) {
+            return false;
+        }
+
         if (getCardsInHand() != -1) {
             int h = activator.getCardsIn(ZoneType.Hand).size();
             if (getCardsInHand2() != -1) {
@@ -430,6 +434,11 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
                 return false;
             }
         }
+        if (isSolved()) {
+            if (!c.isSolved()) {
+                return false;
+            }
+        }
         if (sa.isProwl()) {
             if (!activator.hasProwl(c.getType().getCreatureTypes())) {
                 return false;
@@ -482,12 +491,14 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             }
         }
 
-        // 702.36e
+        // 702.37e
         // If the permanent wouldn't have a morph cost if it were face up, it can't be turned face up this way.
-        if (sa.isMorphUp() && c.isInPlay()) {
+        // 702.168b
+        // If the permanent wouldn't have a disguise cost if it were face up, it can't be turned face up this way.
+        if ((sa.isMorphUp() || sa.isDisguiseUp()) && c.isInPlay()) {
             Card cp = c;
             if (!c.isLKI()) {
-                cp = CardUtil.getLKICopy(c);
+                cp = CardCopyService.getLKICopy(c);
             }
             cp.forceTurnFaceUp();
 
@@ -588,7 +599,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             return false;
         }
 
-        if (!sa.hasSVar("IsCastFromPlayEffect")) {
+        if (!sa.isCastFromPlayEffect()) {
             if (!checkTimingRestrictions(c, sa)) {
                 return false;
             }

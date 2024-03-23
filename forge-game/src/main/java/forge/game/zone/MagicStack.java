@@ -35,16 +35,12 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import forge.GameCommand;
-import forge.game.CardTraitPredicates;
-import forge.game.Game;
-import forge.game.GameActionUtil;
-import forge.game.GameLogEntryType;
-import forge.game.GameObject;
+import forge.game.*;
 import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
 import forge.game.card.Card;
-import forge.game.card.CardUtil;
+import forge.game.card.CardCopyService;
 import forge.game.event.EventValueChangeType;
 import forge.game.event.GameEventCardStatsChanged;
 import forge.game.event.GameEventSpellAbilityCast;
@@ -52,6 +48,7 @@ import forge.game.event.GameEventSpellRemovedFromStack;
 import forge.game.event.GameEventSpellResolved;
 import forge.game.event.GameEventZone;
 import forge.game.keyword.Keyword;
+import forge.game.mana.Mana;
 import forge.game.player.Player;
 import forge.game.spellability.AbilityStatic;
 import forge.game.spellability.SpellAbility;
@@ -187,12 +184,21 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         if (undoStack.isEmpty()) { return false; }
 
         SpellAbility sa = undoStack.peek();
-        sa.undo();
-        clearUndoStack(sa);
-        sa.getActivatingPlayer().getManaPool().refundManaPaid(sa);
+        if (sa.undo()) {
+            clearUndoStack(sa);
+            sa.getActivatingPlayer().getManaPool().refundManaPaid(sa);
+        } else {
+            clearUndoStack(sa);
+            for (Mana pay : sa.getPayingMana()) {
+                clearUndoStack(pay.getManaAbility().getSourceSA());
+            }
+        }
         return true;
     }
     public final void clearUndoStack(SpellAbility sa) {
+        if (sa == null) {
+            return;
+        }
         clearUndoStack(Lists.newArrayList(sa));
     }
     private final void clearUndoStack(List<SpellAbility> sas) {
@@ -302,9 +308,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         if (si == null && sp.isActivatedAbility() && !sp.isCopied()) {
             // if not already copied use a fresh instance
             SpellAbility original = sp;
-            sp = sp.copy();
-            // need to reapply text changes
-            sp.changeText();
+            sp = sp.copy(sp.getHostCard(), activator, false, true);
             sp.setOriginalAbility(original);
             original.clearTargets();
             original.setXManaCostPaid(null);
@@ -337,7 +341,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         Map<AbilityKey, Object> runParams = AbilityKey.mapFromPlayer(sp.getHostCard().getController());
 
         if (sp.isSpell() && !sp.isCopied()) {
-            final Card lki = CardUtil.getLKICopy(sp.getHostCard());
+            final Card lki = CardCopyService.getLKICopy(sp.getHostCard());
             runParams.put(AbilityKey.CardLKI, lki);
             thisTurnCast.add(lki);
             sp.getActivatingPlayer().addSpellCastThisTurn();
@@ -568,8 +572,8 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         finishResolving(sa, thisHasFizzled);
 
         game.copyLastState();
-        if (isEmpty()) {
-            // FIXME: assuming that if the stack is empty, no reason to hold on to old LKI data (everything is a new object). Is this correct?
+        if (isEmpty() && !hasSimultaneousStackEntries()) {
+            // assuming that if the stack is empty, no reason to hold on to old LKI data (everything is a new object)
             game.clearChangeZoneLKIInfo();
         }
     }
@@ -591,13 +595,9 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         unfreezeStack();
         sa.resetOnceResolved();
 
-        //game.getAction().checkStaticAbilities();
         game.getPhaseHandler().onStackResolved();
 
         curResolvingCard = null;
-
-        // xManaCostPaid will reset when cast the spell, comment out to fix Venarian Gold
-        // sa.getHostCard().setXManaCostPaid(0);
     }
 
     private final void removeCardFromStack(final SpellAbility sa, final SpellAbilityStackInstance si, final boolean fizzle) {
@@ -660,7 +660,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
                         final Card card = (Card) o;
                         Card current = game.getCardState(card);
                         if (current != null) {
-                            invalidTarget = current.getTimestamp() != card.getTimestamp();
+                            invalidTarget = !current.equalsWithGameTimestamp(card);
                         }
                         invalidTarget = invalidTarget || !sa.canTarget(card);
                     } else if (o instanceof SpellAbility) {
@@ -669,6 +669,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
                     } else {
                         invalidTarget = !sa.canTarget(o);
                     }
+                    // TODO remove targets only after the Loop
                     // Remove targets
                     if (invalidTarget) {
                         choices.remove(o);
